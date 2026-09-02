@@ -1,0 +1,23 @@
+services:
+  nettap:
+    build: .
+    container_name: nettap
+    restart: unless-stopped
+    # Needs to see host-side veth interfaces created by dockerd for *other*
+    # containers - those live in the host's root network namespace, which a
+    # normally-networked container never sees. Hence host networking here,
+    # traded off against NOT needing --privileged or --pid=host (see
+    # nettap/discovery.py for why those aren't required).
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+      - SYS_ADMIN
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/run/docker/netns:/var/run/docker/netns:ro
+      - ./data:/data
+    command: ["watch", "--label", "monitor=true"]
+    # Swap for ["watch", "--all"] to capture every running container by
+    # default, or keep the label selector and add ad-hoc targets from
+    # another shell with: docker compose exec nettap nettap --data-dir /data attach <name>

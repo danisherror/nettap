@@ -1,0 +1,22 @@
+[project]
+name = "nettap"
+version = "0.1.0"
+description = "Attach traffic capture to one or many Docker containers and analyze docker-host, docker-docker, and docker-internet flows."
+requires-python = ">=3.9"
+dependencies = [
+    "docker>=6.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.scripts]
+nettap = "nettap.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nettap*"]
