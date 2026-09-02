@@ -33,6 +33,7 @@ from .analyze import container_matrix, dns_queries, external_destinations, proto
 from .capture import CaptureManager
 from .controller import Selector, run as run_controller
 from .enrich import parse_pcap
+from .report import build_report, render_html, render_text
 from .utils import parse_label_selector, setup_logging
 
 logger = logging.getLogger("nettap.cli")
@@ -92,21 +93,35 @@ def detach(ctx, containers, label, all_):
     click.echo(f"detach requested: {list(containers)} label={label or ''}")
 
 
-def _enrich_loop(mgr: CaptureManager, conn, poll_interval, stop):
+def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
+    """Runs on its own background thread - so it needs its OWN sqlite3
+    connection. sqlite3.Connection objects are only usable from the thread
+    that created them (check_same_thread defaults to True); sharing the main
+    thread's connection here used to make this loop die on its first real
+    insert with a silent sqlite3.ProgrammingError - no crash surfaced
+    anywhere, it just stopped enriching forever, and only a manually-run
+    `nettap enrich` (its own fresh process/thread/connection) ever worked.
+    The per-iteration try/except is a second, independent safety net so a
+    future bug here degrades to "logged and retried" instead of "silently
+    dead thread" again."""
     import glob
+    conn = storage.connect(db_path)
     seen: set[str] = set()
     while not stop["flag"]:
-        for session in mgr.status():
-            finished = sorted(glob.glob(session["pcap_pattern"].replace("%Y%m%d%H%M%S", "*")))
-            # the most recent file is still being written by tcpdump; only
-            # enrich files that have already been rotated past
-            for path in finished[:-1]:
-                if path in seen:
-                    continue
-                seen.add(path)
-                rows = parse_pcap(path, session["container_id"], session["container"])
-                storage.insert_flows(conn, rows)
-                logger.info("enriched %s -> %d flow rows", path, len(rows))
+        try:
+            for session in mgr.status():
+                finished = sorted(glob.glob(session["pcap_pattern"].replace("%Y%m%d%H%M%S", "*")))
+                # the most recent file is still being written by tcpdump; only
+                # enrich files that have already been rotated past
+                for path in finished[:-1]:
+                    if path in seen:
+                        continue
+                    seen.add(path)
+                    rows = parse_pcap(path, session["container_id"], session["container"])
+                    storage.insert_flows(conn, rows)
+                    logger.info("enriched %s -> %d flow rows", path, len(rows))
+        except Exception:
+            logger.exception("enrich loop iteration failed, continuing")
         time.sleep(max(poll_interval, 5))
 
 
@@ -136,7 +151,7 @@ def watch_cmd(ctx, label, all_, rotate_seconds, poll_interval, auto_enrich):
 
     if auto_enrich:
         threading.Thread(
-            target=_enrich_loop, args=(mgr, conn, poll_interval, stop), daemon=True
+            target=_enrich_loop, args=(mgr, ctx.obj["db_path"], poll_interval, stop), daemon=True
         ).start()
 
     click.echo("nettap watching (Ctrl+C to stop)...")
@@ -161,6 +176,18 @@ def status(ctx):
         click.echo(f"{r['container_name']:<20} veth={r['veth']!s:<15} pcap={r['pcap_pattern']}")
 
 
+def _warn_if_unknown_container(conn, container: str | None) -> None:
+    if not container:
+        return
+    known = storage.known_container_names(conn)
+    if known and container not in known:
+        click.echo(
+            f"warning: no data for a container named '{container}' - "
+            f"containers with captured data so far: {', '.join(known)}",
+            err=True,
+        )
+
+
 @cli.group()
 def analyze():
     """Query the flow store."""
@@ -172,6 +199,7 @@ def analyze():
 @click.pass_context
 def analyze_top_talkers(ctx, container, limit):
     conn = storage.connect(ctx.obj["db_path"])
+    _warn_if_unknown_container(conn, container)
     click.echo(json.dumps(top_talkers(conn, container, limit), indent=2))
 
 
@@ -187,6 +215,7 @@ def analyze_matrix(ctx):
 @click.pass_context
 def analyze_dns(ctx, container):
     conn = storage.connect(ctx.obj["db_path"])
+    _warn_if_unknown_container(conn, container)
     click.echo(json.dumps(dns_queries(conn, container), indent=2))
 
 
@@ -202,6 +231,7 @@ def analyze_external(ctx):
 @click.pass_context
 def analyze_protocols(ctx, container):
     conn = storage.connect(ctx.obj["db_path"])
+    _warn_if_unknown_container(conn, container)
     click.echo(json.dumps(protocol_breakdown(conn, container), indent=2))
 
 
@@ -246,16 +276,61 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich):
 
     if auto_enrich:
         threading.Thread(
-            target=_enrich_loop, args=(mgr, conn, rotate_seconds, stop), daemon=True
+            target=_enrich_loop, args=(mgr, ctx.obj["db_path"], rotate_seconds, stop), daemon=True
         ).start()
 
     click.echo(f"nettap sidecar capturing '{target_label}' on {iface} (Ctrl+C to stop)...")
     try:
         while not stop["flag"]:
+            for restarted in mgr.restart_dead():
+                storage.set_live_session(conn, restarted.info, restarted.pcap_pattern, restarted.process.pid)
             time.sleep(1)
     finally:
         storage.clear_live_session(conn, info.container_id)
         mgr.detach_all()
+
+
+@cli.command()
+@click.option("--container", required=True, help="Container name to summarize.")
+@click.option("--format", "fmt", type=click.Choice(["text", "html"]), default="text", show_default=True)
+@click.option("--out", default=None,
+              help="Output file path. Defaults to <data-dir>/<container>_report.html for "
+                   "--format html (so it lands in the bind-mounted data dir, on the host "
+                   "filesystem, ready to double-click open); prints to the terminal for "
+                   "--format text unless --out is given.")
+@click.pass_context
+def report(ctx, container, fmt, out):
+    """Plain-language traffic summary for one container - readable without
+    knowing what a pcap or a 5-tuple is. Meant for `docker exec ... nettap
+    report --container X` (text, straight to your terminal) or `--format
+    html` (a single file you can open in a browser)."""
+    conn = storage.connect(ctx.obj["db_path"])
+    known = storage.known_container_names(conn)
+    if known and container not in known:
+        click.echo(
+            f"No data for a container named '{container}'.\n"
+            f"Containers with captured data so far: {', '.join(known)}\n"
+            f"(--container must match the --target name the capture was started with, "
+            f"not necessarily the container's current name in 'docker ps')",
+            err=True,
+        )
+        raise SystemExit(1)
+    data = build_report(conn, container)
+    if fmt == "html":
+        content = render_html(data)
+        out = out or f"{ctx.obj['data_dir']}/{container}_report.html"
+        with open(out, "w") as f:
+            f.write(content)
+        click.echo(f"wrote {out} - open it in a browser (it's on your host machine too, "
+                   f"under the bind-mounted data directory)")
+    else:
+        content = render_text(data)
+        if out:
+            with open(out, "w") as f:
+                f.write(content)
+            click.echo(f"wrote {out}")
+        else:
+            click.echo(content)
 
 
 @cli.command()

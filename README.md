@@ -24,25 +24,34 @@ interface is its veth peer. Details and caveats are in
 ```
  docker events / desired-state table          per-container tcpdump          tshark        SQLite
  (controller.py, poll every 5s)         --->   (capture.py)             --->  (enrich.py) -> (storage.py)
-        |                                              |
-        v                                              v
-  attach/detach requests from             raw pcaps, rotated every 60s
-  `nettap attach/detach` CLI calls        in data/pcap/, kept as-is
+        |                                              |                                         |
+        v                                              v                                         v
+  attach/detach requests from             raw pcaps, rotated every 60s              analyze.py (JSON) /
+  `nettap attach/detach` CLI calls        in data/pcap/, kept as-is                report.py (plain English)
 ```
 
 - **controller.py** - a small reconciliation loop: figure out which
   containers *should* be captured (label selector + ad-hoc attach requests),
-  diff against what's currently captured, attach/detach the difference.
+  diff against what's currently captured, attach/detach the difference; also
+  restarts any capture whose tcpdump process died on its own.
 - **capture.py** - runs one `tcpdump` per attached container against its
-  resolved veth, rotating pcap files.
+  resolved veth, rotating pcap files. Relays tcpdump's own stderr into
+  nettap's logging (so `docker logs <nettap container>` is actually useful
+  for diagnosing a dead/misbehaving capture), and detects + restarts a
+  tcpdump that exited unexpectedly (`restart_dead()`).
 - **enrich.py** - parses each rotated pcap with `tshark` into flow-level rows
-  (5-tuple, byte length, DNS query, TLS SNI).
+  (5-tuple, byte length, DNS query, TLS SNI). Runs on a background thread
+  with its own SQLite connection (a shared connection across threads is a
+  real bug we hit and fixed - see TODO.md).
 - **storage.py** - SQLite: container metadata, flow rows, and the shared
   "desired state" / "live sessions" tables that let `nettap attach` from one
   terminal steer the `nettap watch` daemon running in another.
-- **analyze.py** - read-side queries: top talkers, container-to-container
-  traffic matrix, DNS lookups, protocol mix, and traffic that left the
-  Docker network entirely.
+- **analyze.py** - read-side queries, JSON output: top talkers,
+  container-to-container traffic matrix, DNS lookups, protocol mix, and
+  traffic that left the Docker network entirely.
+- **report.py** - the same data as `analyze`, rendered as a plain-language
+  summary (terminal text or a self-contained HTML file) for someone who
+  doesn't know what a pcap or a 5-tuple is.
 
 ## Quick start
 
@@ -60,6 +69,26 @@ docker run -d --name web --label monitor=true nginx
 Within one poll cycle (5s) `nettap` attaches automatically. See
 `examples/sample_queries.md` for a full walkthrough including ad-hoc
 attach/detach and the `analyze` subcommands.
+
+### Plain-language reports (for non-technical readers)
+
+`analyze` prints raw JSON meant for scripting. For a summary a non-technical
+person can read - "sent 12MB, mostly to example.com, no traffic to other
+containers" instead of rows of IPs and byte counts - use `report` instead:
+
+```
+# printed straight to your terminal
+docker exec nettap-web nettap --data-dir /data report --container web
+
+# a single HTML file you can double-click open in a browser - written into
+# the bind-mounted data dir, so it lands on your host machine too
+docker exec nettap-web nettap --data-dir /data report --container web --format html
+```
+
+The HTML version shows total traffic, who it talked to (other containers vs.
+the internet, with hostnames resolved from TLS SNI where possible), DNS
+lookups, and the protocol mix - as a self-contained file with no server or
+internet connection needed to view it.
 
 ### Attaching to specific containers instead of a label
 
@@ -117,6 +146,47 @@ sudo nettap --data-dir ./data watch --label monitor=true
 (needs `tcpdump`, `tshark`, `nsenter` on PATH, and root or the
 `NET_ADMIN`/`NET_RAW`/`SYS_ADMIN` capabilities)
 
+## Troubleshooting
+
+**`report`/`analyze` says "no traffic" for a container you know is running.**
+`--container` is matched against whatever string was passed to `sidecar
+--target` (or the container's `name` as seen by `watch`'s Docker API calls)
+- it is *not* looked up from `docker ps`. If you recreated the target
+container since starting capture, its `docker ps` name may have changed
+(Docker invents a new random `adjective_scientist` name for any container
+started without `--name`) while nettap is still tagging data under the old
+one. `report`/`analyze top-talkers`/`dns`/`protocols` now print the list of
+container names that actually have data when the one you asked for doesn't
+match, e.g. `containers with captured data so far: relaxed_panini`.
+
+**A `sidecar` doesn't follow its target if the target container gets
+recreated.** `--network container:<target>` resolves `<target>` to a network
+namespace *once*, at `docker run` time. If that container is later removed
+and replaced (even under the same name), the sidecar keeps capturing the
+old, now-orphaned namespace - traffic in the new container won't show up,
+and no error is raised anywhere (the tcpdump process itself doesn't crash,
+it just stops seeing new packets). If you recreate a target container,
+recreate its sidecar too:
+```
+docker stop nettap-<old> && docker rm nettap-<old>
+docker run -d --name nettap-<target> --network container:<target> \
+  --cap-add NET_ADMIN --cap-add NET_RAW -v "$(pwd)/data:/data" \
+  nettap sidecar --target <target>
+```
+
+**Output seems frozen after the first report, even with new traffic.**
+As of this build this should self-heal (a background thread used to die
+silently on its first real write due to a cross-thread SQLite bug, and a
+crashed tcpdump was never restarted - both fixed, see TODO.md). If you're
+running an image built before that fix, `docker build -t nettap .` again and
+recreate the container. Otherwise: allow ~2 minutes after traffic occurs (one
+pcap rotation to close, one more cycle for the enrich loop to notice it) -
+`nettap enrich` still exists to force an immediate parse if you don't want to
+wait; check `docker exec <nettap container> ls -la /data/pcap/` to confirm
+new files are actually appearing and growing; check `docker logs <nettap
+container>` for `tcpdump[...]:` lines, which now surface tcpdump's own
+errors instead of going nowhere.
+
 ## Why the tool container needs `network_mode: host` + a few capabilities
 
 Other containers' host-side veth interfaces live in the host's root network
@@ -135,8 +205,10 @@ pytest
 ```
 
 Tests use mocked Docker/tcpdump/tshark calls (no real Docker daemon
-required) and cover the veth-resolution logic, storage layer, and the
-`analyze` queries. There is no integration test against a live Docker host
+required) and cover the veth-resolution logic, storage layer, capture
+lifecycle (including the dead-process restart path), the `analyze`/`report`
+queries, and a real-threading regression test for the background enrich
+loop's SQLite usage. There is no integration test against a live Docker host
 yet - see TODO.md, that's the first thing to run before trusting this in
 production.
 
@@ -150,7 +222,8 @@ nettap/
     controller.py  reconciliation loop (desired state -> attach/detach)
     enrich.py      pcap -> structured flow rows via tshark
     storage.py     SQLite schema + accessors
-    analyze.py     read-side queries
+    analyze.py     read-side queries (JSON)
+    report.py      read-side queries, rendered as plain language (text/HTML)
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
   examples/        sample CLI session
@@ -165,5 +238,7 @@ nettap/
   plaintext payloads.
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.
 - No disk-usage cap on captured pcaps yet.
+- A `sidecar` doesn't follow its target container across a recreate (see
+  Troubleshooting above) - recreate the sidecar alongside it.
 
-See `TODO.md` for the full list and what's next.
+See `TODO.md` for the full list, what's already been fixed, and what's next.

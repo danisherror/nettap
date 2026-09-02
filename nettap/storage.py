@@ -197,5 +197,17 @@ def clear_live_session(conn: sqlite3.Connection, container_id: str) -> None:
         cur.execute("DELETE FROM live_sessions WHERE container_id = ?", (container_id,))
 
 
+def known_container_names(conn: sqlite3.Connection) -> list[str]:
+    """Every container name that has EITHER captured flow rows OR was ever
+    inspected/attached - used to give a "did you mean...?" hint when a
+    `--container` value doesn't match anything, instead of silently
+    reporting zero traffic for a plain typo or the wrong container name."""
+    rows = conn.execute(
+        "SELECT DISTINCT container_name AS name FROM flows WHERE container_name IS NOT NULL "
+        "UNION SELECT DISTINCT name FROM containers WHERE name IS NOT NULL"
+    ).fetchall()
+    return sorted({r["name"] for r in rows if r["name"]})
+
+
 def list_live_sessions(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in conn.execute("SELECT * FROM live_sessions ORDER BY started_at")]

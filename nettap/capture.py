@@ -6,6 +6,7 @@ from __future__ import annotations
 import logging
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,26 @@ from pathlib import Path
 from .discovery import ContainerNetInfo
 
 logger = logging.getLogger("nettap.capture")
+
+
+def _pump_stderr(name: str, pipe) -> None:
+    """Relay a tcpdump child's stderr into our own logging instead of letting
+    it sit in an unread pipe - this is what makes 'docker logs <nettap
+    container>' actually show tcpdump's own "listening on eth0..." line and,
+    more importantly, any error it hits (bad interface, permission denied,
+    etc). Runs on its own daemon thread for the life of the subprocess."""
+    try:
+        for line in iter(pipe.readline, ""):
+            line = line.rstrip()
+            if line:
+                logger.info("tcpdump[%s]: %s", name, line)
+    except (ValueError, OSError):
+        pass  # pipe closed underneath us, e.g. during detach() - not an error
+    finally:
+        try:
+            pipe.close()
+        except OSError:
+            pass
 
 
 @dataclass
@@ -77,7 +98,11 @@ class CaptureManager:
             cmd += ["-s", str(self.snaplen)]
 
         logger.info("attaching to %s on %s -> %s", info.name, info.veth, pattern)
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, bufsize=1
+        )
+        if proc.stderr:
+            threading.Thread(target=_pump_stderr, args=(info.name, proc.stderr), daemon=True).start()
         session = CaptureSession(info=info, process=proc, pcap_pattern=pattern)
         self._sessions[info.container_id] = session
         return session
@@ -96,6 +121,28 @@ class CaptureManager:
     def detach_all(self) -> None:
         for cid in list(self._sessions):
             self.detach(cid)
+
+    def restart_dead(self) -> list[CaptureSession]:
+        """Find capture sessions whose tcpdump process exited on its own
+        (crash, killed interface, etc.) and restart them against the same
+        target. Without this, a capture that dies quietly just stops
+        producing new pcaps forever - the symptom being "the report stopped
+        updating" with no visible error. Returns the newly (re)started
+        sessions so the caller can refresh anything it's tracking (e.g. the
+        live_sessions DB row's pid)."""
+        restarted = []
+        for cid, session in list(self._sessions.items()):
+            returncode = session.process.poll()
+            if returncode is not None:
+                logger.warning(
+                    "capture for %s (pid %s) exited unexpectedly (code %s) - restarting",
+                    session.info.name, session.process.pid, returncode,
+                )
+                del self._sessions[cid]
+                new_session = self.attach(session.info)
+                if new_session:
+                    restarted.append(new_session)
+        return restarted
 
     def status(self) -> list[dict]:
         out = []

@@ -48,6 +48,24 @@ def test_insert_and_list_flows(tmp_path):
     assert count == 1
 
 
+def test_known_container_names(tmp_path):
+    conn = storage.connect(str(tmp_path / "nettap.db"))
+    assert storage.known_container_names(conn) == []
+
+    storage.upsert_container(conn, _info(container_id="c1", name="web"))
+    assert storage.known_container_names(conn) == ["web"]
+
+    # a name that only ever showed up in flows (e.g. from the batch 'enrich'
+    # command, which doesn't know the real container_id) should count too
+    storage.insert_flows(conn, [{
+        "ts": 1.0, "container_id": "", "container_name": "orphaned",
+        "src_ip": "1.2.3.4", "dst_ip": "5.6.7.8", "src_port": 1, "dst_port": 2,
+        "protocol": "TCP", "length": 10, "dns_query": None, "tls_sni": None,
+        "pcap_file": "x.pcap",
+    }])
+    assert storage.known_container_names(conn) == ["orphaned", "web"]
+
+
 def test_live_sessions_roundtrip(tmp_path):
     conn = storage.connect(str(tmp_path / "nettap.db"))
     info = _info()

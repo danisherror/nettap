@@ -66,6 +66,49 @@ thing to do next session is the P0 list below.
 - [ ] No disk-usage cap on `data/pcap/` - long-running captures will fill the
       disk. Add retention (max age and/or max total bytes, oldest-first
       purge).
+- [x] **Fixed (this was the actual root cause of "report doesn't update
+      without manually running enrich"):** `_enrich_loop` runs on a
+      background thread but was reusing the *main thread's* sqlite3
+      connection. sqlite3 connections are only usable from the thread that
+      created them by default - so the auto-enrich thread died silently
+      (uncaught `sqlite3.ProgrammingError`, no error surfaced anywhere in
+      the app) the first time it actually had a row to insert, and never
+      ran again. Only a manually-run `nettap enrich` (its own fresh
+      process/connection) ever worked, which is exactly the workaround that
+      surfaced this. Fixed by having the loop open its own connection from
+      a db_path instead of sharing one; also wrapped each iteration in
+      try/except so a *future* bug here degrades to "logged and retried"
+      instead of "silently dead thread" again. Verified with an actual
+      threaded regression test (tests/test_enrich_loop.py), not just a
+      mock - it drives `_enrich_loop` on a real background thread against a
+      temp DB file and asserts both that a row lands and that the thread is
+      still alive afterward.
+- [x] **Fixed:** a tcpdump child that exited on its own (crashed, interface
+      disappeared, etc.) was never noticed or restarted - captures would just
+      silently stop producing new pcaps forever, which read as "the report
+      stopped updating" with zero error output anywhere. `CaptureManager.
+      restart_dead()` now detects and restarts dead sessions, called from
+      both the `watch` controller loop and the `sidecar` loop. Still only
+      unit-tested with a fake subprocess (tests/test_capture.py) - watch for
+      this in practice, especially around target-container restarts (a
+      `sidecar` joined via `--network container:X` does NOT follow `X` if
+      the container it names is removed/recreated - that's a still-open gap,
+      see the sidecar note below).
+- [x] **Fixed:** tcpdump's own stderr (its startup "listening on eth0..."
+      line, and any errors) was captured into a pipe nothing ever read, so
+      `docker logs <nettap container>` showed nothing useful for diagnosing
+      a dead or misbehaving capture. It's now relayed into nettap's own
+      logger (`tcpdump[<container>]: ...` lines) as it's produced.
+- [ ] **Open gap surfaced by the above:** `nettap sidecar --target X
+      --network container:X` binds to whatever container `X` resolves to
+      *at `docker run` time*. If that container is later removed and a new
+      one takes its place (even with the same name), the sidecar keeps
+      capturing the old, now-orphaned network namespace - `restart_dead()`
+      won't catch this because the tcpdump process itself doesn't crash, it
+      just stops seeing new packets. Needs either: periodically re-checking
+      that the target container ID hasn't changed (would need docker.sock
+      after all, undoing sidecar mode's main simplification), or clearly
+      documenting "recreate the sidecar whenever you recreate its target."
 
 ## P2 - richer visibility
 
@@ -117,6 +160,27 @@ thing to do next session is the P0 list below.
   TLS/SSH etc. give metadata only (IPs, ports, byte counts, SNI, DNS) unless
   the TLS-visibility TODO above is done.
 - Single-host only for now (see the multi-host TODO).
+
+## report.py (plain-language summary) - known gaps
+
+- [ ] The "which IP is the container itself" heuristic in `report._self_ip`
+      (most-frequent IP across src/dst) will misfire for a container that
+      talks to one single peer overwhelmingly more than everything else
+      combined - worth cross-checking against `containers.ip_addresses` when
+      that's populated (it isn't yet in sidecar mode - see below).
+- [ ] Sidecar mode (`nettap sidecar`) doesn't call the Docker API, so
+      `containers.ip_addresses` is never populated for that container - the
+      container-to-container matrix and "self IP" heuristic both work purely
+      from observed traffic instead of known ground truth. Consider having
+      `sidecar` optionally accept `--docker-api` to still enrich this via
+      docker.sock if it's mounted, for a more reliable report.
+- [ ] Hostname resolution for external destinations only uses TLS SNI seen
+      on that connection - plaintext HTTP (Host header) and DNS-answer-to-IP
+      correlation aren't used yet, so some external IPs will show as bare
+      IPs even though a hostname was knowable from the capture.
+- [ ] No HTML/text escaping test for a container or hostname containing
+      special characters beyond what test_report.py covers - worth a
+      dedicated test if this ever takes attacker-influenced input seriously.
 
 ## Nice-to-haves noticed while building, not yet triaged
 
