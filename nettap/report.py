@@ -103,10 +103,7 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
         (container, *self_ips),
     ).fetchone()
 
-    peers = [
-        r for r in analyze.container_matrix(conn)
-        if r["src_container"] == container or r["dst_container"] == container
-    ]
+    peers = analyze.container_peers(conn, container)
 
     # Drop the container's own IP as a backstop: if its addresses were never
     # recorded (e.g. data from an older sidecar), replies into it would
@@ -137,7 +134,7 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
         "sent_packets": sent["n"] or 0,
         "received_bytes": received["b"] or 0,
         "received_packets": received["n"] or 0,
-        "container_peers": sorted(peers, key=lambda r: -(r["bytes"] or 0)),
+        "container_peers": peers,
         "external_destinations": sorted(external, key=lambda r: -(r["bytes"] or 0)),
         "local_destinations": sorted(local, key=lambda r: -(r["bytes"] or 0)),
         "dns_queries": analyze.dns_queries(conn, container, limit=50),
@@ -183,8 +180,9 @@ def render_text(report: dict) -> str:
     lines.append("Other containers it talked to:")
     if report["container_peers"]:
         for r in report["container_peers"]:
-            other = r["dst_container"] if r["src_container"] == c else r["src_container"]
-            lines.append(f"  - {other}: {format_bytes(r['bytes'])} across {r['packets']} packets")
+            lines.append(f"  - {r['container']}: {format_bytes(r['bytes'])} across "
+                         f"{r['packets']} packets (sent {format_bytes(r['sent_bytes'])}, "
+                         f"received {format_bytes(r['received_bytes'])})")
     else:
         lines.append("  (none observed)")
     lines.append("")
@@ -253,7 +251,7 @@ def render_html(report: dict) -> str:
         ext_max = max([r["bytes"] or 0 for r in report["external_destinations"]], default=0)
 
         peers_html = "".join(
-            f"<div class='row'><div class='row-label'>{esc(r['dst_container'] if r['src_container']==report['container'] else r['src_container'])}</div>"
+            f"<div class='row'><div class='row-label'>{esc(r['container'])}</div>"
             f"{_bar(r['bytes'], peer_max)}"
             f"<div class='row-value'>{format_bytes(r['bytes'])}</div></div>"
             for r in report["container_peers"]

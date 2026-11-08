@@ -41,8 +41,8 @@ def test_build_report_shape(tmp_path):
     assert data["self_ip"] == "172.18.0.2"
     assert data["sent_bytes"] == 500 + 12000 + 80   # rows where src_ip == self
     assert data["received_bytes"] == 300             # rows where dst_ip == self
-    assert len(data["container_peers"]) == 1
-    assert data["container_peers"][0]["bytes"] in (500, 800)  # matrix direction-dependent
+    assert data["container_peers"] == [{"container": "db", "bytes": 800, "packets": 2,
+                                        "sent_bytes": 500, "received_bytes": 300}]
     assert len(data["external_destinations"]) == 2
     hostnames = {r["dst_ip"]: r.get("hostname") for r in data["external_destinations"]}
     assert hostnames["93.184.216.34"] == "example.com"
@@ -122,3 +122,19 @@ def test_self_ip_guess_skips_multicast_and_unspecified(tmp_path):
     conn = storage.connect(str(tmp_path / "n.db"))
     storage.insert_flows(conn, V6_FLOWS)   # no containers row: falls back to the guess
     assert report._self_ip(conn, "v6") == "fe80::1"
+
+
+def test_peer_captured_too_is_listed_once(tmp_path):
+    # db's own capture (db -> web) must not add a second row to web's report
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed(conn)
+    storage.insert_flows(conn, [
+        {"ts": 1001, "container_id": "c2", "container_name": "db", "src_ip": "172.18.0.3",
+         "dst_ip": "172.18.0.2", "src_port": 5432, "dst_port": 4000, "protocol": "TCP",
+         "length": 300, "dns_query": None, "tls_sni": None, "pcap_file": "b.pcap"},
+    ])
+    data = report.build_report(conn, "web")
+    assert [(r["container"], r["bytes"]) for r in data["container_peers"]] == [("db", 800)]
+    text = report.render_text(data)
+    assert text.count("  - db:") == 1 and "sent 500 B, received 300 B" in text
+    assert report.build_report(conn, "db")["container_peers"][0]["container"] == "web"

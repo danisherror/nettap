@@ -163,8 +163,10 @@ if internet:
 data = report.build_report(conn, cli)
 check(set(data["self_ips"]) == cli_ips, f"report identifies the client by its own IPs ({data['self_ips']})")
 check(data["sent_bytes"] > 0 and data["received_bytes"] > 0, "report shows bytes sent and received")
-check(any(srv in (p["src_container"], p["dst_container"]) for p in data["container_peers"]),
-      "report lists the server as a peer container")
+peers = data["container_peers"]
+check([p["container"] for p in peers] == [srv] and peers[0]["sent_bytes"] > 0
+      and peers[0]["received_bytes"] > 0,
+      f"report lists the server once as a peer, with traffic both ways ({peers})")
 check(srv in report.render_text(data), "text report names the server")
 
 print()

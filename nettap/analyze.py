@@ -95,6 +95,35 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
+    """Other containers `container` exchanged traffic with, one row per peer,
+    biggest first: {"container", "bytes", "packets", "sent_bytes",
+    "received_bytes"}. Counted from `container`'s own capture only, so it
+    doesn't depend on the peer being captured too; container_matrix()
+    instead gives one row per capture and direction."""
+    cur = conn.execute(
+        """
+        SELECT c.name AS container,
+               SUM(f.length) AS bytes, COUNT(*) AS packets,
+               SUM(CASE WHEN EXISTS (SELECT 1 FROM json_each(c.ip_addresses) je
+                                     WHERE je.value = f.dst_ip)
+                        THEN f.length ELSE 0 END) AS sent_bytes,
+               SUM(CASE WHEN EXISTS (SELECT 1 FROM json_each(c.ip_addresses) je
+                                     WHERE je.value = f.dst_ip)
+                        THEN 0 ELSE f.length END) AS received_bytes
+        FROM flows f
+        JOIN containers c ON EXISTS (
+            SELECT 1 FROM json_each(c.ip_addresses) je WHERE je.value IN (f.src_ip, f.dst_ip)
+        )
+        WHERE f.container_name = ? AND c.name != ?
+        GROUP BY c.name
+        ORDER BY bytes DESC
+        """,
+        (container, container),
+    )
+    return [dict(r) for r in cur.fetchall()]
+
+
 def _strip_port(host: str) -> str:
     """'example.com:8080' -> 'example.com', '[::1]:80' -> '::1'."""
     if host.startswith("["):

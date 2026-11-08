@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 92 unit tests pass.
+attach/detach/status/analyze/report. All 93 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -331,9 +331,16 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       the parent-death signal still stops it with nettap (nsenter execs
       tcpdump in place, so the signal survives), so this only matters off
       Linux or if that fails.
-- [ ] The report lists a peer container twice under "Other containers"
-      (one row per direction from `container_matrix()`), seen in the
-      2026-11-08 integration run. Merge the two directions per peer.
+- [x] **Fixed 2026-11-08: the report listed a peer container twice**
+      under "Other containers" (seen in that day's integration run). It
+      used `container_matrix()`, which has one row per capture and
+      direction, so it showed web->db from web's capture and db->web from
+      db's capture - and a peer without its own capture only showed one
+      direction. New `analyze.container_peers()` counts one row per peer
+      from the container's own capture, with sent/received bytes, and the
+      report shows those. Integration test now requires exactly one peer
+      row with traffic both ways; passes (client: server, 1.6 KB sent /
+      4.6 KB received).
 - [ ] No HTML/text escaping test for a container or hostname containing
       special characters beyond what test_report.py covers - worth a
       dedicated test if this ever takes attacker-influenced input seriously.
