@@ -32,6 +32,12 @@ def test_docker_desktop_hint():
     assert analyze.local_hint("10.0.0.5") is None
 
 
+def test_embedded_dns_and_loopback_hints():
+    assert "embedded DNS" in analyze.local_hint("127.0.0.11")
+    assert "loopback" in analyze.local_hint("127.0.0.1")
+    assert "loopback" in analyze.local_hint("::1")
+
+
 def _seed(conn):
     storage.upsert_container(conn, ContainerNetInfo(
         "web", "web", "", "eth0", {"eth0": SELF}, [], {}, None, False))

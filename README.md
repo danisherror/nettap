@@ -35,7 +35,13 @@ interface is its veth peer. Details and caveats are in
   diff against what's currently captured, attach/detach the difference; also
   restarts any capture whose tcpdump process died on its own.
 - **capture.py** - runs one `tcpdump` per attached container against its
-  resolved veth, rotating pcap files. Relays tcpdump's own stderr into
+  resolved veth, rotating pcap files, plus a second one on the container's
+  `lo` that only records lookups to Docker's embedded DNS server
+  (`127.0.0.11`, which containers on user-defined networks - every Compose
+  network included - use instead of going out over `eth0`; see
+  [Docker's DNS docs](https://docs.docker.com/engine/network/#dns-services)).
+  That one writes `<name>_<timestamp>.dns.pcap`; `watch` starts it inside
+  the container's netns with `nsenter`. Relays tcpdump's own stderr into
   nettap's logging (so `docker logs <nettap container>` is actually useful
   for diagnosing a dead/misbehaving capture), and detects + restarts a
   tcpdump that exited unexpectedly (`restart_dead()`).
@@ -252,10 +258,10 @@ nettap/
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.
 - Pcaps are kept forever unless `watch`/`sidecar` is given
   `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
-- External IPs are named from TLS SNI, HTTP Host headers and DNS answers,
-  but DNS answers are only seen on Docker's default bridge network - on
-  user-defined networks (including Compose's) lookups go over the
-  container's loopback interface, which isn't captured.
+- External IPs are named from TLS SNI, HTTP Host headers and DNS answers.
+  DNS answers on user-defined networks come from the extra capture on the
+  container's `lo`; that has been tested in `sidecar` mode only, not yet
+  through `nsenter` in `watch` mode.
 - A `sidecar` exits when its target stops; start it again afterwards, or
   recreate it if the target was recreated (see Troubleshooting above).
 

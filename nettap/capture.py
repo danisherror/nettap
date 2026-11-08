@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import glob
 import logging
 import os
 import re
@@ -120,7 +121,30 @@ def _pump_stderr(name: str, pipe) -> None:
             pass
 
 
-_PCAP_NAME = re.compile(r"^(?P<capture>.+)_\d{14}\.pcap$")
+_TS = "%Y%m%d%H%M%S"  # tcpdump -G fills this in when it rotates
+_PCAP_NAME = re.compile(r"^(?P<name>.+)_\d{14}(?P<kind>\.dns)?\.pcap$")
+
+# Docker's embedded DNS server. Containers on user-defined networks (every
+# Compose network included) resolve names through it, over their own `lo`,
+# so those lookups never cross eth0 or the host-side veth.
+# https://docs.docker.com/engine/network/#dns-services
+EMBEDDED_DNS = "127.0.0.11"
+DNS_SUFFIX = ".dns"  # web_<ts>.dns.pcap holds web's lookups to EMBEDDED_DNS
+
+
+def capture_name(path) -> str | None:
+    """The container name a pcap written by nettap belongs to
+    ('web_20261108120000.pcap' or '...dns.pcap' -> 'web'), else None."""
+    m = _PCAP_NAME.match(Path(path).name)
+    return m["name"] if m else None
+
+
+def pcap_files(pattern: str) -> list[str]:
+    """The files tcpdump has written for one -w pattern, oldest first. A
+    plain glob on the pattern would also match other captures' files, e.g.
+    web_2_<ts>.pcap or web_<ts>.dns.pcap for the pattern web_<ts>.pcap."""
+    exact = re.compile(re.escape(pattern).replace(re.escape(_TS), r"\d{14}") + "$")
+    return sorted(p for p in glob.glob(pattern.replace(_TS, "*")) if exact.match(p))
 
 
 def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
@@ -128,7 +152,7 @@ def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
     """Delete pcaps oldest-first (by mtime) until none is older than
     max_age_seconds and the directory's pcaps total at most max_bytes.
 
-    The newest file of each capture (`<name>_<timestamp>.pcap`) is never
+    The newest file of each capture (`<name>_<timestamp>[.dns].pcap`) is never
     deleted, since tcpdump may still be writing it - possibly a capture run
     by another nettap sharing this directory, like several sidecars on one
     data volume. Those files still count toward max_bytes. Returns the
@@ -145,8 +169,10 @@ def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
             continue
         files.append((st.st_mtime, st.st_size, path))
         m = _PCAP_NAME.match(path.name)
-        if m and path.name > newest.get(m["capture"], ""):
-            newest[m["capture"]] = path.name  # timestamped names sort by time
+        if m:
+            capture = m["name"] + (m["kind"] or "")
+            if path.name > newest.get(capture, ""):
+                newest[capture] = path.name  # timestamped names sort by time
     keep = set(newest.values())
     files.sort()
     total = sum(size for _, size, _ in files)
@@ -179,13 +205,23 @@ class CaptureSession:
     process: subprocess.Popen
     pcap_pattern: str
     started_at: float = field(default_factory=time.time)
+    # second tcpdump on the container's lo, for lookups to EMBEDDED_DNS
+    dns_process: subprocess.Popen | None = None
+    dns_pcap_pattern: str | None = None
 
 
 class CaptureManager:
-    """Owns one tcpdump subprocess per attached container."""
+    """Owns the tcpdump subprocesses for each attached container: one on its
+    interface and one on its `lo` that only records lookups to Docker's
+    embedded DNS server (see EMBEDDED_DNS).
+
+    `own_netns` is for `sidecar`, which shares the target's network
+    namespace: its `lo` is the target's. Otherwise (`watch`) the DNS capture
+    enters the container's namespace through its SandboxKey with nsenter."""
 
     def __init__(self, data_dir: str, rotate_seconds: int = 60, snaplen: int = 0,
-                 max_age_seconds: float | None = None, max_bytes: int | None = None):
+                 max_age_seconds: float | None = None, max_bytes: int | None = None,
+                 own_netns: bool = False):
         self.data_dir = Path(data_dir)
         self.pcap_dir = self.data_dir / "pcap"
         self.pcap_dir.mkdir(parents=True, exist_ok=True)
@@ -193,6 +229,7 @@ class CaptureManager:
         self.snaplen = snaplen
         self.max_age_seconds = max_age_seconds
         self.max_bytes = max_bytes
+        self.own_netns = own_netns
         self._last_purge = 0.0
         self._sessions: dict[str, CaptureSession] = {}
         self._require_tcpdump()
@@ -224,12 +261,22 @@ class CaptureManager:
         if info.container_id in self._sessions:
             return self._sessions[info.container_id]
 
-        safe_name = info.name.lstrip("/").replace("/", "_")
-        pattern = str(self.pcap_dir / f"{safe_name}_%Y%m%d%H%M%S.pcap")
+        pattern = str(self.pcap_dir / f"{self._safe_name(info)}_{_TS}.pcap")
+        logger.info("attaching to %s on %s -> %s", info.name, info.veth, pattern)
+        proc = self._spawn(info.name, self._tcpdump_cmd(info.veth, pattern))
+        session = CaptureSession(info=info, process=proc, pcap_pattern=pattern)
+        self._start_dns(session)
+        self._sessions[info.container_id] = session
+        return session
 
+    @staticmethod
+    def _safe_name(info: ContainerNetInfo) -> str:
+        return info.name.lstrip("/").replace("/", "_")
+
+    def _tcpdump_cmd(self, iface: str, pattern: str) -> list[str]:
         cmd = [
             "tcpdump",
-            "-i", info.veth,
+            "-i", iface,
             "-w", pattern,
             "-G", str(self.rotate_seconds),
             "-U",   # flush each packet so files are readable while capturing
@@ -243,28 +290,55 @@ class CaptureManager:
             # a live test 2026-11-08. With -w it writes raw packets without
             # decoding them, so staying root adds little risk.
             cmd += ["-Z", "root"]
+        return cmd
 
-        logger.info("attaching to %s on %s -> %s", info.name, info.veth, pattern)
+    def _spawn(self, label: str, cmd: list[str]) -> subprocess.Popen:
         proc = subprocess.Popen(
             cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, bufsize=1,
             preexec_fn=_die_with_parent(os.getpid()) if _prctl else None,
         )
         if proc.stderr:
-            threading.Thread(target=_pump_stderr, args=(info.name, proc.stderr), daemon=True).start()
-        session = CaptureSession(info=info, process=proc, pcap_pattern=pattern)
-        self._sessions[info.container_id] = session
-        return session
+            threading.Thread(target=_pump_stderr, args=(label, proc.stderr), daemon=True).start()
+        return proc
+
+    def _start_dns(self, session: CaptureSession) -> None:
+        """Start the embedded-DNS capture on the container's lo. Filtered by
+        host, not port: Docker NATs port 53 on 127.0.0.11 to a random port
+        (seen live 2026-11-08). Not -i any, which would also take in the
+        app's own localhost traffic and see each loopback packet twice."""
+        info = session.info
+        if self.own_netns:
+            prefix = []
+        elif info.sandbox_key:
+            # nsenter execs tcpdump in place (it only forks for --pid/--fork),
+            # so the parent-death signal set before the exec still applies.
+            # https://man7.org/linux/man-pages/man1/nsenter.1.html
+            prefix = ["nsenter", f"--net={info.sandbox_key}"]
+        else:
+            return
+        pattern = str(self.pcap_dir / f"{self._safe_name(info)}_{_TS}{DNS_SUFFIX}.pcap")
+        logger.info("capturing %s's lookups to %s on its lo -> %s", info.name, EMBEDDED_DNS, pattern)
+        session.dns_pcap_pattern = pattern
+        session.dns_process = self._spawn(
+            f"{info.name}/lo", prefix + self._tcpdump_cmd("lo", pattern) + ["host", EMBEDDED_DNS])
+
+    @staticmethod
+    def _stop(proc: subprocess.Popen | None) -> None:
+        if proc is None:
+            return
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
 
     def detach(self, container_id: str) -> None:
         session = self._sessions.pop(container_id, None)
         if not session:
             return
         logger.info("detaching from %s", session.info.name)
-        session.process.terminate()
-        try:
-            session.process.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            session.process.kill()
+        self._stop(session.process)
+        self._stop(session.dns_process)
 
     def detach_all(self) -> None:
         for cid in list(self._sessions):
@@ -277,7 +351,8 @@ class CaptureManager:
         producing new pcaps forever - the symptom being "the report stopped
         updating" with no visible error. Returns the newly (re)started
         sessions so the caller can refresh anything it's tracking (e.g. the
-        live_sessions DB row's pid)."""
+        live_sessions DB row's pid). A dead DNS capture is restarted on its
+        own and isn't in the returned list."""
         restarted = []
         for cid, session in list(self._sessions.items()):
             returncode = session.process.poll()
@@ -287,9 +362,16 @@ class CaptureManager:
                     session.info.name, session.process.pid, returncode,
                 )
                 del self._sessions[cid]
+                self._stop(session.dns_process)
                 new_session = self.attach(session.info)
                 if new_session:
                     restarted.append(new_session)
+            elif session.dns_process and session.dns_process.poll() is not None:
+                logger.warning(
+                    "DNS capture for %s (pid %s) exited unexpectedly (code %s) - restarting",
+                    session.info.name, session.dns_process.pid, session.dns_process.poll(),
+                )
+                self._start_dns(session)
         return restarted
 
     def enforce_retention(self, min_interval: float = 30.0) -> list[Path]:
@@ -314,6 +396,7 @@ class CaptureManager:
                     "container_id": session.info.container_id,
                     "veth": session.info.veth,
                     "pcap_pattern": session.pcap_pattern,
+                    "dns_pcap_pattern": session.dns_pcap_pattern,
                     "alive": alive,
                     "started_at": session.started_at,
                 }

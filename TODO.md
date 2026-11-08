@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 81 unit tests pass.
+attach/detach/status/analyze/report. All 92 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -43,11 +43,12 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       starts a throwaway nginx server + alpine client on their own network,
       a sidecar on each sharing one data dir, sends HTTP client->server and
       HTTPS to example.com, enriches, and checks the flow store with
-      nettap's own query functions (14 checks: both containers' IPs
+      nettap's own query functions (14 checks at first, 19 since the
+      DNS checks were added: both containers' IPs
       recorded, HTTP seen in both captures, container matrix links both
       ways, no comma-joined IPs, internet destinations + SNI, no
       container's own IP counted as internet, report self-IPs/bytes/peers).
-      `--no-internet` skips the internet checks (11 left). Passed on Docker
+      `--no-internet` skips the internet checks (14 left; 11 before the DNS checks). Passed on Docker
       Desktop for Mac 2026-11-08 in both modes, cleans up after itself, and
       exits 1 when a check fails (confirmed with a deliberately broken
       check). Open: add a `watch` mode variant (`attach` + host-network
@@ -302,20 +303,37 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       only pinged, never connected to over TLS/HTTP - from its DNS answer.
       Integration test gained a check that the server is named from the
       client's HTTP traffic; passes.
-- [ ] **DNS answers are invisible on user-defined networks (incl. every
-      Compose network).** Containers there resolve through Docker's
-      embedded DNS server at `127.0.0.11`
+- [x] **Fixed 2026-11-08: DNS answers were invisible on user-defined
+      networks (incl. every Compose network).** Containers there resolve
+      through Docker's embedded DNS server at `127.0.0.11`
       ([Docker docs](https://docs.docker.com/engine/network/#dns-services)),
       which they reach over `lo`. Live test 2026-11-08: a sidecar on `eth0`
       saw no DNS packets at all, while one on `lo` saw the queries and
       answers (127.0.0.1 <-> 127.0.0.11). On the default bridge DNS goes out
-      over `eth0` and works. SNI and HTTP Host naming work on both. The
-      same applies to `watch`, whose host-side veth only carries `eth0`
-      traffic. Possible fix: a second, filtered tcpdump on `lo` per
-      container (`host 127.0.0.11` - port filters won't work, the embedded
-      server's port is NATed from 53 to a random one) feeding only the
-      DNS columns. Avoid `-i any`: it also picks up the app's own
-      localhost traffic and sees each loopback packet twice.
+      over `eth0`. `CaptureManager` now runs a second tcpdump per container
+      on `lo` with the filter `host 127.0.0.11` (a port filter won't work:
+      the embedded server's port is NATed from 53 to a random one; `-i any`
+      would add the app's own localhost traffic and see each loopback packet
+      twice), writing `<name>_<ts>.dns.pcap`. `sidecar` runs it directly
+      (it shares the target's netns); `watch` runs it through
+      `nsenter --net=<SandboxKey>`. The enrich loop, `nettap enrich` and
+      pcap retention handle these files; the enrich loop's and `enrich`'s
+      file matching also stopped picking up other captures whose name
+      starts the same (`web_*.pcap` matched `web_2_*.pcap`). The report
+      labels 127.0.0.11 and loopback addresses. Live test (sidecar, the
+      integration test's user-defined network): the client's lookups of
+      the server and of example.com, with answers, are recorded; the
+      integration test now checks this (19 checks, all pass).
+- [ ] The `lo` DNS capture in `watch` mode (via `nsenter`) is untested -
+      needs the Linux host from P0.
+- [ ] The `lo` DNS capture's pid isn't stored in `live_sessions`, so
+      `reap_orphans()` can't clean it up after an unclean exit. On Linux
+      the parent-death signal still stops it with nettap (nsenter execs
+      tcpdump in place, so the signal survives), so this only matters off
+      Linux or if that fails.
+- [ ] The report lists a peer container twice under "Other containers"
+      (one row per direction from `container_matrix()`), seen in the
+      2026-11-08 integration run. Merge the two directions per peer.
 - [ ] No HTML/text escaping test for a container or hostname containing
       special characters beyond what test_report.py covers - worth a
       dedicated test if this ever takes attacker-influenced input seriously.

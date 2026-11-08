@@ -30,7 +30,7 @@ import click
 
 from . import storage
 from .analyze import container_matrix, dns_queries, external_destinations, protocol_breakdown, top_talkers
-from .capture import CaptureManager, reap_orphans
+from .capture import CaptureManager, capture_name, pcap_files, reap_orphans
 from .controller import Selector, run as run_controller
 from .enrich import parse_pcap
 from .report import build_report, render_html, render_text
@@ -104,22 +104,23 @@ def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
     The per-iteration try/except is a second, independent safety net so a
     future bug here degrades to "logged and retried" instead of "silently
     dead thread" again."""
-    import glob
     conn = storage.connect(db_path)
     seen: set[str] = set()
     while not stop["flag"]:
         try:
             for session in mgr.status():
-                finished = sorted(glob.glob(session["pcap_pattern"].replace("%Y%m%d%H%M%S", "*")))
-                # the most recent file is still being written by tcpdump; only
-                # enrich files that have already been rotated past
-                for path in finished[:-1]:
-                    if path in seen:
+                for pattern in (session["pcap_pattern"], session.get("dns_pcap_pattern")):
+                    if not pattern:
                         continue
-                    seen.add(path)
-                    rows = parse_pcap(path, session["container_id"], session["container"])
-                    storage.insert_flows(conn, rows)
-                    logger.info("enriched %s -> %d flow rows", path, len(rows))
+                    # the most recent file is still being written by tcpdump;
+                    # only enrich files that have already been rotated past
+                    for path in pcap_files(pattern)[:-1]:
+                        if path in seen:
+                            continue
+                        seen.add(path)
+                        rows = parse_pcap(path, session["container_id"], session["container"])
+                        storage.insert_flows(conn, rows)
+                        logger.info("enriched %s -> %d flow rows", path, len(rows))
         except Exception:
             logger.exception("enrich loop iteration failed, continuing")
         time.sleep(max(poll_interval, 5))
@@ -278,7 +279,8 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
     `network_mode: host` is unreliable (see TODO.md). Start THIS container
     with `--network container:<target>` so it shares the target container's
     network namespace directly; this command then just tcpdumps that shared
-    interface (default eth0) - no nsenter, no host networking, and no
+    interface (default eth0), plus lookups to Docker's embedded DNS server on
+    the shared lo - no nsenter, no host networking, and no
     /var/run/docker.sock or /var/run/docker/netns mounts needed. One sidecar
     watches one target container; run one per container of interest."""
     from .discovery import ContainerNetInfo, interface_exists, interface_ips
@@ -296,7 +298,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
         veth=iface, ip_addresses=interface_ips(iface), networks=[], labels={},
         sandbox_key=None, uses_host_network=False,
     )
-    mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds,
+    mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds, own_netns=True,
                          **_retention_kwargs(pcap_max_age_hours, pcap_max_size_mb))
     conn = storage.connect(ctx.obj["db_path"])
     storage.upsert_container(conn, info)
@@ -320,7 +322,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
             target=_enrich_loop, args=(mgr, ctx.obj["db_path"], rotate_seconds, stop), daemon=True
         ).start()
 
-    click.echo(f"nettap sidecar capturing '{target_label}' on {iface} (Ctrl+C to stop)...")
+    click.echo(f"nettap sidecar capturing '{target_label}' on {iface} and lo (Ctrl+C to stop)...")
     try:
         while not stop["flag"]:
             if not interface_exists(iface):
@@ -404,7 +406,7 @@ def enrich(ctx, pcap_dir):
     for path in sorted(glob.glob(f"{pcap_dir}/*.pcap")):
         if path in already:
             continue
-        name = path.split("/")[-1].rsplit("_", 1)[0]
+        name = capture_name(path) or path.split("/")[-1].rsplit("_", 1)[0]
         rows = parse_pcap(path, container_id="", container_name=name)
         total += storage.insert_flows(conn, rows)
     click.echo(f"inserted {total} flow rows")

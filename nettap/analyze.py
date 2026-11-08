@@ -6,6 +6,8 @@ from __future__ import annotations
 import ipaddress
 import sqlite3
 
+from .capture import EMBEDDED_DNS
+
 # Docker Desktop's default internal subnet, where it runs its own DNS server
 # and HTTP proxy. Users can change it, so this is only a hint.
 # Source: https://docs.docker.com/desktop/settings-and-maintenance/settings/
@@ -30,6 +32,10 @@ def local_hint(ip: str | None) -> str | None:
         addr = ipaddress.ip_address(ip or "")
     except ValueError:
         return None
+    if str(addr) == EMBEDDED_DNS:
+        return "Docker's embedded DNS server, used on user-defined networks"
+    if addr.is_loopback:
+        return "loopback - the container itself (e.g. its side of a lookup to 127.0.0.11)"
     if addr.version == 4 and addr in DOCKER_DESKTOP_SUBNET:
         return "likely Docker Desktop's internal DNS server or proxy"
     if addr.is_multicast:

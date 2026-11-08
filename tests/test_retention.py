@@ -81,3 +81,14 @@ def test_enforce_retention_off_by_default(tmp_path):
     with patch("nettap.capture.purge_pcaps") as purge:
         mgr.enforce_retention()
     purge.assert_not_called()
+
+
+def test_newest_dns_capture_file_is_kept_separately(tmp_path):
+    # web's DNS capture is a capture of its own: its newest file may still be
+    # open in tcpdump even though web's main capture has newer files
+    dns_old = _pcap(tmp_path, "web_20261108000000.dns.pcap", age=400)
+    dns_new = _pcap(tmp_path, "web_20261108000100.dns.pcap", age=300)
+    old = _pcap(tmp_path, "web_20261108000200.pcap", age=200)
+    new = _pcap(tmp_path, "web_20261108000300.pcap", age=0)
+    assert purge_pcaps(tmp_path, max_age_seconds=100, now=NOW) == [dns_old, old]
+    assert dns_new.exists() and new.exists()

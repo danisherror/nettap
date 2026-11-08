@@ -223,7 +223,8 @@ def render_text(report: dict) -> str:
         lines.append("")
 
     lines.append(
-        "Note: this only covers what crossed this container's own network interface, "
+        "Note: this only covers what crossed this container's own network interface "
+        "(plus its lookups to Docker's built-in DNS server), "
         "and only metadata (addresses, sizes, hostnames) - not the contents of encrypted "
         "(TLS/HTTPS) connections. nettap doesn't judge what's normal for your setup; review "
         "the destinations above yourself."
@@ -323,8 +324,8 @@ def render_html(report: dict) -> str:
           <tbody>{proto_html}</tbody>
         </table>
 
-        <p class="note">This only covers what crossed this container's own network interface,
-        and only metadata (addresses, sizes, hostnames) - not the contents of encrypted
+        <p class="note">This only covers what crossed this container's own network interface
+        (plus its lookups to Docker's built-in DNS server), and only metadata (addresses, sizes, hostnames) - not the contents of encrypted
         (TLS/HTTPS) connections. Nothing above has been judged "normal" or "suspicious" -
         review it yourself.</p>
         """

@@ -138,6 +138,15 @@ check(count("SELECT COUNT(*) FROM flows WHERE src_ip LIKE '%,%' OR dst_ip LIKE '
 check(any(analyze.hostnames(conn, cli).get(ip, {}).get("hostname") == srv for ip in srv_ips),
       "server named from the client's HTTP Host header / DNS lookup")
 
+# On this user-defined network lookups go to Docker's embedded DNS at
+# 127.0.0.11 over lo; the sidecar's second capture there must have them.
+answers = {ip for (a,) in conn.execute(
+    "SELECT dns_answers FROM flows WHERE container_name = ? AND dns_query = ? "
+    "AND dns_answers IS NOT NULL", (cli, srv)) for ip in json.loads(a)}
+check(bool(answers & srv_ips), f"client's DNS lookup of the server captured on lo ({answers})")
+check(analyze.hostnames(conn, cli).get(next(iter(answers & srv_ips), ""), {}).get("source")
+      in ("http-host", "dns"), "server's IP named by the client's traffic")
+
 if internet:
     internet_rows = analyze.external_destinations(conn, scope="internet")
     check(any(cli in (r["containers"] or "").split(",") for r in internet_rows),
@@ -146,8 +155,10 @@ if internet:
           "no container's own IP listed as an internet destination")
     check(count("SELECT COUNT(*) FROM flows WHERE container_name = ? AND tls_sni = 'example.com'",
                 cli) > 0, "TLS SNI example.com recorded")
-    # No DNS check: on this user-defined network lookups go to Docker's
-    # embedded DNS at 127.0.0.11 over lo, never eth0 (see TODO.md).
+    check(any(r["hostname"] == "example.com" for r in analyze.hostnames(conn, cli).values()),
+          "an IP named example.com")
+    check(count("SELECT COUNT(*) FROM flows WHERE container_name = ? AND dns_query = 'example.com' "
+                "AND dns_answers IS NOT NULL", cli) > 0, "DNS answer for example.com recorded")
 
 data = report.build_report(conn, cli)
 check(set(data["self_ips"]) == cli_ips, f"report identifies the client by its own IPs ({data['self_ips']})")
