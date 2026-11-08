@@ -56,7 +56,7 @@ def run(docker_client, conn, mgr: CaptureManager, selector: Selector,
     while not stop_flag():
         try:
             for session in mgr.restart_dead():
-                storage.set_live_session(conn, session.info, session.pcap_pattern, session.process.pid)
+                storage.save_capture_session(conn, session)
 
             desired = selector.desired_containers(docker_client, conn)
             desired_ids = {c.id for c in desired}
@@ -67,7 +67,7 @@ def run(docker_client, conn, mgr: CaptureManager, selector: Selector,
                     storage.upsert_container(conn, info)
                     session = mgr.attach(info)
                     if session:
-                        storage.set_live_session(conn, info, session.pcap_pattern, session.process.pid)
+                        storage.save_capture_session(conn, session)
 
             for cid in mgr.attached_ids() - desired_ids:
                 mgr.detach(cid)

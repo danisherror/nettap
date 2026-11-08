@@ -232,7 +232,8 @@ def test_restart_dead_restarts_only_a_dead_dns_capture(mock_popen, mgr):
     main = _FakeProc()
     mock_popen.side_effect = [main, _FakeProc(returncode=1), _FakeProc()]
     mgr.attach(_info())
-    assert mgr.restart_dead() == []  # live_sessions only tracks the main pid
+    session = mgr._sessions["c1"]
+    assert mgr.restart_dead() == [session]  # so the caller saves the new dns pid
     assert mock_popen.call_count == 3
     assert mgr._sessions["c1"].process is main
     assert mgr._sessions["c1"].dns_process.poll() is None
@@ -262,3 +263,21 @@ def test_capture_name():
     assert capture.capture_name("/d/web_20261108000001.pcap") == "web"
     assert capture.capture_name("/d/my_app.1_20261108000001.dns.pcap") == "my_app.1"
     assert capture.capture_name("/d/random.pcap") is None
+
+
+def test_reap_orphans_also_kills_the_dns_tcpdump(monkeypatch):
+    dns_pattern = "/data/pcap/web_%Y%m%d%H%M%S.dns.pcap"
+    rows = [{"pid": 100, "pcap_pattern": PATTERN, "dns_pid": 101,
+             "dns_pcap_pattern": dns_pattern, "container_name": "web"}]
+    cmd = {100: f"tcpdump -i eth0 -w {PATTERN}",
+           101: f"tcpdump -i lo -w {dns_pattern} host 127.0.0.11"}
+    result, _ = _reap(monkeypatch, cmd, rows)
+    assert result == [100, 101]
+
+
+def test_reap_orphans_does_not_mix_up_main_and_dns_patterns(monkeypatch):
+    # pid 101 is now the main tcpdump of a newer run, not the old dns capture
+    rows = [{"pid": None, "pcap_pattern": PATTERN, "dns_pid": 101,
+             "dns_pcap_pattern": "/data/pcap/web_%Y%m%d%H%M%S.dns.pcap"}]
+    result, _ = _reap(monkeypatch, {101: f"tcpdump -i eth0 -w {PATTERN}"}, rows)
+    assert result == []

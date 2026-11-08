@@ -307,7 +307,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
                   if r["container_id"] == info.container_id])
     session = mgr.attach(info)
     if session:
-        storage.set_live_session(conn, info, session.pcap_pattern, session.process.pid)
+        storage.save_capture_session(conn, session)
 
     stop = {"flag": False}
 
@@ -338,7 +338,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
                     "container (or recreate it if the target was recreated)", iface)
                 raise SystemExit(3)
             for restarted in mgr.restart_dead():
-                storage.set_live_session(conn, restarted.info, restarted.pcap_pattern, restarted.process.pid)
+                storage.save_capture_session(conn, restarted)
             try:
                 mgr.enforce_retention()
             except Exception:

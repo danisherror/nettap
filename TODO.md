@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 93 unit tests pass.
+attach/detach/status/analyze/report. All 97 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -326,11 +326,16 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       integration test now checks this (19 checks, all pass).
 - [ ] The `lo` DNS capture in `watch` mode (via `nsenter`) is untested -
       needs the Linux host from P0.
-- [ ] The `lo` DNS capture's pid isn't stored in `live_sessions`, so
-      `reap_orphans()` can't clean it up after an unclean exit. On Linux
-      the parent-death signal still stops it with nettap (nsenter execs
-      tcpdump in place, so the signal survives), so this only matters off
-      Linux or if that fails.
+- [x] **Fixed 2026-11-08: the `lo` DNS capture's pid wasn't stored in
+      `live_sessions`**, so `reap_orphans()` couldn't clean it up after an
+      unclean exit. `live_sessions` gained `dns_pid`/`dns_pcap_pattern`
+      (added to existing databases on connect), `watch` and `sidecar`
+      save both tcpdumps via `storage.save_capture_session()`, a DNS-only
+      restart updates the row too, and `reap_orphans()` checks each pid
+      against its own pattern. Live check (sidecar): the row's `pid` and
+      `dns_pid` matched the running `tcpdump -i eth0` and
+      `tcpdump -i lo ... host 127.0.0.11`. Reaping itself is unit-tested
+      only - on Linux the parent-death signal stops both tcpdumps first.
 - [x] **Fixed 2026-11-08: the report listed a peer container twice**
       under "Other containers" (seen in that day's integration run). It
       used `container_matrix()`, which has one row per capture and

@@ -73,7 +73,9 @@ CREATE TABLE IF NOT EXISTS live_sessions (
     pcap_pattern    TEXT,
     pid             INTEGER,
     started_at      REAL,
-    updated_at      REAL
+    updated_at      REAL,
+    dns_pcap_pattern TEXT,   -- the container's lo capture (capture.EMBEDDED_DNS)
+    dns_pid         INTEGER
 );
 """
 
@@ -87,16 +89,20 @@ def connect(db_path: str) -> sqlite3.Connection:
     return conn
 
 
-# Columns added to `flows` after its first release. CREATE TABLE IF NOT
-# EXISTS leaves an older table alone, so add them to existing databases here.
-_ADDED_FLOW_COLUMNS = {"dns_answers": "TEXT", "http_host": "TEXT"}
+# Columns added after a table's first release. CREATE TABLE IF NOT EXISTS
+# leaves an older table alone, so add them to existing databases here.
+_ADDED_COLUMNS = {
+    "flows": {"dns_answers": "TEXT", "http_host": "TEXT"},
+    "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER"},
+}
 
 
 def _add_missing_columns(conn: sqlite3.Connection) -> None:
-    have = {r["name"] for r in conn.execute("PRAGMA table_info(flows)")}
-    for name, sql_type in _ADDED_FLOW_COLUMNS.items():
-        if name not in have:
-            conn.execute(f"ALTER TABLE flows ADD COLUMN {name} {sql_type}")
+    for table, columns in _ADDED_COLUMNS.items():
+        have = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        for name, sql_type in columns.items():
+            if name not in have:
+                conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
     conn.commit()
 
 
@@ -195,19 +201,30 @@ def clear_desired_state(conn: sqlite3.Connection) -> None:
 
 # ---- live sessions (what the running daemon reports) -----------------------
 
-def set_live_session(conn: sqlite3.Connection, info, pcap_pattern: str, pid: int) -> None:
+def set_live_session(conn: sqlite3.Connection, info, pcap_pattern: str, pid: int,
+                     dns_pcap_pattern: str | None = None, dns_pid: int | None = None) -> None:
     with cursor(conn) as cur:
         now = time.time()
         cur.execute(
             """
-            INSERT INTO live_sessions (container_id, container_name, veth, pcap_pattern, pid, started_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO live_sessions (container_id, container_name, veth, pcap_pattern, pid,
+                                       started_at, updated_at, dns_pcap_pattern, dns_pid)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(container_id) DO UPDATE SET
                 container_name=excluded.container_name, veth=excluded.veth,
-                pcap_pattern=excluded.pcap_pattern, pid=excluded.pid, updated_at=excluded.updated_at
+                pcap_pattern=excluded.pcap_pattern, pid=excluded.pid, updated_at=excluded.updated_at,
+                dns_pcap_pattern=excluded.dns_pcap_pattern, dns_pid=excluded.dns_pid
             """,
-            (info.container_id, info.name, info.veth, pcap_pattern, pid, now, now),
+            (info.container_id, info.name, info.veth, pcap_pattern, pid, now, now,
+             dns_pcap_pattern, dns_pid),
         )
+
+
+def save_capture_session(conn: sqlite3.Connection, session) -> None:
+    """set_live_session() for a capture.CaptureSession: both of its tcpdumps."""
+    dns = session.dns_process
+    set_live_session(conn, session.info, session.pcap_pattern, session.process.pid,
+                     session.dns_pcap_pattern if dns else None, dns.pid if dns else None)
 
 
 def clear_live_session(conn: sqlite3.Connection, container_id: str) -> None:

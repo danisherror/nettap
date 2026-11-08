@@ -76,3 +76,37 @@ def test_live_sessions_roundtrip(tmp_path):
 
     storage.clear_live_session(conn, "c1")
     assert storage.list_live_sessions(conn) == []
+
+
+class _Proc:
+    def __init__(self, pid):
+        self.pid = pid
+
+
+def test_save_capture_session_records_both_tcpdumps(tmp_path):
+    from nettap.capture import CaptureSession
+    conn = storage.connect(str(tmp_path / "nettap.db"))
+    session = CaptureSession(info=_info(), process=_Proc(1), pcap_pattern="w_%Y.pcap",
+                             dns_process=_Proc(2), dns_pcap_pattern="w_%Y.dns.pcap")
+    storage.save_capture_session(conn, session)
+    row = storage.list_live_sessions(conn)[0]
+    assert (row["pid"], row["dns_pid"], row["dns_pcap_pattern"]) == (1, 2, "w_%Y.dns.pcap")
+
+    session.dns_process = None  # e.g. no way into the container's netns
+    storage.save_capture_session(conn, session)
+    row = storage.list_live_sessions(conn)[0]
+    assert (row["dns_pid"], row["dns_pcap_pattern"]) == (None, None)
+
+
+def test_connect_adds_dns_columns_to_an_old_live_sessions_table(tmp_path):
+    import sqlite3
+    path = str(tmp_path / "old.db")
+    old = sqlite3.connect(path)
+    old.execute("""CREATE TABLE live_sessions (container_id TEXT PRIMARY KEY,
+        container_name TEXT, veth TEXT, pcap_pattern TEXT, pid INTEGER,
+        started_at REAL, updated_at REAL)""")
+    old.execute("INSERT INTO live_sessions VALUES ('c1', 'web', 'v', 'p', 7, 0, 0)")
+    old.commit()
+    old.close()
+    row = storage.list_live_sessions(storage.connect(path))[0]
+    assert row["pid"] == 7 and row["dns_pid"] is None

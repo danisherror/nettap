@@ -82,8 +82,11 @@ def reap_orphans(sessions: list[dict]) -> list[int]:
     at all, and inside the nettap container the kernel kills every child
     when nettap (PID 1) exits; this is the backstop for everything else."""
     killed = []
-    for row in sessions:
-        pid, pattern = row.get("pid"), row.get("pcap_pattern")
+    captures = [(row, row.get(pid_key), row.get(pattern_key))
+                for row in sessions
+                for pid_key, pattern_key in (("pid", "pcap_pattern"),
+                                             ("dns_pid", "dns_pcap_pattern"))]
+    for row, pid, pattern in captures:
         if not pid or not pattern or pid == os.getpid():
             continue
         cmd = _cmdline(pid)
@@ -351,8 +354,8 @@ class CaptureManager:
         producing new pcaps forever - the symptom being "the report stopped
         updating" with no visible error. Returns the newly (re)started
         sessions so the caller can refresh anything it's tracking (e.g. the
-        live_sessions DB row's pid). A dead DNS capture is restarted on its
-        own and isn't in the returned list."""
+        live_sessions DB row's pids). A dead DNS capture is restarted on its
+        own, without touching the main one."""
         restarted = []
         for cid, session in list(self._sessions.items()):
             returncode = session.process.poll()
@@ -372,6 +375,7 @@ class CaptureManager:
                     session.info.name, session.dns_process.pid, session.dns_process.poll(),
                 )
                 self._start_dns(session)
+                restarted.append(session)
         return restarted
 
     def enforce_retention(self, min_interval: float = 30.0) -> list[Path]:
