@@ -73,6 +73,8 @@ def run(docker_client, conn, mgr: CaptureManager, selector: Selector,
                 mgr.detach(cid)
                 storage.clear_live_session(conn, cid)
 
+            mgr.enforce_retention()
+
         except Exception:
             logger.exception("controller loop iteration failed, continuing")
 

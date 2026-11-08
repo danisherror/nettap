@@ -125,19 +125,38 @@ def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
         time.sleep(max(poll_interval, 5))
 
 
+def _retention_options(f):
+    """--pcap-max-age-hours / --pcap-max-size-mb, shared by watch and sidecar."""
+    f = click.option("--pcap-max-size-mb", type=click.FloatRange(min=0, min_open=True), default=None,
+                     help="Delete the oldest pcaps once data/pcap holds more than this. Off by default.")(f)
+    f = click.option("--pcap-max-age-hours", type=click.FloatRange(min=0, min_open=True), default=None,
+                     help="Delete pcaps older than this. Off by default.")(f)
+    return f
+
+
+def _retention_kwargs(max_age_hours, max_size_mb) -> dict:
+    return {
+        "max_age_seconds": max_age_hours * 3600 if max_age_hours else None,
+        "max_bytes": int(max_size_mb * 1024 * 1024) if max_size_mb else None,
+    }
+
+
 @cli.command(name="watch")
 @click.option("--label", help="Base label selector honored for the life of this daemon.")
 @click.option("--all", "all_", is_flag=True, help="Attach to every running/new container.")
 @click.option("--rotate-seconds", default=60, show_default=True)
 @click.option("--poll-interval", default=5.0, show_default=True, help="Controller reconciliation interval, seconds.")
 @click.option("--auto-enrich/--no-auto-enrich", default=True, help="Parse each rotated pcap into the DB automatically.")
+@_retention_options
 @click.pass_context
-def watch_cmd(ctx, label, all_, rotate_seconds, poll_interval, auto_enrich):
+def watch_cmd(ctx, label, all_, rotate_seconds, poll_interval, auto_enrich,
+              pcap_max_age_hours, pcap_max_size_mb):
     """Run the capture daemon in the foreground. This is the long-running
     process meant to run under docker-compose/systemd; 'attach'/'detach' from
     other invocations steer it via the shared database."""
     client = _docker_client()
-    mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds)
+    mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds,
+                         **_retention_kwargs(pcap_max_age_hours, pcap_max_size_mb))
     conn = storage.connect(ctx.obj["db_path"])
     # rows still here mean an earlier daemon died without cleaning up
     reap_orphans(storage.list_live_sessions(conn))
@@ -250,8 +269,10 @@ def analyze_protocols(ctx, container):
               help="Interface to capture, inside THIS container's own network namespace.")
 @click.option("--rotate-seconds", default=60, show_default=True)
 @click.option("--auto-enrich/--no-auto-enrich", default=True)
+@_retention_options
 @click.pass_context
-def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich):
+def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
+            pcap_max_age_hours, pcap_max_size_mb):
     """Capture mode for platforms where the veth/host-networking trick behind
     'watch' doesn't work - notably Docker Desktop for Mac/Windows, where
     `network_mode: host` is unreliable (see TODO.md). Start THIS container
@@ -270,7 +291,8 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich):
         veth=iface, ip_addresses=interface_ips(iface), networks=[], labels={},
         sandbox_key=None, uses_host_network=False,
     )
-    mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds)
+    mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds,
+                         **_retention_kwargs(pcap_max_age_hours, pcap_max_size_mb))
     conn = storage.connect(ctx.obj["db_path"])
     storage.upsert_container(conn, info)
     # only our own row: other sidecars may share this DB from other containers
@@ -298,6 +320,10 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich):
         while not stop["flag"]:
             for restarted in mgr.restart_dead():
                 storage.set_live_session(conn, restarted.info, restarted.pcap_pattern, restarted.process.pid)
+            try:
+                mgr.enforce_retention()
+            except Exception:
+                logger.exception("pcap retention failed, continuing")
             time.sleep(1)
     finally:
         storage.clear_live_session(conn, info.container_id)

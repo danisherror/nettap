@@ -246,7 +246,8 @@ nettap/
 - TLS/SSH traffic gives metadata (IPs, ports, byte counts, SNI) not
   plaintext payloads.
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.
-- No disk-usage cap on captured pcaps yet.
+- Pcaps are kept forever unless `watch`/`sidecar` is given
+  `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
 - A `sidecar` doesn't follow its target container across a recreate (see
   Troubleshooting above) - recreate the sidecar alongside it.
 

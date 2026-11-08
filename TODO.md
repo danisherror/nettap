@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 62 unit tests pass.
+attach/detach/status/analyze/report. All 70 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -93,9 +93,20 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       `attach()` must stay on the main thread; the normal Docker setup was
       never affected (nettap is PID 1 there, and the kernel kills the whole
       PID namespace when it exits). Not tested on a bare Linux host.
-- [ ] No disk-usage cap on `data/pcap/` - long-running captures will fill the
-      disk. Add retention (max age and/or max total bytes, oldest-first
-      purge).
+- [x] **Fixed 2026-11-08: no disk-usage cap on `data/pcap/`.** `watch` and
+      `sidecar` take `--pcap-max-age-hours` and `--pcap-max-size-mb` (both
+      off by default). Every 30s `purge_pcaps()` deletes the oldest pcaps
+      (by mtime) in the whole directory until both limits hold. The newest
+      file of each capture is never deleted, since tcpdump may still be
+      writing it - including captures from another sidecar sharing the data
+      dir - so the cap can be exceeded by up to one file per capture, plus
+      whatever is written between sweeps. Live test (sidecar, 5s rotation,
+      0.02 MB cap, target pinging 1.1.1.1): the directory grew to ~56 KB
+      between sweeps and dropped back to ~15 KB at each sweep; tcpdump kept
+      writing and enrichment kept running (967 flow rows). Known
+      limitations: a file is deleted whether or not it has been enriched
+      yet (only a risk with a very small size cap), and the last file of a
+      capture that has stopped is kept forever.
 - [x] **Fixed (this was the actual root cause of "report doesn't update
       without manually running enrich"):** `_enrich_loop` runs on a
       background thread but was reusing the *main thread's* sqlite3

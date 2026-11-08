@@ -7,6 +7,7 @@ import ctypes
 import ctypes.util
 import logging
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -119,6 +120,59 @@ def _pump_stderr(name: str, pipe) -> None:
             pass
 
 
+_PCAP_NAME = re.compile(r"^(?P<capture>.+)_\d{14}\.pcap$")
+
+
+def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
+                max_bytes: int | None = None, now: float | None = None) -> list[Path]:
+    """Delete pcaps oldest-first (by mtime) until none is older than
+    max_age_seconds and the directory's pcaps total at most max_bytes.
+
+    The newest file of each capture (`<name>_<timestamp>.pcap`) is never
+    deleted, since tcpdump may still be writing it - possibly a capture run
+    by another nettap sharing this directory, like several sidecars on one
+    data volume. Those files still count toward max_bytes. Returns the
+    deleted paths."""
+    if max_age_seconds is None and max_bytes is None:
+        return []
+    now = time.time() if now is None else now
+    files = []
+    newest: dict[str, str] = {}
+    for path in Path(pcap_dir).glob("*.pcap"):
+        try:
+            st = path.stat()
+        except FileNotFoundError:
+            continue
+        files.append((st.st_mtime, st.st_size, path))
+        m = _PCAP_NAME.match(path.name)
+        if m and path.name > newest.get(m["capture"], ""):
+            newest[m["capture"]] = path.name  # timestamped names sort by time
+    keep = set(newest.values())
+    files.sort()
+    total = sum(size for _, size, _ in files)
+    deleted = []
+    for mtime, size, path in files:
+        too_old = max_age_seconds is not None and now - mtime > max_age_seconds
+        too_big = max_bytes is not None and total > max_bytes
+        if not (too_old or too_big):
+            break  # sorted oldest-first, so every later file is within limits
+        if path.name in keep:
+            continue
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            logger.warning("could not delete old pcap %s: %s", path, exc)
+            continue
+        total -= size
+        deleted.append(path)
+    if deleted:
+        logger.info("retention: deleted %d old pcap(s), %d bytes of pcaps left",
+                    len(deleted), total)
+    return deleted
+
+
 @dataclass
 class CaptureSession:
     info: ContainerNetInfo
@@ -130,12 +184,16 @@ class CaptureSession:
 class CaptureManager:
     """Owns one tcpdump subprocess per attached container."""
 
-    def __init__(self, data_dir: str, rotate_seconds: int = 60, snaplen: int = 0):
+    def __init__(self, data_dir: str, rotate_seconds: int = 60, snaplen: int = 0,
+                 max_age_seconds: float | None = None, max_bytes: int | None = None):
         self.data_dir = Path(data_dir)
         self.pcap_dir = self.data_dir / "pcap"
         self.pcap_dir.mkdir(parents=True, exist_ok=True)
         self.rotate_seconds = rotate_seconds
         self.snaplen = snaplen
+        self.max_age_seconds = max_age_seconds
+        self.max_bytes = max_bytes
+        self._last_purge = 0.0
         self._sessions: dict[str, CaptureSession] = {}
         self._require_tcpdump()
 
@@ -233,6 +291,18 @@ class CaptureManager:
                 if new_session:
                     restarted.append(new_session)
         return restarted
+
+    def enforce_retention(self, min_interval: float = 30.0) -> list[Path]:
+        """Apply the age/size limits to the whole pcap dir, at most once per
+        min_interval seconds. Covers pcaps from earlier runs and other
+        containers too, so the cap holds for the directory as a whole."""
+        if self.max_age_seconds is None and self.max_bytes is None:
+            return []
+        now = time.time()
+        if now - self._last_purge < min_interval:
+            return []
+        self._last_purge = now
+        return purge_pcaps(self.pcap_dir, self.max_age_seconds, self.max_bytes, now=now)
 
     def status(self) -> list[dict]:
         out = []
