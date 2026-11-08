@@ -33,6 +33,7 @@ from .analyze import container_matrix, dns_queries, external_destinations, proto
 from .capture import CaptureManager, capture_name, finished_pcaps, pcap_files, reap_orphans
 from .controller import Selector, run as run_controller
 from .enrich import parse_pcap
+from . import hostports
 from .report import build_report, render_html, render_text
 from .utils import format_table, parse_label_selector, setup_logging
 
@@ -98,6 +99,15 @@ def detach(ctx, containers, label, all_):
     click.echo(f"detach requested: {list(containers)} label={label or ''}")
 
 
+def _store_pcap(conn, path: str, container_id: str, container_name: str) -> int:
+    """Parse one pcap into `flows`. A --attribute-by-port capture holds the
+    whole host's traffic; only the target's own ports are kept."""
+    rows = parse_pcap(path, container_id=container_id, container_name=container_name)
+    if rows and storage.port_scoped(conn, container_name):
+        rows = hostports.keep_owned(conn, container_name, rows)
+    return storage.insert_flows(conn, rows)
+
+
 def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
     """Runs on its own background thread - so it needs its OWN sqlite3
     connection. sqlite3.Connection objects are only usable from the thread
@@ -123,12 +133,24 @@ def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
                         seen.add(path)
                         if storage.pcap_enriched(conn, path):  # e.g. before a restart
                             continue
-                        rows = parse_pcap(path, session["container_id"], session["container"])
-                        storage.insert_flows(conn, rows)
-                        logger.info("enriched %s -> %d flow rows", path, len(rows))
+                        n = _store_pcap(conn, path, session["container_id"], session["container"])
+                        logger.info("enriched %s -> %d flow rows", path, n)
         except Exception:
             logger.exception("enrich loop iteration failed, continuing")
         time.sleep(max(poll_interval, 5))
+
+
+def _sample_ports(db_path: str, container: str, stop) -> None:
+    """sidecar --attribute-by-port: record the target's ports every
+    hostports.SAMPLE_SECONDS. Own thread, so its own connection (see
+    _enrich_loop)."""
+    conn = storage.connect(db_path)
+    while not stop["flag"]:
+        try:
+            hostports.record(conn, container, hostports.owned_ports(), time.time())
+        except Exception:
+            logger.exception("sampling the target's ports failed, continuing")
+        time.sleep(hostports.SAMPLE_SECONDS)
 
 
 def _retention_options(f):
@@ -313,6 +335,10 @@ def analyze_protocols(ctx, container, fmt):
                    "published ports, from the Docker API (needs /var/run/docker.sock "
                    "mounted), so the report can name peers that don't have a sidecar "
                    "of their own.")
+@click.option("--attribute-by-port", is_flag=True,
+              help="For a --network host target: capture on the host and keep only "
+                   "traffic on ports the target's processes hold. Needs --pid "
+                   "container:<target> and --cap-add SYS_PTRACE.")
 @click.option("--allow-host-network", is_flag=True,
               help="Capture even if the target uses --network host. Everything the "
                    "Docker host sends or receives - other containers included - is then "
@@ -320,7 +346,7 @@ def analyze_protocols(ctx, container, fmt):
 @_retention_options
 @click.pass_context
 def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
-            allow_host_network, pcap_max_age_hours, pcap_max_size_mb):
+            attribute_by_port, allow_host_network, pcap_max_age_hours, pcap_max_size_mb):
     """Capture mode for platforms where the veth/host-networking trick behind
     'watch' doesn't work - notably Docker Desktop for Mac/Windows, where
     `network_mode: host` is unreliable (see TODO.md). Start THIS container
@@ -344,14 +370,27 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
     # the host) plus the host's own, all labelled as the target - seen live
     # 2026-11-08 on Docker Desktop for Mac.
     bridges = bridge_interfaces()
-    if bridges and not allow_host_network:
+    if bridges and not (allow_host_network or attribute_by_port):
         raise click.ClickException(
             f"the target seems to use --network host: this network namespace has "
             f"Docker's bridge interfaces ({', '.join(bridges)}), so it's the Docker "
             f"host's. A capture here would label every container's traffic, and the "
-            f"host's own, as {target_label!r}. Pass --allow-host-network to capture "
-            f"anyway (e.g. for a Docker-in-Docker target, which has its own bridges)")
-    if bridges:
+            f"host's own, as {target_label!r}. Pass --attribute-by-port (with --pid "
+            f"container:<target> --cap-add SYS_PTRACE) to keep only the target's own "
+            f"ports, or --allow-host-network to capture everything anyway (e.g. for a "
+            f"Docker-in-Docker target, which has its own bridges)")
+    if attribute_by_port:
+        pids, denied = hostports.target_processes()
+        if not pids:
+            raise click.ClickException(
+                "--attribute-by-port: no processes of the target are visible - start "
+                "this container with --pid container:<target>")
+        if denied:
+            raise click.ClickException(
+                f"--attribute-by-port: can't read the sockets of {len(denied)} of the "
+                f"target's {len(pids)} processes (they run as another user) - start "
+                f"this container with --cap-add SYS_PTRACE")
+    elif bridges:
         logger.warning("--allow-host-network: capturing in a namespace with bridges %s - "
                        "all traffic here is labelled as %r", ", ".join(bridges), target_label)
 
@@ -362,6 +401,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
         container_id=target_label, name=target_label, image="",
         veth=iface, ip_addresses=interface_ips(iface), networks=[], labels={},
         sandbox_key=None, uses_host_network=False,
+        capture_scope="ports" if attribute_by_port else None,
     )
     client = None
     if docker_api:
@@ -414,6 +454,10 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
     if auto_enrich:
         threading.Thread(
             target=_enrich_loop, args=(mgr, ctx.obj["db_path"], rotate_seconds, stop), daemon=True
+        ).start()
+    if attribute_by_port:
+        threading.Thread(
+            target=_sample_ports, args=(ctx.obj["db_path"], info.name, stop), daemon=True
         ).start()
 
     click.echo(f"nettap sidecar capturing '{target_label}' on {iface} and lo (Ctrl+C to stop)...")
@@ -519,8 +563,7 @@ def enrich(ctx, pcap_dir):
         if path in already or path in writing:
             continue
         name = capture_name(path) or path.split("/")[-1].rsplit("_", 1)[0]
-        rows = parse_pcap(path, container_id="", container_name=name)
-        total += storage.insert_flows(conn, rows)
+        total += _store_pcap(conn, path, "", name)
     click.echo(f"inserted {total} flow rows")
 
 

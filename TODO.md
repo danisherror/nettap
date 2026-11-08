@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 142 unit tests pass.
+attach/detach/status/analyze/report. All 151 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -61,10 +61,33 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
 ## P1 - correctness and safety
 
 - [ ] `--network host` containers currently produce a warning and are
-      skipped entirely in `watch` (no dedicated veth exists to capture on),
-      and `sidecar` refuses them (see below). Needs either
-      eBPF/cgroup-based attribution or a documented "capture the host
-      interface directly and attribute by port" fallback.
+      skipped entirely in `watch` (no dedicated veth exists to capture on).
+      `sidecar --attribute-by-port` covers them by port (see below); still
+      open: the same for `watch`, short connections (eBPF/cgroup
+      attribution would catch every packet), traffic with other containers
+      on the host (only `eth0` is captured), and ICMP.
+- [x] **Done 2026-11-08: `sidecar --attribute-by-port` for `--network host`
+      targets.** Needs `--pid container:<target>` and `--cap-add
+      SYS_PTRACE`. Live check first: with the shared PID namespace the
+      sidecar sees the target's processes and their sockets, but reading
+      the fds of nginx's workers (user nginx) gave EACCES until SYS_PTRACE
+      was added ([proc_pid_fd(5)](https://man7.org/linux/man-pages/man5/proc_pid_fd.5.html):
+      a ptrace access check). New `hostports.py`: a thread samples the
+      target's TCP/UDP ports every 0.25s (every process except the
+      sidecar's own tree; inodes from `/proc/<pid>/fd` matched against
+      `/proc/net/{tcp,tcp6,udp,udp6}`) into a new `owned_ports` table as
+      time intervals, and enrichment keeps only packets whose host-side
+      address and port the target held then (2s slack). The container row
+      gets `capture_scope = 'ports'`; the report adds a note about what such
+      a capture can miss. The sidecar refuses to start without visible
+      target processes or with unreadable ones. Live test (Docker Desktop
+      for Mac, nginx `--network host`): of 927 packets in the raw `eth0`
+      pcaps, 11 were kept - exactly the target's ~4s connection to
+      example.com (`owned_ports` had tcp/80 and that connection's port).
+      Another container's 3 NATed requests to example.com and Docker
+      Desktop's internal HTTP were dropped. The target's quick `wget` and
+      its DNS lookup were missed, as expected. Tests: 10 new in
+      `tests/test_hostports.py` (fake `/proc`), also run inside the image.
 - [x] **Fixed 2026-11-08: a sidecar on a `--network host` target captured
       the whole Docker host and labelled it all as the target.** Live test
       first (Docker Desktop for Mac, sidecar joined to an alpine

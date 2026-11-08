@@ -16,9 +16,17 @@ import json
 import sqlite3
 from datetime import datetime, timezone
 
-from . import analyze
+from . import analyze, storage
 from .utils import format_bytes, printable as _printable
 
+
+# A sidecar --attribute-by-port capture (hostports.py): the container shares
+# the host's network, so its traffic is picked out by port.
+PORT_SCOPED_NOTE = (
+    "This container uses the host's network (--network host), so its traffic was "
+    "picked out of the host's by the ports its processes held, sampled a few times a "
+    "second: connections shorter than that - often DNS lookups and quick requests - "
+    "can be missing, and traffic with other containers on this host isn't included.")
 
 def _ip_counts(conn: sqlite3.Connection, container: str) -> list[tuple[str, int]]:
     """Every IP seen in this container's flows (as src or dst), most rows first."""
@@ -126,6 +134,7 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
         "local_destinations": sorted(local, key=lambda r: -(r["bytes"] or 0)),
         "dns_queries": analyze.dns_queries(conn, container, limit=50),
         "protocols": analyze.protocol_breakdown(conn, container),
+        "port_scoped": storage.port_scoped(conn, container),
     }
 
 
@@ -207,6 +216,8 @@ def render_text(report: dict) -> str:
                          f"{format_bytes(r['bytes'])} across {r['packets']} packets")
         lines.append("")
 
+    if report.get("port_scoped"):
+        lines += [f"Note: {PORT_SCOPED_NOTE}", ""]
     lines.append(
         "Note: this only covers what crossed this container's own network interface "
         "(plus its lookups to Docker's built-in DNS server), "
@@ -311,6 +322,7 @@ def render_html(report: dict) -> str:
           <tbody>{proto_html}</tbody>
         </table>
 
+        {f'<p class="note">{esc(PORT_SCOPED_NOTE)}</p>' if report.get("port_scoped") else ""}
         <p class="note">This only covers what crossed this container's own network interface
         (plus its lookups to Docker's built-in DNS server), and only metadata (addresses, sizes, hostnames) - not the contents of encrypted
         (TLS/HTTPS) connections. Nothing above has been judged "normal" or "suspicious" -

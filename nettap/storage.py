@@ -27,8 +27,19 @@ CREATE TABLE IF NOT EXISTS containers (
     labels          TEXT,   -- JSON
     first_seen      REAL,
     published_ports TEXT,   -- JSON: discovery.ContainerNetInfo.published_ports
-    started_at      REAL    -- when the container last started (Docker API); NULL if unknown
+    started_at      REAL,   -- when the container last started (Docker API); NULL if unknown
+    capture_scope   TEXT    -- "ports" for sidecar --attribute-by-port (hostports.py), else NULL
 );
+
+-- when a --attribute-by-port target held each TCP/UDP port (hostports.py)
+CREATE TABLE IF NOT EXISTS owned_ports (
+    container_name  TEXT,
+    transport       TEXT,
+    port            INTEGER,
+    first_seen      REAL,
+    last_seen       REAL
+);
+CREATE INDEX IF NOT EXISTS idx_owned_ports ON owned_ports(container_name, transport, port);
 
 CREATE TABLE IF NOT EXISTS flows (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +109,7 @@ def connect(db_path: str) -> sqlite3.Connection:
 # Columns added after a table's first release. CREATE TABLE IF NOT EXISTS
 # leaves an older table alone, so add them to existing databases here.
 _ADDED_COLUMNS = {
-    "containers": {"published_ports": "TEXT", "started_at": "REAL"},
+    "containers": {"published_ports": "TEXT", "started_at": "REAL", "capture_scope": "TEXT"},
     "flows": {"dns_answers": "TEXT", "http_host": "TEXT", "transport": "TEXT"},
     "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER",
                       "heartbeat_interval": "REAL", "rotate_seconds": "REAL"},
@@ -129,12 +140,13 @@ def upsert_container(conn: sqlite3.Connection, info) -> None:
         cur.execute(
             """
             INSERT INTO containers (container_id, name, image, veth, networks, ip_addresses, labels,
-                                    first_seen, published_ports, started_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    first_seen, published_ports, started_at, capture_scope)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(container_id) DO UPDATE SET
                 name=excluded.name, image=excluded.image, veth=excluded.veth,
                 networks=excluded.networks, ip_addresses=excluded.ip_addresses, labels=excluded.labels,
-                published_ports=excluded.published_ports, started_at=excluded.started_at
+                published_ports=excluded.published_ports, started_at=excluded.started_at,
+                capture_scope=excluded.capture_scope
             """,
             (
                 info.container_id, info.name, info.image, info.veth,
@@ -142,8 +154,16 @@ def upsert_container(conn: sqlite3.Connection, info) -> None:
                 json.dumps(info.labels), time.time(),
                 json.dumps(getattr(info, "published_ports", None) or []),
                 getattr(info, "started_at", None),
+                getattr(info, "capture_scope", None),
             ),
         )
+
+
+def port_scoped(conn: sqlite3.Connection, container_name: str) -> bool:
+    """Whether `container_name`'s capture is kept to its own ports
+    (sidecar --attribute-by-port, see hostports.py)."""
+    return conn.execute("SELECT 1 FROM containers WHERE name = ? AND capture_scope = 'ports'",
+                        (container_name,)).fetchone() is not None
 
 
 def pcap_enriched(conn: sqlite3.Connection, path: str) -> bool:

@@ -208,9 +208,22 @@ the Docker host's - so a sidecar joined to it would capture every
 container's traffic (it leaves through the host) and the host's own, all
 labelled as the target. The sidecar spots this from Docker's bridge
 interfaces (`docker0`, `br-...`), which only exist in the host's namespace,
-and exits with code 1. nettap can't yet tell a host-network container's
-traffic apart from the rest (see TODO.md). `--allow-host-network` captures
-anyway, e.g. for a Docker-in-Docker target, which has bridges of its own.
+and exits with code 1. To capture such a container, also join its process
+namespace and pass `--attribute-by-port`:
+```
+docker run -d --name nettap-<target> --network container:<target> \
+  --pid container:<target> --cap-add NET_ADMIN --cap-add NET_RAW \
+  --cap-add SYS_PTRACE -v "$(pwd)/data:/data" \
+  nettap sidecar --target <target> --attribute-by-port
+```
+The sidecar then samples which TCP/UDP ports the target's processes hold
+(4 times a second) and keeps only the host's traffic on those ports.
+`SYS_PTRACE` is needed to read the sockets of processes running as another
+user (e.g. nginx's workers). Connections shorter than a sample - often DNS
+lookups and quick requests - can be missed, ICMP isn't attributed, and only
+`eth0` is captured, so traffic with other containers on the same host isn't
+seen. `--allow-host-network` instead captures everything, labelled as the
+target - e.g. for a Docker-in-Docker target, which has bridges of its own.
 
 **Output seems frozen after the first report, even with new traffic.**
 As of this build this should self-heal (a background thread used to die

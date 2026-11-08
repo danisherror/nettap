@@ -50,6 +50,9 @@ class ContainerNetInfo:
     published_ports: list[dict] = field(default_factory=list)
     # when the container last started (State.StartedAt), epoch seconds
     started_at: float | None = None
+    # "ports": a --network host target captured on the host, kept to its own
+    # ports at enrichment (hostports.py); None: a capture of its own netns
+    capture_scope: str | None = None
 
 
 def bridge_interfaces(sys_net: str = "/sys/class/net") -> list[str]:
