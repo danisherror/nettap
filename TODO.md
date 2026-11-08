@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 109 unit tests pass.
+attach/detach/status/analyze/report. All 113 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -282,13 +282,31 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       The most-frequent-IP guess remains only for data with no recorded
       addresses, and can still misfire there for a container that talks to
       one peer far more than everything else.
-- [ ] Sidecar mode (`nettap sidecar`) doesn't call the Docker API. Since
-      2026-11-08 it records the target's own IPs from its interface, but it
-      still knows nothing about *other* containers, so the
-      container-to-container matrix can't name the peers a sidecar-watched
-      container talks to. Consider having
-      `sidecar` optionally accept `--docker-api` to still enrich this via
-      docker.sock if it's mounted, for a more reliable report.
+- [x] **Done 2026-11-08: a sidecar couldn't name peers without their own
+      sidecar.** It only knew its target's IPs. `sidecar --docker-api` (needs
+      docker.sock mounted; refuses to start if it can't reach the API) now
+      records every other running container's name and IPs on start and
+      every 30s, via `discovery.other_containers()`. That skips the target
+      itself (any IP shared with the sidecar's interface - otherwise a
+      `--target` label that differs from the real name made the target its
+      own peer) and containers without an IP (other sidecars), and doesn't
+      try to resolve veths (`inspect_container(resolve=False)`). API errors
+      after startup are logged and capture carries on. Live test (Docker
+      Desktop for Mac): nginx server without a sidecar, alpine client with
+      a `--docker-api` sidecar labelled `dapi-client` (real name
+      `nettap-dapi-client`). The report listed `nettap-dapi-srv` as the one
+      peer (561 B sent / 1.5 KB received); the containers table held only
+      the sidecar's own row and the server. Open: only IPv4 addresses are
+      read from the API (`IPAddress`, not `GlobalIPv6Address`), same as
+      `watch`.
+- [ ] **Seen 2026-11-08: traffic from a container that then goes quiet
+      isn't reported until its next packet.** In the `--docker-api` live
+      test (10s rotation), the first file stayed open for over 2 minutes
+      after the last request; it only rotated, and got enriched, once new
+      traffic arrived. tcpdump's `-G` seems to rotate only when a packet
+      comes in - check the tcpdump source/docs before relying on that. A
+      fix could have nettap restart tcpdump (or parse the open file) when
+      a pcap is older than the rotation interval.
 - [x] **Fixed 2026-11-08: external IPs were only named from TLS SNI.**
       enrich.py now also stores DNS answer addresses (`dns.a`/`dns.aaaa`,
       new `flows.dns_answers` column, JSON list) and the HTTP `Host` header

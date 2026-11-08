@@ -40,6 +40,8 @@ logger = logging.getLogger("nettap.cli")
 
 # how often the sidecar refreshes its live_sessions row (`status` uses it)
 SIDECAR_HEARTBEAT_SECONDS = 5.0
+# how often `sidecar --docker-api` re-reads the other containers
+SIDECAR_PEER_SYNC_SECONDS = 30.0
 
 
 def _docker_client():
@@ -303,9 +305,13 @@ def analyze_protocols(ctx, container, fmt):
               help="Interface to capture, inside THIS container's own network namespace.")
 @click.option("--rotate-seconds", default=60, show_default=True)
 @click.option("--auto-enrich/--no-auto-enrich", default=True)
+@click.option("--docker-api", is_flag=True,
+              help="Also record the other containers' names and IPs from the Docker API "
+                   "(needs /var/run/docker.sock mounted), so the report can name peers "
+                   "that don't have a sidecar of their own.")
 @_retention_options
 @click.pass_context
-def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
+def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
             pcap_max_age_hours, pcap_max_size_mb):
     """Capture mode for platforms where the veth/host-networking trick behind
     'watch' doesn't work - notably Docker Desktop for Mac/Windows, where
@@ -314,9 +320,10 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
     network namespace directly; this command then just tcpdumps that shared
     interface (default eth0), plus lookups to Docker's embedded DNS server on
     the shared lo - no nsenter, no host networking, and no
-    /var/run/docker.sock or /var/run/docker/netns mounts needed. One sidecar
-    watches one target container; run one per container of interest."""
-    from .discovery import ContainerNetInfo, interface_exists, interface_ips
+    /var/run/docker.sock or /var/run/docker/netns mounts needed (docker.sock
+    only for --docker-api). One sidecar watches one target container; run
+    one per container of interest."""
+    from .discovery import ContainerNetInfo, interface_exists, interface_ips, other_containers
 
     if not interface_exists(iface):
         raise click.ClickException(
@@ -331,6 +338,23 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
         veth=iface, ip_addresses=interface_ips(iface), networks=[], labels={},
         sandbox_key=None, uses_host_network=False,
     )
+    client = None
+    if docker_api:
+        try:
+            client = _docker_client()
+            client.ping()
+        except Exception as e:
+            raise click.ClickException(
+                f"--docker-api: can't reach the Docker API ({e}) - mount it with "
+                "-v /var/run/docker.sock:/var/run/docker.sock")
+
+    def _sync_peers():
+        try:
+            for peer in other_containers(client, info.ip_addresses.values()):
+                storage.upsert_container(conn, peer)
+        except Exception:
+            logger.exception("reading other containers from the Docker API failed, continuing")
+
     mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds, own_netns=True,
                          **_retention_kwargs(pcap_max_age_hours, pcap_max_size_mb))
     conn = storage.connect(ctx.obj["db_path"])
@@ -356,9 +380,12 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
         ).start()
 
     click.echo(f"nettap sidecar capturing '{target_label}' on {iface} and lo (Ctrl+C to stop)...")
-    last_beat = 0.0
+    last_beat = last_sync = 0.0
     try:
         while not stop["flag"]:
+            if client and time.time() - last_sync >= SIDECAR_PEER_SYNC_SECONDS:
+                _sync_peers()
+                last_sync = time.time()
             if time.time() - last_beat >= SIDECAR_HEARTBEAT_SECONDS:
                 storage.heartbeat_live_sessions(conn, [info.container_id], SIDECAR_HEARTBEAT_SECONDS)
                 last_beat = time.time()

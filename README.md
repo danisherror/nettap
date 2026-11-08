@@ -140,6 +140,22 @@ docker exec nettap-web nettap --data-dir /data analyze dns --container web
 docker stop nettap-web && docker rm nettap-web   # tear down when done
 ```
 
+A sidecar only knows its own target's IPs, so a peer container without a
+sidecar of its own shows up as a bare private IP. Add `--docker-api` and
+mount the Docker socket to have the sidecar look up the other containers'
+names and IPs (re-read every 30s):
+
+```
+docker run -d --name nettap-web \
+  --network container:web \
+  --cap-add NET_ADMIN --cap-add NET_RAW \
+  -v "$(pwd)/data:/data" -v /var/run/docker.sock:/var/run/docker.sock \
+  nettap sidecar --target web --docker-api
+```
+
+The socket gives the sidecar full control of Docker, so only mount it where
+that's acceptable.
+
 Raw pcaps land in `./data/pcap/` on the host either way (bind-mounted), so
 `wireshark ./data/pcap/web_*.pcap` works for a deep dive regardless of which
 capture mode produced them.

@@ -122,8 +122,10 @@ def resolve_veth(sandbox_key: str) -> str | None:
     return _ifindex_to_name(peer)
 
 
-def inspect_container(docker_client, container_id: str) -> ContainerNetInfo:
-    """Build a ContainerNetInfo from the Docker API, resolving the veth as a side effect."""
+def inspect_container(docker_client, container_id: str, resolve: bool = True) -> ContainerNetInfo:
+    """Build a ContainerNetInfo from the Docker API, resolving the veth as a
+    side effect unless resolve=False (it needs the host's netns, which a
+    sidecar doesn't have)."""
     c = docker_client.containers.get(container_id)
     attrs = c.attrs
     net_settings = attrs.get("NetworkSettings", {}) or {}
@@ -134,7 +136,7 @@ def inspect_container(docker_client, container_id: str) -> ContainerNetInfo:
     ip_addresses = {net: (info.get("IPAddress") or "") for net, info in networks.items()}
 
     veth = None
-    if sandbox_key and not host_mode:
+    if resolve and sandbox_key and not host_mode:
         veth = resolve_veth(sandbox_key)
 
     return ContainerNetInfo(
@@ -148,3 +150,19 @@ def inspect_container(docker_client, container_id: str) -> ContainerNetInfo:
         sandbox_key=sandbox_key,
         uses_host_network=host_mode,
     )
+
+
+def other_containers(docker_client, own_ips) -> list[ContainerNetInfo]:
+    """Every running container with an IP of its own, except the one whose
+    network namespace we share (any IP in `own_ips`) - for a sidecar, which
+    already records its target under the --target name and would otherwise
+    see the target as its own peer. Containers without an IP (e.g. other
+    sidecars, which use the netns of their target) are skipped too."""
+    own = set(own_ips)
+    found = []
+    for c in docker_client.containers.list():
+        info = inspect_container(docker_client, c.id, resolve=False)
+        ips = {ip for ip in info.ip_addresses.values() if ip}
+        if ips and not ips & own:
+            found.append(info)
+    return found
