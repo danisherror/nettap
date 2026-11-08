@@ -2,11 +2,16 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze. It was built and unit-tested (mocked
-Docker/tcpdump/tshark - the sandbox this was built in has no Docker daemon,
-tcpdump, or tshark installed) but **has not been run against a real Docker
-host yet**. Treat it as code-reviewed, not integration-tested. The very first
-thing to do next session is the P0 list below.
+attach/detach/status/analyze/report. All 29 unit tests pass.
+
+**Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
+mode works end-to-end against a real container - image builds, tcpdump
+captures on the shared `eth0`, `enrich` parsed 118 flow rows, and `status`,
+`analyze top-talkers|dns|external`, `report` and `report --format html` all
+produce correct-looking output (DNS lookups, SNI hostnames, protocol mix).
+`watch` mode is still **untested** - it needs a real Linux host (see P0).
+Testing turned up one real bug in sidecar-mode reporting - see "report.py /
+analyze.py - bugs found in live testing" below.
 
 ## P0 - verify the MVP actually works
 
@@ -17,19 +22,19 @@ thing to do next session is the P0 list below.
       Mac/Windows, including Apple Silicon. Added `nettap sidecar` as the
       Mac/Windows-native alternative (joins the target's netns via
       `--network container:<target>` instead of needing host networking at
-      all - see README's "Docker Desktop for Mac / Windows" section). Still
-      only smoke-tested via `--help` and unit tests here (no tcpdump/Docker
-      daemon in the sandbox this was built in) - **run it against your
-      actual container next** and confirm packets actually show up in
-      `analyze`.
+      all - see README's "Docker Desktop for Mac / Windows" section).
+      Live-tested 2026-11-08 - see next item.
 - [ ] Run `docker compose up --build` (`watch` mode) on a real *Linux* Docker
       host (not Docker Desktop) and confirm veth resolution, capture start,
       and enrichment all work end-to-end - this is the only place
       `network_mode: host` is expected to work properly.
-- [ ] Run `nettap sidecar` (see README) against a real container on Docker
+- [x] Run `nettap sidecar` (see README) against a real container on Docker
       Desktop for Mac/Windows and confirm packets land in the pcap and in
-      `analyze` output - this is the path most users on a dev machine will
-      actually take, so it deserves the most testing attention.
+      `analyze` output. **Done 2026-11-08** (Docker Desktop for Mac): ran an
+      `nginx:alpine` target plus a sidecar, generated HTTP + HTTPS traffic to
+      example.com from inside it. pcap was written, `enrich` inserted 118
+      rows, every `analyze` subcommand and both `report` formats worked.
+      Only tested on Mac, not Windows.
 - [ ] Confirm the SandboxKey-based `nsenter` trick works on the target Docker
       version/storage driver (logic was reasoned through and unit-tested with
       mocks, not exercised against a live netns).
@@ -37,9 +42,10 @@ thing to do next session is the P0 list below.
       spins up two throwaway containers, attaches, generates traffic between
       them and to the internet, and asserts flow rows land in SQLite
       correctly.
-- [ ] Verify tshark's default dissectors are available in the slim Docker
-      image (some protocol dissectors ship as separate packages) - trim
-      `enrich.FIELDS` / the Dockerfile's apt list as needed.
+- [x] Verify tshark's default dissectors are available in the slim Docker
+      image. **Done 2026-11-08:** the `python:3.11-slim` image correctly
+      dissected TLSv1.2/1.3 (including SNI), HTTP, DNS, TCP, ICMPv6 and ARP
+      in the live test - no extra packages needed for those.
 
 ## P1 - correctness and safety
 
@@ -160,6 +166,28 @@ thing to do next session is the P0 list below.
   TLS/SSH etc. give metadata only (IPs, ports, byte counts, SNI, DNS) unless
   the TLS-visibility TODO above is done.
 - Single-host only for now (see the multi-host TODO).
+
+## report.py / analyze.py - bugs found in live testing (2026-11-08)
+
+- [ ] **Bug: in sidecar mode the container lists its own IP as an "internet
+      destination".** `sidecar` saves the container with
+      `ip_addresses={}` (`cli.py`, around line 259), and
+      `analyze.external_destinations()` counts any `dst_ip` not in a known
+      container's `ip_addresses` as internet traffic. So every reply packet
+      *into* the container (dst = its own IP, e.g. `172.17.0.2`) is counted
+      as external - in the live test the container was its own #1 "internet
+      destination" (25.8 KB of 35.6 KB total). This inflates both
+      `analyze external` and the internet section of `report`. Fix: have
+      `sidecar` record the container's own IP at startup (read it from
+      `eth0` inside the shared netns - no docker.sock needed), and/or
+      exclude `report._self_ip()` from the external list. Add a test that
+      fails on the current behaviour.
+- [ ] Docker Desktop's internal DNS resolver (`192.168.65.7`) shows up as an
+      internet destination. Consider labelling private/RFC1918 and
+      Docker-internal addresses separately from real internet traffic.
+- [ ] `analyze top-talkers` returns a row with `src_ip: null, dst_ip: null`
+      (16 packets in the live test) - most likely ARP / other non-IP frames.
+      Either filter them out or label them (e.g. "non-IP (ARP etc.)").
 
 ## report.py (plain-language summary) - known gaps
 
