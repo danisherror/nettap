@@ -14,9 +14,22 @@ import html as html_escape
 import ipaddress
 import json
 import sqlite3
+import unicodedata
 from datetime import datetime, timezone
 
 from . import analyze
+
+
+def _printable(s: str) -> str:
+    """Show control and format characters (category C*: ESC, newlines, bidi
+    overrides, ...) as visible escapes. Hostnames come from captured traffic
+    (TLS SNI, HTTP Host, DNS) and tshark passes e.g. a raw ESC from an HTTP
+    Host header through, which printed as-is would drive the terminal."""
+    return "".join(
+        ch if not unicodedata.category(ch).startswith("C")
+        else f"\\x{ord(ch):02x}" if ord(ch) < 0x100 else f"\\u{ord(ch):04x}"
+        for ch in s
+    )
 
 
 def format_bytes(n: float | None) -> str:
@@ -162,7 +175,7 @@ def render_text(report: dict) -> str:
             "If capture just started, wait for a pcap rotation (default 60s) and",
             "run 'nettap enrich' (or wait for auto-enrich), then generate this report again.",
         ]
-        return "\n".join(lines)
+        return "\n".join(_printable(line) for line in lines)
 
     start, end = _fmt_time(report["start"]), _fmt_time(report["end"])
     if start and end:
@@ -227,7 +240,7 @@ def render_text(report: dict) -> str:
         "(TLS/HTTPS) connections. nettap doesn't judge what's normal for your setup; review "
         "the destinations above yourself."
     )
-    return "\n".join(lines)
+    return "\n".join(_printable(line) for line in lines)
 
 
 def _bar(bytes_: int, max_bytes: int) -> str:
@@ -236,8 +249,10 @@ def _bar(bytes_: int, max_bytes: int) -> str:
 
 
 def render_html(report: dict) -> str:
-    c = html_escape.escape(report["container"])
-    esc = html_escape.escape
+    def esc(s: str) -> str:
+        return html_escape.escape(_printable(s))
+
+    c = esc(report["container"])
 
     if report["packet_count"] == 0:
         body = (

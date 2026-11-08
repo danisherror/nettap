@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 97 unit tests pass.
+attach/detach/status/analyze/report. All 99 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -346,9 +346,19 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       report shows those. Integration test now requires exactly one peer
       row with traffic both ways; passes (client: server, 1.6 KB sent /
       4.6 KB received).
-- [ ] No HTML/text escaping test for a container or hostname containing
-      special characters beyond what test_report.py covers - worth a
-      dedicated test if this ever takes attacker-influenced input seriously.
+- [x] **Fixed 2026-11-08: the text report printed control characters from
+      captured traffic as-is.** Hostnames come from TLS SNI, HTTP Host and
+      DNS, so anything on the network can choose them. Checked with a
+      hand-built pcap: tshark passes a raw ESC (`\x1b`) in an HTTP Host
+      header straight through into `flows.http_host` (it only escapes some
+      bytes, e.g. BEL becomes `\a`), so `nettap report` would have sent a
+      live terminal escape sequence. DNS names arrive already escaped by
+      tshark. Both renderers now show category-C characters (control,
+      newline, bidi overrides, ...) as `\xNN`/`\uNNNN`; HTML was already
+      `html.escape`d everywhere. New tests feed a hostile string through
+      every string field of both renderers. Side note: tshark's `quote=d`
+      output doubles backslashes, so that DNS name shows as `ev\\033[2Jil.com`
+      - harmless, just ugly.
 
 ## Nice-to-haves noticed while building, not yet triaged
 

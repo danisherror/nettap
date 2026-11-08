@@ -138,3 +138,39 @@ def test_peer_captured_too_is_listed_once(tmp_path):
     text = report.render_text(data)
     assert text.count("  - db:") == 1 and "sent 500 B, received 300 B" in text
     assert report.build_report(conn, "db")["container_peers"][0]["container"] == "web"
+
+
+# Hostnames come from captured traffic, so treat every string as hostile.
+# Seen 2026-11-08: tshark passes a raw ESC from an HTTP Host header through.
+EVIL = "<b>x</b>'\"&\x1b[31m\n\u202e"
+
+
+def _hostile_report():
+    return {
+        "container": EVIL, "self_ip": "172.18.0.2", "self_ips": ["172.18.0.2"],
+        "packet_count": 1, "total_bytes": 10, "start": 1000, "end": 1001,
+        "sent_bytes": 5, "sent_packets": 1, "received_bytes": 5, "received_packets": 1,
+        "container_peers": [{"container": EVIL, "bytes": 1, "packets": 1,
+                             "sent_bytes": 1, "received_bytes": 0}],
+        "external_destinations": [{"dst_ip": EVIL, "hostname": EVIL, "bytes": 1, "packets": 1}],
+        "local_destinations": [{"dst_ip": EVIL, "hint": EVIL, "bytes": 1, "packets": 1}],
+        "dns_queries": [{"dns_query": EVIL, "lookups": 1}],
+        "protocols": [{"protocol": EVIL, "bytes": 1, "packets": 1}],
+    }
+
+
+def test_render_html_escapes_every_field():
+    out = report.render_html(_hostile_report())
+    assert "<b>" not in out and "\x1b" not in out and "\u202e" not in out
+    assert "x</b>'" not in out and "title='&lt;b&gt;x&lt;/b&gt;&#x27;" in out
+    # <title>, <h1>, peer, hostname, both dst_ips, hint (span and title
+    # attribute), DNS query, protocol - each must show up escaped
+    assert out.count("&lt;b&gt;x&lt;/b&gt;&#x27;&quot;&amp;\\x1b[31m\\x0a\\u202e") == 10
+
+
+def test_render_text_shows_control_characters_as_escapes():
+    text = report.render_text(_hostile_report())
+    assert "\x1b" not in text and "\u202e" not in text
+    assert "\\x1b[31m\\x0a\\u202e" in text
+    empty = dict(_hostile_report(), packet_count=0)
+    assert "\x1b" not in report.render_text(empty)
