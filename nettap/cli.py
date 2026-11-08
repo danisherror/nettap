@@ -38,6 +38,9 @@ from .utils import parse_label_selector, setup_logging
 
 logger = logging.getLogger("nettap.cli")
 
+# how often the sidecar refreshes its live_sessions row (`status` uses it)
+SIDECAR_HEARTBEAT_SECONDS = 5.0
+
 
 def _docker_client():
     import docker
@@ -194,8 +197,23 @@ def status(ctx):
     if not rows:
         click.echo("no active sessions (is 'nettap watch' running?)")
         return
+    now = time.time()
     for r in rows:
-        click.echo(f"{r['container_name']:<20} veth={r['veth']!s:<15} pcap={r['pcap_pattern']}")
+        line = f"{r['container_name']:<20} veth={r['veth']!s:<15} pcap={r['pcap_pattern']}"
+        if storage.is_stale(r, now):
+            line += (f"  STALE: no heartbeat for {_fmt_age(now - r['updated_at'])} - the "
+                     "daemon that owns this probably died; its tcpdump may still be "
+                     "running (a new 'nettap watch'/'sidecar' cleans it up on start)")
+        click.echo(line)
+
+
+def _fmt_age(seconds: float) -> str:
+    seconds = int(seconds)
+    if seconds < 120:
+        return f"{seconds}s"
+    if seconds < 7200:
+        return f"{seconds // 60}m"
+    return f"{seconds // 3600}h"
 
 
 def _warn_if_unknown_container(conn, container: str | None) -> None:
@@ -323,8 +341,12 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
         ).start()
 
     click.echo(f"nettap sidecar capturing '{target_label}' on {iface} and lo (Ctrl+C to stop)...")
+    last_beat = 0.0
     try:
         while not stop["flag"]:
+            if time.time() - last_beat >= SIDECAR_HEARTBEAT_SECONDS:
+                storage.heartbeat_live_sessions(conn, [info.container_id], SIDECAR_HEARTBEAT_SECONDS)
+                last_beat = time.time()
             if not interface_exists(iface):
                 # Docker removes the shared interface when the target stops or
                 # is removed, and a restarted target gets a fresh netns that

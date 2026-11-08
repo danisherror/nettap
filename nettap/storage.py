@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS live_sessions (
     started_at      REAL,
     updated_at      REAL,
     dns_pcap_pattern TEXT,   -- the container's lo capture (capture.EMBEDDED_DNS)
-    dns_pid         INTEGER
+    dns_pid         INTEGER,
+    heartbeat_interval REAL  -- seconds between updated_at refreshes by the daemon
 );
 """
 
@@ -93,7 +94,8 @@ def connect(db_path: str) -> sqlite3.Connection:
 # leaves an older table alone, so add them to existing databases here.
 _ADDED_COLUMNS = {
     "flows": {"dns_answers": "TEXT", "http_host": "TEXT"},
-    "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER"},
+    "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER",
+                      "heartbeat_interval": "REAL"},
 }
 
 
@@ -225,6 +227,30 @@ def save_capture_session(conn: sqlite3.Connection, session) -> None:
     dns = session.dns_process
     set_live_session(conn, session.info, session.pcap_pattern, session.process.pid,
                      session.dns_pcap_pattern if dns else None, dns.pid if dns else None)
+
+
+def heartbeat_live_sessions(conn: sqlite3.Connection, container_ids, interval: float) -> None:
+    """Mark these rows as still owned by a running daemon, which promises to
+    do this again within `interval` seconds."""
+    ids = list(container_ids)
+    if not ids:
+        return
+    with cursor(conn) as cur:
+        cur.execute(
+            f"UPDATE live_sessions SET updated_at = ?, heartbeat_interval = ? "
+            f"WHERE container_id IN ({','.join('?' * len(ids))})",
+            (time.time(), interval, *ids),
+        )
+
+
+def is_stale(row: dict, now: float | None = None) -> bool:
+    """True if the daemon that owns this live_sessions row has missed several
+    heartbeats - it most likely died without cleaning up. The slack covers a
+    slow loop iteration. Rows without a heartbeat yet aren't judged."""
+    interval = row.get("heartbeat_interval")
+    if not interval or not row.get("updated_at"):
+        return False
+    return (now or time.time()) - row["updated_at"] > 3 * interval + 10
 
 
 def clear_live_session(conn: sqlite3.Connection, container_id: str) -> None:

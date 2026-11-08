@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 99 unit tests pass.
+attach/detach/status/analyze/report. All 104 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -365,8 +365,14 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
 - [ ] `nettap attach`/`detach` currently take container name/ID *or* a label
       selector in the same command; consider splitting into clearer
       subcommands if this gets confusing in practice.
-- [ ] `status` only reflects what the daemon last wrote to `live_sessions` -
-      if the daemon dies uncleanly the table can go stale. Consider a
-      heartbeat timestamp and having `status` flag stale rows.
+- [x] **Fixed 2026-11-08: `status` couldn't tell a dead daemon's rows from
+      live ones.** `watch` (every poll, even if the Docker API call fails)
+      and `sidecar` (every 5s) now refresh `live_sessions.updated_at` and
+      record the interval in a new `heartbeat_interval` column (added to
+      existing databases on connect). `status` marks a row STALE once it's
+      more than 3 intervals + 10s old. Live test (sidecar): heartbeat age
+      stayed under 5s while running and `status` showed no flag; after
+      `docker kill` of the sidecar, `status` from a fresh container showed
+      `STALE: no heartbeat for 35s`.
 - [ ] CLI output is JSON-only for `analyze`; a `--format table` option would
       make ad-hoc terminal use nicer.

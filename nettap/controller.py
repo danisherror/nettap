@@ -54,6 +54,12 @@ class Selector:
 def run(docker_client, conn, mgr: CaptureManager, selector: Selector,
         poll_interval: float = 5.0, stop_flag=lambda: False) -> None:
     while not stop_flag():
+        # before the main try: a failing Docker API doesn't mean the
+        # captures are gone, and `status` should keep showing them as live
+        try:
+            storage.heartbeat_live_sessions(conn, mgr.attached_ids(), poll_interval)
+        except Exception:
+            logger.exception("live_sessions heartbeat failed, continuing")
         try:
             for session in mgr.restart_dead():
                 storage.save_capture_session(conn, session)
