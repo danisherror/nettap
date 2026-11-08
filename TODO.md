@@ -14,6 +14,120 @@ Testing turned up one real bug in sidecar-mode reporting (container counted
 its own IP as an internet destination) - fixed and live-verified the same
 day, see "report.py / analyze.py - bugs found in live testing" below.
 
+## Road to 9/10 (project review, 2026-11-08)
+
+A harsh review scored the project **5/10**: careful engineering and honest
+docs, but the headline `watch` mode has never run on Linux, the mocked unit
+tests missed the worst bug so far (every container resolved to the host's
+`eth0`, see P0), sidecars need manual babysitting, and nothing yet makes it
+clearly better than `tcpdump` in a `--net container:` shell. Work through
+these in order. Each item has a "done when" so it can be ticked off honestly.
+
+**Rule until stages 1-2 are done:** no new network types or capture modes.
+Fix and prove what exists first.
+
+### Stage 1 - prove it works (5 -> 7)
+
+- [ ] **Run `watch` on a real Linux host** (a cheap VPS or a local VM; not
+      Docker Desktop). This is the P0 item below. Done when: `docker compose
+      up --build` attaches to a `monitor=true` container started *after*
+      nettap, its traffic shows up in `analyze` and `report`, and the
+      `rslave` mount is confirmed working. Record what was observed here
+      with the date.
+- [ ] **Add a `watch` variant to `scripts/integration_test.sh`** (e.g.
+      `--mode watch`): start nettap with host networking, label/`attach`
+      the throwaway containers, and run the same flow-store checks as
+      sidecar mode. Done when: both modes pass on Linux.
+- [ ] **CI on GitHub Actions.** GitHub's `ubuntu-latest` runners are real
+      Linux with a Docker daemon, so they can run `watch` mode too. Jobs:
+      `pytest` on the oldest and newest supported Python (3.9 and current);
+      `integration_test.sh --mode sidecar --no-internet`;
+      `integration_test.sh --mode watch --no-internet`. Done when: every push
+      and PR runs all three and a failing check blocks the merge. Add the
+      status badge to the README.
+- [ ] **Tests that touch real kernel behaviour.** Mocks keep agreeing with
+      our own wrong assumptions (the `/sys/class/net/eth0/iflink` bug passed
+      every unit test). Add a small `tests/live/` suite, marked
+      `@pytest.mark.live` and skipped without Docker, that calls
+      `discovery.resolve_capture()` against real bridge, macvlan and
+      multi-network containers and checks the interface returned. Run it in
+      CI (Linux). Done when: re-introducing the old iflink approach makes
+      CI fail.
+- [ ] **Make the README Quick Start lead with what's proven.** Today it
+      opens with `docker compose up` (`watch`), the untested path. Until
+      stage 1 is done, open with `sidecar` (works on Mac and Linux) and
+      label `watch` as Linux-only. Done when: a new user following the
+      first code block on any OS gets a working capture.
+
+### Stage 2 - make it pleasant to use (7 -> 8)
+
+- [ ] **Sidecars recover by themselves.** Today a sidecar exits when its
+      target stops and must be restarted by hand, or recreated if the target
+      was recreated (see README Troubleshooting). Add a supervisor command
+      (e.g. `nettap sidecars --label monitor=true`, needs docker.sock) that
+      starts one sidecar per labelled container, restarts it when the target
+      comes back, and recreates it when the target is recreated under the
+      same name. Done when: `docker restart web` and `docker rm -f web &&
+      docker run ... --name web` both resume capture with no manual step,
+      covered by the integration test.
+- [ ] **Cut the time until traffic shows up.** Today: 5s polling plus about
+      2 minutes (a 60s pcap rotation, then an enrich poll). Use the
+      Docker events stream as the main trigger with polling as the safety
+      net (already in P3, move it here), and enrich each pcap as soon as
+      tcpdump rotates it instead of on a timer. Done when: traffic appears
+      in `analyze` within about 15 seconds without running `nettap enrich`.
+- [ ] **Safe defaults for disk use.** Pcaps are kept forever unless
+      `--pcap-max-age-hours`/`--pcap-max-size-mb` are given. Set a default
+      (e.g. 24h / 1 GB) and log when files are deleted. Done when: a
+      capture left running for a week doesn't fill the disk.
+- [ ] **Clear errors for common mistakes.** Missing capabilities, missing
+      docker.sock with `--docker-api`, a target that doesn't exist, a data
+      dir that isn't writable: each should print one line saying what's
+      wrong and the exact fix, and exit non-zero. Done when: each case has
+      a test.
+
+### Stage 3 - be worth choosing over plain tcpdump (8 -> 9)
+
+- [ ] **One-command "what does this image do?"** The strongest use case,
+      currently five manual steps. Add `nettap inspect <image> [--duration
+      5m] [-- <container args>]`: run the image, attach a sidecar, wait,
+      enrich, write the HTML report, clean up. Done when: one command on a
+      fresh machine produces a report of everything the image contacted.
+- [ ] **Allowlist / unexpected-destination check.** `nettap check
+      --container web --allow allowlist.txt` (hostnames, CIDRs, other
+      container names): exits non-zero and lists flows to anything not
+      allowed. Makes nettap usable as a CI gate ("this service only talks to
+      db and api.stripe.com"). Done when: it works in the integration test
+      with one allowed and one disallowed destination.
+- [ ] **Compare two runs.** `nettap report --compare <run-a> <run-b>` (or
+      `--since`): new destinations, destinations no longer contacted, big
+      changes in bytes. Answers "what changed after this upgrade?". Done
+      when: the HTML report has a "what changed" section.
+- [ ] **Implement `nettap export`** (already in P3, move it here):
+      `--format pcap|json|csv` for one container and a time range, so
+      results can be shared without copying raw files.
+- [ ] **Measure accuracy, don't just describe it.** For host-network port
+      attribution (sampled 4x a second), run a known workload in the
+      integration test and report the percentage of connections caught.
+      Put the measured number in the README instead of "can be missed".
+
+### Stage 4 - finish like a real project (needed to hold 9)
+
+- [ ] **Add a LICENSE file** (MIT or Apache-2.0). Without one, nobody can
+      legally reuse the code.
+- [ ] **Versioning and a CHANGELOG.** Start at 0.1.0, follow semver, tag
+      releases in git.
+- [ ] **Publish releases:** `pip install nettap` from PyPI and a prebuilt
+      image on GitHub Container Registry (`ghcr.io/<user>/nettap`), both
+      built by CI from a tag. Then the README's first step no longer needs
+      `docker build`.
+- [ ] **Short demo in the README:** a screenshot of the HTML report and a
+      30-second terminal recording of `nettap inspect`. Show the
+      differentiator first.
+- [ ] **Real-world mileage.** Use it on at least three real projects (your
+      own Compose apps, a third-party image) and file every rough edge as a
+      TODO item. Done when: a week of use passes with no new bug.
+
 ## P0 - verify the MVP actually works
 
 - [x] Confirmed (via docs.docker.com and
@@ -412,12 +526,12 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
 - [ ] Alerting: flag flows to destinations not on an allowlist, or
       byte-volume spikes per container, and ship them somewhere
       (webhook/Slack/email).
-- [ ] Replace the polling controller (default 5s) with a Docker-events
+- [ ] (Moved to "Road to 9/10", stage 2.) Replace the polling controller (default 5s) with a Docker-events
       stream as the primary trigger and polling as just the safety-net
       reconciliation pass, to cut attach latency close to zero.
 - [ ] Package as a proper CLI release (PyPI) and/or provide a systemd unit
       as a non-Docker-Compose deployment option.
-- [ ] `nettap export --container X --format pcap|json` isn't implemented
+- [ ] (Moved to "Road to 9/10", stage 3.) `nettap export --container X --format pcap|json` isn't implemented
       yet - today you export by copying files out of `data/pcap/` directly
       or querying the SQLite DB by hand.
 
