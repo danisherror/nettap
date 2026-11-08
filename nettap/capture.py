@@ -295,8 +295,18 @@ class CaptureManager:
             return self._sessions[info.container_id]
 
         pattern = str(self.pcap_dir / f"{self._safe_name(info)}_{_TS}.pcap")
-        logger.info("attaching to %s on %s -> %s", info.name, info.veth, pattern)
-        proc = self._spawn(info.name, self._tcpdump_cmd(info.veth, pattern))
+        if info.capture_in_netns and not self.own_netns:
+            if not info.sandbox_key:
+                logger.warning("%s needs a capture inside its netns but has no "
+                               "SandboxKey, skipping", info.name)
+                return None
+            prefix = self._nsenter(info)
+            where = f"{info.veth} inside its netns ({info.link_kind})"
+        else:
+            prefix, where = [], info.veth
+        cmd = prefix + self._tcpdump_cmd(info.veth, pattern)
+        logger.info("attaching to %s on %s -> %s", info.name, where, pattern)
+        proc = self._spawn(info.name, cmd)
         session = CaptureSession(info=info, process=proc, pcap_pattern=pattern,
                                  rotate_seconds=self.rotate_seconds)
         self._start_dns(session)
@@ -335,6 +345,13 @@ class CaptureManager:
             threading.Thread(target=_pump_stderr, args=(label, proc.stderr), daemon=True).start()
         return proc
 
+    @staticmethod
+    def _nsenter(info: ContainerNetInfo) -> list[str]:
+        # nsenter execs tcpdump in place (it only forks for --pid/--fork),
+        # so the parent-death signal set before the exec still applies.
+        # https://man7.org/linux/man-pages/man1/nsenter.1.html
+        return ["nsenter", f"--net={info.sandbox_key}"]
+
     def _start_dns(self, session: CaptureSession) -> None:
         """Start the embedded-DNS capture on the container's lo. Filtered by
         host, not port: Docker NATs port 53 on 127.0.0.11 to a random port
@@ -344,10 +361,7 @@ class CaptureManager:
         if self.own_netns:
             prefix = []
         elif info.sandbox_key:
-            # nsenter execs tcpdump in place (it only forks for --pid/--fork),
-            # so the parent-death signal set before the exec still applies.
-            # https://man7.org/linux/man-pages/man1/nsenter.1.html
-            prefix = ["nsenter", f"--net={info.sandbox_key}"]
+            prefix = self._nsenter(info)
         else:
             return
         pattern = str(self.pcap_dir / f"{self._safe_name(info)}_{_TS}{DNS_SUFFIX}.pcap")

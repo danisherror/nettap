@@ -10,11 +10,12 @@ from nettap.capture import CaptureManager
 from nettap.discovery import ContainerNetInfo
 
 
-def _info(cid="c1", name="web", veth="veth1", host_net=False):
+def _info(cid="c1", name="web", veth="veth1", host_net=False, in_netns=False,
+          kind="veth", sandbox_key="sb1"):
     return ContainerNetInfo(
         container_id=cid, name=name, image="nginx", veth=veth,
-        ip_addresses={}, networks=["bridge"], labels={}, sandbox_key="sb1",
-        uses_host_network=host_net,
+        ip_addresses={}, networks=["bridge"], labels={}, sandbox_key=sandbox_key,
+        uses_host_network=host_net, capture_in_netns=in_netns, link_kind=kind,
     )
 
 
@@ -206,6 +207,22 @@ def test_watch_captures_embedded_dns_inside_the_container_netns(mock_popen, mgr)
     assert session.dns_pcap_pattern.endswith("/web_%Y%m%d%H%M%S.dns.pcap")
     assert session.dns_pcap_pattern in dns
     assert mgr.status()[0]["dns_pcap_pattern"] == session.dns_pcap_pattern
+
+
+@patch("nettap.capture.subprocess.Popen")
+def test_watch_captures_macvlan_container_inside_its_netns(mock_popen, mgr):
+    mock_popen.return_value = _FakeProc()
+    session = mgr.attach(_info(veth="eth0", in_netns=True, kind="macvlan"))
+    main, dns = _cmds(mock_popen)
+    assert main[:5] == ["nsenter", "--net=sb1", "tcpdump", "-i", "eth0"]
+    assert session.pcap_pattern in main
+    assert dns[:5] == ["nsenter", "--net=sb1", "tcpdump", "-i", "lo"]
+
+
+@patch("nettap.capture.subprocess.Popen")
+def test_watch_skips_in_netns_capture_without_sandbox_key(mock_popen, mgr):
+    assert mgr.attach(_info(veth="eth0", in_netns=True, kind="ipvlan", sandbox_key=None)) is None
+    mock_popen.assert_not_called()
 
 
 @patch("nettap.capture.subprocess.Popen")

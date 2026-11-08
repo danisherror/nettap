@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 159 unit tests pass.
+attach/detach/status/analyze/report. All 163 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -129,8 +129,22 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       flag (warning logged), and started normally on a bridge-network
       target. Integration test not re-run (bridge targets only, unchanged
       path; the bridge-target live check covers it).
-- [ ] macvlan/ipvlan network drivers: same problem as host networking - no
-      standard veth-to-bridge topology. Needs investigation.
+- [x] **Done 2026-11-08: macvlan/ipvlan containers in `watch`.** Live
+      check first (Docker Desktop for Mac): their eth0's netlink link_index
+      is the parent (`eth0` for macvlan, `eth0.98` for ipvlan - the two
+      can't share a parent, "device or resource busy"), so even a correct
+      host-side lookup would capture the parent and the whole host's
+      traffic. Now eth0's link kind decides: macvlan/ipvlan are captured on
+      their own eth0 inside their netns (`nsenter --net=<SandboxKey>
+      tcpdump -i eth0`, `ContainerNetInfo.capture_in_netns`); any other
+      non-veth kind is skipped with a warning naming it. Live test (`watch
+      --label` in the nettap image, a server + client pair on each of a
+      bridge, macvlan and ipvlan network, HTTP every 2s): all six attached
+      (after restarting `watch`, see the propagation item in P0), each
+      client's flows were only its server, DNS and ARP - no host traffic.
+      `sidecar` needs nothing new for these (it captures the shared eth0).
+      Tests: 10 new/rewritten in `tests/test_discovery.py` and
+      `tests/test_capture.py`.
 - [ ] Swarm/overlay networks: traffic between containers on different hosts
       travels over a VXLAN tunnel. Capturing on the local veth still sees it,
       but cross-host correlation (matching flows between two hosts' nettap
@@ -544,8 +558,10 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       integration test's user-defined network): the client's lookups of
       the server and of example.com, with answers, are recorded; the
       integration test now checks this (19 checks, all pass).
-- [ ] The `lo` DNS capture in `watch` mode (via `nsenter`) is untested -
-      needs the Linux host from P0.
+- [x] **Verified 2026-11-08 on Docker Desktop for Mac:** the `lo` DNS
+      capture in `watch` mode (via `nsenter`) works - in the macvlan/ipvlan
+      live test (P1) each client's lookups of its server through
+      127.0.0.11 were recorded (~200 DNS rows each). Not yet on a Linux host.
 - [x] **Fixed 2026-11-08: the `lo` DNS capture's pid wasn't stored in
       `live_sessions`**, so `reap_orphans()` couldn't clean it up after an
       unclean exit. `live_sessions` gained `dns_pid`/`dns_pcap_pattern`

@@ -32,7 +32,7 @@ def _host_net(tmp_path, monkeypatch, ifaces):
     monkeypatch.setattr(discovery, "NET_CLASS_DIR", str(net_dir))
 
 
-HOST = {"eth0": (4, 4), "vethb56415c": (247, 11)}
+HOST = {"eth0": (4, 4), "vethb56415c": (247, 11), "eth0.98": (248, 4)}
 
 
 @patch("nettap.discovery.run")
@@ -57,7 +57,7 @@ def test_link_info_failure_returns_none(effect):
 def test_resolve_capture_veth_maps_peer_to_host_interface(tmp_path, monkeypatch):
     _host_net(tmp_path, monkeypatch, HOST)
     with patch("nettap.discovery.run", return_value=_ip_link_json("veth")):
-        assert discovery.resolve_capture("sb") == ("vethb56415c", "veth")
+        assert discovery.resolve_capture("sb") == ("vethb56415c", False, "veth")
 
 
 def test_resolve_capture_rejects_peer_that_does_not_point_back(tmp_path, monkeypatch):
@@ -65,21 +65,22 @@ def test_resolve_capture_rejects_peer_that_does_not_point_back(tmp_path, monkeyp
     # the host interface with that ifindex is unrelated
     _host_net(tmp_path, monkeypatch, {"vethother": (247, 99)})
     with patch("nettap.discovery.run", return_value=_ip_link_json("veth")):
-        assert discovery.resolve_capture("sb") == (None, "veth")
+        assert discovery.resolve_capture("sb") == (None, False, "veth")
 
 
-def test_resolve_capture_macvlan_is_not_captured_on_its_parent(tmp_path, monkeypatch):
-    # its link is the parent (the host's eth0) - capturing there would record
-    # the whole host's traffic as this container's
+@pytest.mark.parametrize("kind,link_index", [("macvlan", 4), ("ipvlan", 248)])
+def test_resolve_capture_macvlan_ipvlan_capture_inside_netns(tmp_path, monkeypatch, kind, link_index):
+    # their link is the parent (the host's eth0 / eth0.98) - capturing there
+    # would record the whole host's traffic as this container's
     _host_net(tmp_path, monkeypatch, HOST)
-    with patch("nettap.discovery.run", return_value=_ip_link_json("macvlan", 246, 4)):
-        assert discovery.resolve_capture("sb") == (None, "macvlan")
+    with patch("nettap.discovery.run", return_value=_ip_link_json(kind, 246, link_index)):
+        assert discovery.resolve_capture("sb") == ("eth0", True, kind)
 
 
 def test_resolve_capture_unknown_kind(tmp_path, monkeypatch):
     _host_net(tmp_path, monkeypatch, HOST)
     with patch("nettap.discovery.run", return_value=_ip_link_json("vxlan", 11, 4)):
-        assert discovery.resolve_capture("sb") == (None, "vxlan")
+        assert discovery.resolve_capture("sb") == (None, False, "vxlan")
 
 
 def _fake_container(id_="abc123", name="web", image="nginx:latest",
@@ -104,11 +105,12 @@ def _fake_container(id_="abc123", name="web", image="nginx:latest",
 def test_inspect_container_resolves_veth(monkeypatch):
     client = MagicMock()
     client.containers.get.return_value = _fake_container()
-    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("veth999", "veth"))
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("veth999", False, "veth"))
 
     info = discovery.inspect_container(client, "abc123")
     assert info.name == "web"
     assert info.veth == "veth999"
+    assert not info.capture_in_netns
     assert info.ip_addresses == {"bridge": "172.17.0.2"}
     assert info.published_ports == [{"host_port": 8080, "container_port": 80, "protocol": "tcp"}]
     assert not info.uses_host_network
@@ -118,12 +120,20 @@ def test_inspect_container_host_network_skips_veth(monkeypatch):
     client = MagicMock()
     client.containers.get.return_value = _fake_container(host_mode=True)
     called = []
-    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: called.append(1) or ("shouldnt-happen", "veth"))
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: called.append(1) or ("shouldnt-happen", False, "veth"))
 
     info = discovery.inspect_container(client, "abc123")
     assert info.veth is None
     assert info.uses_host_network
     assert called == []
+
+
+def test_inspect_container_macvlan_captures_inside_netns(monkeypatch):
+    client = MagicMock()
+    client.containers.get.return_value = _fake_container()
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("eth0", True, "macvlan"))
+    info = discovery.inspect_container(client, "abc123")
+    assert (info.veth, info.capture_in_netns, info.link_kind) == ("eth0", True, "macvlan")
 
 
 def test_published_ports_reads_docker_inspect_bindings():

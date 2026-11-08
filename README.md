@@ -19,6 +19,10 @@ network namespace (via the netns file Docker already exposes under
 which host interface is its veth peer. (Reading `/sys/class/net/eth0/iflink`
 there doesn't work: sysfs still shows the host's interfaces under
 `nsenter --net`, which is why `ip netns exec` remounts it.)
+
+macvlan and ipvlan containers have no veth: their `eth0` hangs off a parent
+interface that carries the whole host's traffic. `watch` captures those on
+their own `eth0` from inside their namespace instead (`nsenter` + tcpdump).
 Details and caveats are in `nettap/discovery.py`'s docstring.
 
 ## Architecture
@@ -303,8 +307,8 @@ nettap/
 ## Known limitations
 
 - `--network host` containers are skipped (no dedicated veth to capture on).
-- In `watch`, a container whose `eth0` isn't a veth (macvlan, ipvlan) is
-  skipped with a warning.
+- In `watch`, a container whose `eth0` is neither a veth nor macvlan/ipvlan
+  is skipped with a warning.
 - TLS/SSH traffic gives metadata (IPs, ports, byte counts, SNI) not
   plaintext payloads.
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.
@@ -312,8 +316,8 @@ nettap/
   `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
 - External IPs are named from TLS SNI, HTTP Host headers and DNS answers.
   DNS answers on user-defined networks come from the extra capture on the
-  container's `lo`; that has been tested in `sidecar` mode only, not yet
-  through `nsenter` in `watch` mode.
+  container's `lo` (tested in `sidecar` mode, and in `watch` mode on
+  Docker Desktop for Mac, not yet on a Linux host).
 - A `sidecar` exits when its target stops; start it again afterwards, or
   recreate it if the target was recreated (see Troubleshooting above).
 

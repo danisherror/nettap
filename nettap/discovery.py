@@ -26,10 +26,15 @@ inside the container image itself:
      at the container's eth0. That name (e.g. "veth3a1f9c2") is what you
      hand to tcpdump.
 
+macvlan and ipvlan containers have no veth: eth0's link is the parent
+interface (e.g. the host's eth0), which carries the whole host's traffic.
+Those are captured on their own eth0 from inside their namespace instead
+(nsenter + tcpdump), like the `lo` DNS capture.
+
 This intentionally avoids requiring --privileged + --pid=host; it only needs
 CAP_SYS_ADMIN (to enter another netns) and read access to
 /var/run/docker/netns. See TODO.md for the known gaps (host networking,
-macvlan, overlay networks) where this trick doesn't apply.
+overlay networks) where this trick doesn't apply.
 """
 from __future__ import annotations
 
@@ -43,6 +48,10 @@ from .utils import run
 logger = logging.getLogger(__name__)
 
 NET_CLASS_DIR = "/sys/class/net"
+# link kinds whose parent is a shared host interface: captured inside the
+# container's netns (https://docs.docker.com/engine/network/drivers/macvlan/,
+# https://docs.docker.com/engine/network/drivers/ipvlan/)
+NETNS_CAPTURE_KINDS = ("macvlan", "ipvlan")
 
 
 @dataclass
@@ -50,7 +59,8 @@ class ContainerNetInfo:
     container_id: str
     name: str
     image: str
-    veth: str | None              # host-side interface name, or None if not resolvable
+    veth: str | None              # interface to capture on, or None if not resolvable:
+                                  # host-side veth, or one inside the netns (below)
     ip_addresses: dict[str, str]  # network_name -> ip
     networks: list[str]
     labels: dict[str, str]
@@ -63,6 +73,9 @@ class ContainerNetInfo:
     # "ports": a --network host target captured on the host, kept to its own
     # ports at enrichment (hostports.py); None: a capture of its own netns
     capture_scope: str | None = None
+    # veth names an interface inside the container's netns (macvlan/ipvlan),
+    # captured by entering the namespace through sandbox_key
+    capture_in_netns: bool = False
     # eth0's link kind from netlink ("veth", "macvlan", ...), for messages
     link_kind: str | None = None
 
@@ -128,8 +141,9 @@ def interface_ips(iface: str = "eth0") -> dict[str, str]:
 
 
 def _link_info(sandbox_key: str, iface: str = "eth0") -> dict | None:
-    """eth0's ifindex, link kind and link_index (for a veth, its peer's
-    ifindex), read over netlink inside the container's netns. Needs iproute2 with JSON output (-j, iproute2 4.13+)."""
+    """eth0's ifindex, link kind and link_index (a veth's peer, or a
+    macvlan/ipvlan's parent), read over netlink inside the container's
+    netns. Needs iproute2 with JSON output (-j, iproute2 4.13+)."""
     try:
         out = run(["nsenter", f"--net={sandbox_key}", "ip", "-j", "-d", "link", "show", "dev", iface])
         links = json.loads(out)
@@ -187,23 +201,27 @@ def _ifindex_to_name(ifindex: int) -> str | None:
     return None
 
 
-def resolve_capture(sandbox_key: str, iface: str = "eth0") -> tuple[str | None, str | None]:
-    """Host interface to capture a container's traffic on, and eth0's link
-    kind: (interface, kind).
+def resolve_capture(sandbox_key: str, iface: str = "eth0") -> tuple[str | None, bool, str | None]:
+    """Where to capture a container's traffic: (interface, in_netns, kind).
 
     For a veth: the host-side peer, provided its iflink points back at the
     container's interface. A peer in another namespace (a Swarm overlay
     network's) would otherwise match an unrelated host interface that
-    happens to share its ifindex. Otherwise (None, kind)."""
+    happens to share its ifindex.
+    For macvlan/ipvlan: the container's own interface, in_netns=True.
+    Otherwise (None, False, kind)."""
     link = _link_info(sandbox_key, iface)
     if link is None:
-        return None, None
+        return None, False, None
     kind = link["kind"]
+    if kind in NETNS_CAPTURE_KINDS:
+        return iface, True, kind
     if kind == "veth" and isinstance(link["link_index"], int):
         name = _ifindex_to_name(link["link_index"])
         if name and _read_int(f"{NET_CLASS_DIR}/{name}/iflink") == link["ifindex"]:
-            return name, kind
-    return None, kind
+            return name, False, kind
+    return None, False, kind
+
 
 def published_ports(ports: dict | None) -> list[dict]:
     """NetworkSettings.Ports from `docker inspect` ({"80/tcp": [{"HostIp":
@@ -268,9 +286,9 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
 
     ip_addresses = network_ips(networks)
 
-    veth, kind = None, None
+    veth, in_netns, kind = None, False, None
     if resolve and sandbox_key and not host_mode:
-        veth, kind = resolve_capture(sandbox_key)
+        veth, in_netns, kind = resolve_capture(sandbox_key)
 
     return ContainerNetInfo(
         container_id=c.id,
@@ -284,6 +302,7 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
         uses_host_network=host_mode,
         published_ports=published_ports(net_settings.get("Ports")),
         started_at=docker_time((attrs.get("State", {}) or {}).get("StartedAt")),
+        capture_in_netns=in_netns,
         link_kind=kind,
     )
 
