@@ -73,16 +73,46 @@ def top_talkers(conn: sqlite3.Connection, container: str | None = None, limit: i
     return rows
 
 
-# One row per (container name, address). `containers` can hold several rows
-# for one container - a sidecar stores its target under the target's name and
-# `--docker-api` stores the same container under its real ID - and joining
-# on those rows directly counted each flow once per row (seen live
-# 2026-11-08: two sidecars with --docker-api doubled every peer's bytes).
+# One row per (container name, address), with `since` - when that name got
+# the address (the container's start time from the Docker API, else when
+# nettap first recorded it) - and whether the name has a capture of its own.
+# `containers` can hold several rows for one container - a sidecar stores its
+# target under the target's name and `--docker-api` stores the same container
+# under its real ID - and joining on those rows directly counted each flow
+# once per row (seen live 2026-11-08: two sidecars with --docker-api doubled
+# every peer's bytes).
 _CONTAINER_IPS = """
     container_ips AS (
-        SELECT DISTINCT c.name, je.value AS ip
+        SELECT c.name, je.value AS ip,
+               MIN(COALESCE(c.started_at, c.first_seen)) AS since,
+               c.name IN (SELECT container_name FROM flows) AS captured
         FROM containers c, json_each(c.ip_addresses) je
         WHERE c.name IS NOT NULL AND je.value != ''
+        GROUP BY c.name, je.value
+    )"""
+
+def _holders(cte: str, ip_col: str, where: str = "1") -> str:
+    """A CTE `cte` of (flow id, name): for each flow matching `where`, the one
+    container name that held address f.<ip_col> at the flow's time - the
+    latest `since` at or before then. Docker doesn't give one address to two
+    running containers, so a container recreated under another name at an
+    old address takes it over from that moment (seen live 2026-11-08: both
+    names got all of the address's traffic). Two names of one container
+    (sidecar label + real name, same start time) go to the one with its own
+    capture. A flow older than every claim goes to the earliest one.
+    A join + ROW_NUMBER, not a correlated subquery: SQLite 3.46 (the Docker
+    image) can't use an outer column in a subquery's ORDER BY."""
+    return f"""
+    {cte} AS (
+        SELECT id, name FROM (
+            SELECT f.id, h.name, ROW_NUMBER() OVER (
+                PARTITION BY f.id
+                ORDER BY h.since <= f.ts DESC,
+                         CASE WHEN h.since <= f.ts THEN h.since END DESC,
+                         h.captured DESC, h.since, h.name) AS rn
+            FROM flows f JOIN container_ips h ON h.ip = f.{ip_col}
+            WHERE {where}
+        ) WHERE rn = 1
     )"""
 
 
@@ -186,16 +216,13 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
     local destination."""
     cur = conn.execute(
         f"""
-        WITH {_CONTAINER_IPS}
-        SELECT f.container_name AS src_container,
-               ci.name AS dst_container,
-               SUM(f.length) AS bytes,
-               COUNT(*) AS packets
-        FROM flows f
-        JOIN container_ips ci ON ci.ip = f.dst_ip
-        WHERE f.container_name != ci.name
-          -- the capture's own address under another name (see _OWN_IP)
-          AND NOT {_OWN_IP.format(ip="ci.ip")}
+        WITH {_CONTAINER_IPS},
+        -- skip the capture's own address under another name (see _OWN_IP)
+        {_holders("dst_holder", "dst_ip", "NOT " + _OWN_IP.format(ip="f.dst_ip"))}
+        SELECT f.container_name AS src_container, d.name AS dst_container,
+               SUM(f.length) AS bytes, COUNT(*) AS packets
+        FROM flows f JOIN dst_holder d ON d.id = f.id
+        WHERE f.container_name != d.name
         GROUP BY src_container, dst_container
         """
     )
@@ -222,15 +249,20 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
     cur = conn.execute(
         f"""
         WITH {_CONTAINER_IPS},
+        {_holders("src_holder", "src_ip",
+                  "f.container_name = ? AND NOT " + _OWN_IP.format(ip="f.src_ip"))},
+        {_holders("dst_holder", "dst_ip",
+                  "f.container_name = ? AND NOT " + _OWN_IP.format(ip="f.dst_ip"))},
         peer_flows AS (
             -- one row per flow and peer, even if both ends are that peer's
-            SELECT DISTINCT f.id, f.length, ci.name,
-                   EXISTS (SELECT 1 FROM container_ips d
-                           WHERE d.name = ci.name AND d.ip = f.dst_ip) AS sent
-            FROM flows f
-            JOIN container_ips ci ON ci.ip IN (f.src_ip, f.dst_ip)
-            WHERE f.container_name = ? AND ci.name != ?
-              AND NOT {_OWN_IP.format(ip="ci.ip")}
+            SELECT id, MAX(length) AS length, name, MAX(sent) AS sent
+            FROM (SELECT f.id, f.length, d.name, 1 AS sent
+                  FROM flows f JOIN dst_holder d ON d.id = f.id
+                  UNION ALL
+                  SELECT f.id, f.length, s.name, 0
+                  FROM flows f JOIN src_holder s ON s.id = f.id)
+            WHERE name != ?
+            GROUP BY id, name
         )
         SELECT name AS container,
                SUM(length) AS bytes, COUNT(*) AS packets,
@@ -239,7 +271,7 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
         FROM peer_flows
         GROUP BY name
         """,
-        (container, container),
+        (container, container, container),
     )
     peers = {r["container"]: dict(r) for r in cur.fetchall()}
     for _, peer, length, sent, _ in _published_port_flows(conn, container):

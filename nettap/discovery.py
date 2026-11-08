@@ -48,6 +48,8 @@ class ContainerNetInfo:
     uses_host_network: bool
     # ports published on the host: [{"host_port", "container_port", "protocol"}]
     published_ports: list[dict] = field(default_factory=list)
+    # when the container last started (State.StartedAt), epoch seconds
+    started_at: float | None = None
 
 
 def interface_exists(iface: str, sys_net: str = "/sys/class/net") -> bool:
@@ -159,6 +161,21 @@ def network_ips(networks: dict) -> dict[str, str]:
     return out
 
 
+def docker_time(text: str | None) -> float | None:
+    """A Docker API timestamp ("2026-11-08T07:40:32.123456789Z", RFC 3339
+    with up to nanoseconds) as epoch seconds; None for a missing, unparsable
+    or zero time ("0001-01-01T00:00:00Z", a container that never started)."""
+    import re
+    from datetime import datetime
+
+    m = re.fullmatch(r"(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(\.\d+)?(Z|[+-]\d\d:\d\d)",
+                     text or "")
+    if not m or m[1].startswith("0001-"):
+        return None
+    tz = "+00:00" if m[3] == "Z" else m[3]
+    return datetime.fromisoformat(m[1] + tz).timestamp() + float(m[2] or 0)
+
+
 def inspect_container(docker_client, container_id: str, resolve: bool = True) -> ContainerNetInfo:
     """Build a ContainerNetInfo from the Docker API, resolving the veth as a
     side effect unless resolve=False (it needs the host's netns, which a
@@ -187,6 +204,7 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
         sandbox_key=sandbox_key,
         uses_host_network=host_mode,
         published_ports=published_ports(net_settings.get("Ports")),
+        started_at=docker_time((attrs.get("State", {}) or {}).get("StartedAt")),
     )
 
 

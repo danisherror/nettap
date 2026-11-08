@@ -225,3 +225,53 @@ def test_a_peer_reached_over_ipv6_is_named(tmp_path):
     storage.insert_flows(conn, [_flow("web", "fd00:20::2", 4000, "fd00:20::3", 5432, 100)])
     assert [p["container"] for p in analyze.container_peers(conn, "web")] == ["db"]
     assert analyze.external_destinations(conn) == []
+
+
+def _at(flow, ts):
+    return {**flow, "ts": ts}
+
+
+def _seed_recreated(conn):
+    # db-old held 172.30.0.10 from t=100, was removed, and db-new got the same
+    # address at t=1000 (live repro 2026-11-08: both names got all traffic)
+    for cid, name, started in (("o1", "db-old", 100.0), ("n1", "db-new", 1000.0)):
+        storage.upsert_container(conn, ContainerNetInfo(
+            cid, name, "", None, {"net": "172.30.0.10"}, [], {}, None, False,
+            started_at=started))
+    storage.insert_flows(conn, [
+        _at(_flow("cli", "172.30.0.20", 4000, "172.30.0.10", 80, 100), 500),
+        _at(_flow("cli", "172.30.0.10", 80, "172.30.0.20", 4000, 300), 501),
+        _at(_flow("cli", "172.30.0.20", 4001, "172.30.0.10", 80, 1000), 1500),
+        _at(_flow("cli", "172.30.0.20", 4002, "172.30.0.10", 80, 5), 50),  # before both
+    ])
+
+
+def test_a_reused_address_belongs_to_whoever_held_it_at_the_time(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed_recreated(conn)
+    assert analyze.container_matrix(conn) == [
+        {"src_container": "cli", "dst_container": "db-new", "bytes": 1000, "packets": 1,
+         "via": "direct"},
+        {"src_container": "cli", "dst_container": "db-old", "bytes": 105, "packets": 2,
+         "via": "direct"}]
+    assert analyze.container_peers(conn, "cli") == [
+        {"container": "db-new", "bytes": 1000, "packets": 1, "sent_bytes": 1000,
+         "received_bytes": 0},
+        {"container": "db-old", "bytes": 405, "packets": 3, "sent_bytes": 105,
+         "received_bytes": 300}]
+
+
+def test_two_names_of_one_container_count_once_under_the_captured_name(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    for cid, name in (("srv", "srv"), ("abc123", "proj-srv-1")):  # label + real name
+        storage.upsert_container(conn, ContainerNetInfo(
+            cid, name, "", None, {"net": "172.20.0.2"}, [], {}, None, False,
+            started_at=100.0))
+    storage.insert_flows(conn, [
+        _at(_flow("cli", "172.21.0.2", 4000, "172.20.0.2", 80, 100), 200),
+        _at(_flow("srv", "172.20.0.2", 80, "172.21.0.2", 4000, 50), 201),
+    ])
+    assert [(p["container"], p["bytes"]) for p in analyze.container_peers(conn, "cli")] == \
+        [("srv", 100)]
+    assert [(r["dst_container"], r["bytes"]) for r in analyze.container_matrix(conn)] == \
+        [("srv", 100)]

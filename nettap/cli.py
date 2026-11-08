@@ -357,11 +357,16 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
             target, peers = split_by_netns(client, info.ip_addresses.values())
             for peer in peers:
                 storage.upsert_container(conn, peer)
-            # Only the API knows the target's published ports; without them a
-            # peer reaching the target through one isn't matched to it (see
-            # analyze._published_port_flows). Name and IPs stay ours.
-            if target and target.published_ports != info.published_ports:
+            # Only the API knows the target's published ports and start time;
+            # without them a peer reaching the target through a published
+            # port isn't matched to it, and the target's own name can lose
+            # to the real name another sidecar records for the same address
+            # (see analyze._published_port_flows and _holders). Name and IPs
+            # stay ours.
+            if target and (target.published_ports, target.started_at) != \
+                    (info.published_ports, info.started_at):
                 info.published_ports = target.published_ports
+                info.started_at = target.started_at
                 storage.upsert_container(conn, info)
         except Exception:
             logger.exception("reading other containers from the Docker API failed, continuing")

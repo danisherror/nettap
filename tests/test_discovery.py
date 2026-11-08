@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+import pytest
 
 from nettap import discovery
 
@@ -98,3 +99,21 @@ def test_inspect_container_reads_ipv6_addresses(monkeypatch):
                                  "v6only": "", "v6only/inet6": "fd00:30::3",
                                  "plain": "172.21.0.3"}
     assert info.networks == ["app", "v6only", "plain"]
+
+
+def test_docker_time():
+    assert discovery.docker_time("2026-11-08T07:40:32.5Z") == 1794123632.5
+    assert discovery.docker_time("2026-11-08T07:40:32.123456789Z") == \
+        pytest.approx(1794123632.123456789)
+    assert discovery.docker_time("2026-11-08T08:40:32+01:00") == 1794123632.0
+    assert discovery.docker_time("0001-01-01T00:00:00Z") is None  # never started
+    assert discovery.docker_time(None) is None
+    assert discovery.docker_time("garbage") is None
+
+
+def test_inspect_container_reads_start_time():
+    c = _fake_container()
+    c.attrs["State"] = {"StartedAt": "2026-11-08T07:40:32.5Z"}
+    client = MagicMock()
+    client.containers.get.return_value = c
+    assert discovery.inspect_container(client, c.id, resolve=False).started_at == 1794123632.5

@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS containers (
     ip_addresses    TEXT,   -- JSON: {network: ip}
     labels          TEXT,   -- JSON
     first_seen      REAL,
-    published_ports TEXT    -- JSON: discovery.ContainerNetInfo.published_ports
+    published_ports TEXT,   -- JSON: discovery.ContainerNetInfo.published_ports
+    started_at      REAL    -- when the container last started (Docker API); NULL if unknown
 );
 
 CREATE TABLE IF NOT EXISTS flows (
@@ -97,7 +98,7 @@ def connect(db_path: str) -> sqlite3.Connection:
 # Columns added after a table's first release. CREATE TABLE IF NOT EXISTS
 # leaves an older table alone, so add them to existing databases here.
 _ADDED_COLUMNS = {
-    "containers": {"published_ports": "TEXT"},
+    "containers": {"published_ports": "TEXT", "started_at": "REAL"},
     "flows": {"dns_answers": "TEXT", "http_host": "TEXT", "transport": "TEXT"},
     "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER",
                       "heartbeat_interval": "REAL", "rotate_seconds": "REAL"},
@@ -128,18 +129,19 @@ def upsert_container(conn: sqlite3.Connection, info) -> None:
         cur.execute(
             """
             INSERT INTO containers (container_id, name, image, veth, networks, ip_addresses, labels,
-                                    first_seen, published_ports)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    first_seen, published_ports, started_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(container_id) DO UPDATE SET
                 name=excluded.name, image=excluded.image, veth=excluded.veth,
                 networks=excluded.networks, ip_addresses=excluded.ip_addresses, labels=excluded.labels,
-                published_ports=excluded.published_ports
+                published_ports=excluded.published_ports, started_at=excluded.started_at
             """,
             (
                 info.container_id, info.name, info.image, info.veth,
                 json.dumps(info.networks), json.dumps(info.ip_addresses),
                 json.dumps(info.labels), time.time(),
                 json.dumps(getattr(info, "published_ports", None) or []),
+                getattr(info, "started_at", None),
             ),
         )
 

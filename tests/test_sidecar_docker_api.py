@@ -88,6 +88,16 @@ def test_sidecar_records_its_targets_published_ports(tmp_path, monkeypatch):
         '[{"host_port": 8080, "container_port": 80, "protocol": "tcp"}]'
 
 
+def test_sidecar_records_its_targets_start_time(tmp_path, monkeypatch):
+    target = _fake_container("t1", "real-target-name", networks=_net(TARGET_IP))
+    target.attrs["State"] = {"StartedAt": "2026-11-08T07:40:32.5Z"}
+    result = _sidecar(tmp_path, monkeypatch, _client(target, *CONTAINERS[1:]))
+    assert result.exit_code == 3
+    conn = storage.connect(str(tmp_path / "nettap.db"))
+    row = conn.execute("SELECT started_at FROM containers WHERE container_id = 'web'").fetchone()
+    assert row["started_at"] == 1794123632.5
+
+
 def test_split_by_netns_returns_the_target(monkeypatch):
     target, others = discovery.split_by_netns(_client(*CONTAINERS), [TARGET_IP])
     assert target.name == "real-target-name"

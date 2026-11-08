@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 133 unit tests pass.
+attach/detach/status/analyze/report. All 138 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -419,9 +419,31 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       flow once per row (100 bytes showed as 200). Both now join on a
       deduplicated (name, address) list. Live test (two sidecars with
       `--docker-api`, one HTTP request): 4 container rows, and the matrix
-      matched the raw flows (client->server 559 B / 7 packets). Still open:
-      if a recreated container under a *different* name reuses an old
-      address, both names match its flows.
+      matched the raw flows (client->server 559 B / 7 packets). A recreated
+      container reusing an old address under another name: **fixed
+      2026-11-08, see next item**.
+- [x] **Fixed 2026-11-08: a container recreated under a different name at
+      an old address got all of that address's traffic - and so did the old
+      name.** Live repro first (Docker Desktop for Mac, fixed `--ip` on a
+      user-defined network, client sidecar with `--docker-api`, 1 request to
+      `old-db`, remove it, start `new-db` at the same IP, 3 requests): the
+      report listed both names with the full 8.0 KB. Now `containers`
+      stores each container's start time (`State.StartedAt`, new
+      `started_at` column; a sidecar with `--docker-api` stores its
+      target's), and `container_matrix()`/`container_peers()` give each
+      flow to the one name that held the address at the flow's time - the
+      latest start at or before it (Docker doesn't give one address to two
+      running containers). Without a start time the row's `first_seen` is
+      used. Two names of one container (sidecar label + real name) count
+      once, under the name with its own capture, when their start times are
+      equal - i.e. when the label's sidecar has `--docker-api`; without it
+      a peer's traffic can still be split between the two names around the
+      sidecar's start. Live test after: `old-db` 2.0 KB, `new-db` 6.0 KB.
+      The first version used a correlated subquery that SQLite 3.54
+      (macOS) accepts but 3.46 (the Docker image) rejects ("no such column:
+      f.ts"), so it's now a join + `ROW_NUMBER()`, and the unit tests were
+      also run inside the image. Tests: 5 new, all failed before.
+      Integration test passes.
 - [x] **Fixed 2026-11-08: external IPs were only named from TLS SNI.**
       enrich.py now also stores DNS answer addresses (`dns.a`/`dns.aaaa`,
       new `flows.dns_answers` column, JSON list) and the HTTP `Host` header
