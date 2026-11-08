@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 163 unit tests pass.
+attach/detach/status/analyze/report. All 168 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -145,11 +145,37 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       `sidecar` needs nothing new for these (it captures the shared eth0).
       Tests: 10 new/rewritten in `tests/test_discovery.py` and
       `tests/test_capture.py`.
-- [ ] Swarm/overlay networks: traffic between containers on different hosts
-      travels over a VXLAN tunnel. Capturing on the local veth still sees it,
-      but cross-host correlation (matching flows between two hosts' nettap
-      instances) isn't implemented - each host is currently an independent
-      island.
+- [x] **Done 2026-11-08: Swarm overlay containers in `watch` (single
+      host).** Live check first (Docker Desktop for Mac, temporary
+      single-node `docker swarm init`, attachable overlay network, nginx +
+      a wget client): the container's eth0 (10.0.1.x) is a veth whose peer
+      is in the overlay's own namespace (`1-<id>` under
+      /var/run/docker/netns), not the host's - so there's no host interface
+      to capture on (since the netlink fix above, `watch` skipped it; before
+      it, it captured the host's eth0). A second veth, eth1 (172.20.0.x),
+      peers with a host veth on `docker_gwbridge` and holds the default
+      route, so internet traffic leaves there. The Docker API lists only the
+      overlay address. Now a veth whose host-side peer isn't found is
+      captured inside the netns with `tcpdump -p -i any not ifindex 1`
+      (every interface but lo, which is always ifindex 1; the `ifindex`
+      filter needs libpcap 1.10+, the image has 1.10.5,
+      [pcap-filter(7)](https://www.tcpdump.org/manpages/pcap-filter.7.html)),
+      and for every in-netns capture the addresses read inside the netns
+      are added to `ip_addresses` (eth1's gwbridge address). Live test
+      after: client and server both attached; the client's flows had the
+      overlay HTTP to the server, its internet traffic to example.com via
+      eth1, and DNS; the report counts the internet traffic in
+      sent/received and no longer lists its own 172.20.0.x as a peer
+      (before: 30 KB "local address it reached"). Tests: 6 new.
+- [ ] Swarm/overlay cross-host correlation: traffic between containers on
+      different hosts travels over a VXLAN tunnel. Each host's capture sees
+      its own side, but matching flows between two hosts' nettap instances
+      isn't implemented - each host is an independent island (see
+      Multi-host in P3). Needs a second Docker host to test.
+- [ ] Containers on more than one bridge network: `watch` only captures
+      the host-side veth of eth0, so traffic on eth1+ is missed. The
+      in-netns `-i any` capture used for overlay containers would cover it
+      (noticed 2026-11-08, not tested).
 - [x] **Partly fixed 2026-11-08: `container_matrix()` missed traffic
       through a published host port** (it only matched dst_ip against
       container addresses). Live test first (Docker Desktop for Mac,

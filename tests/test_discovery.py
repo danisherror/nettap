@@ -62,10 +62,19 @@ def test_resolve_capture_veth_maps_peer_to_host_interface(tmp_path, monkeypatch)
 
 def test_resolve_capture_rejects_peer_that_does_not_point_back(tmp_path, monkeypatch):
     # a veth whose peer lives in another netns (a Swarm overlay network's):
-    # the host interface with that ifindex is unrelated
+    # the host interface with that ifindex is unrelated - capture inside the
+    # netns on every interface instead
     _host_net(tmp_path, monkeypatch, {"vethother": (247, 99)})
     with patch("nettap.discovery.run", return_value=_ip_link_json("veth")):
-        assert discovery.resolve_capture("sb") == (None, False, "veth")
+        assert discovery.resolve_capture("sb") == ("any", True, "veth")
+
+
+def test_resolve_capture_overlay_peer_missing_from_host(tmp_path, monkeypatch):
+    # seen live 2026-11-08: an overlay container's eth0 peers with ifindex
+    # 286 in the overlay's namespace; the host has no such interface
+    _host_net(tmp_path, monkeypatch, HOST)
+    with patch("nettap.discovery.run", return_value=_ip_link_json("veth", 285, 286)):
+        assert discovery.resolve_capture("sb") == ("any", True, "veth")
 
 
 @pytest.mark.parametrize("kind,link_index", [("macvlan", 4), ("ipvlan", 248)])
@@ -132,8 +141,47 @@ def test_inspect_container_macvlan_captures_inside_netns(monkeypatch):
     client = MagicMock()
     client.containers.get.return_value = _fake_container()
     monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("eth0", True, "macvlan"))
+    monkeypatch.setattr(discovery, "interface_ips", lambda *a, **kw: {"eth0": "172.17.0.2"})
     info = discovery.inspect_container(client, "abc123")
     assert (info.veth, info.capture_in_netns, info.link_kind) == ("eth0", True, "macvlan")
+    assert info.ip_addresses == {"bridge": "172.17.0.2"}  # already known, not repeated
+
+
+# `nsenter ... ip -j addr show` in a Swarm overlay container (trimmed, seen
+# live 2026-11-08): eth0 on the overlay, eth1 on docker_gwbridge
+OVERLAY_ADDRS = json.dumps([
+    {"ifname": "lo", "addr_info": [{"family": "inet", "local": "127.0.0.1", "scope": "host"}]},
+    {"ifname": "eth0", "addr_info": [
+        {"family": "inet", "local": "10.0.1.7", "scope": "global"},
+        {"family": "inet6", "local": "fe80::1", "scope": "link"}]},
+    {"ifname": "eth1", "addr_info": [{"family": "inet", "local": "172.20.0.4", "scope": "global"}]},
+])
+
+
+def test_interface_ips_all_interfaces_in_another_netns():
+    with patch("nettap.discovery.run", return_value=OVERLAY_ADDRS) as mock_run:
+        assert discovery.interface_ips(None, "/var/run/docker/netns/ov", skip_link_local=True) == {
+            "eth0": "10.0.1.7", "eth1": "172.20.0.4"}
+    assert mock_run.call_args[0][0] == [
+        "nsenter", "--net=/var/run/docker/netns/ov", "ip", "-j", "addr", "show"]
+
+
+def test_inspect_container_overlay_records_gwbridge_address(monkeypatch):
+    client = MagicMock()
+    client.containers.get.return_value = _fake_container(
+        networks={"ov-net": {"IPAddress": "10.0.1.7"}})
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("any", True, "veth"))
+    with patch("nettap.discovery.run", return_value=OVERLAY_ADDRS):
+        info = discovery.inspect_container(client, "abc123")
+    assert info.ip_addresses == {"ov-net": "10.0.1.7", "eth1": "172.20.0.4"}
+
+
+def test_inspect_container_host_veth_does_not_read_netns_addresses(monkeypatch):
+    client = MagicMock()
+    client.containers.get.return_value = _fake_container()
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("veth1", False, "veth"))
+    monkeypatch.setattr(discovery, "interface_ips", lambda *a, **kw: 1 / 0)  # must not be called
+    assert discovery.inspect_container(client, "abc123").ip_addresses == {"bridge": "172.17.0.2"}
 
 
 def test_published_ports_reads_docker_inspect_bindings():

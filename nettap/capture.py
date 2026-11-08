@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .discovery import ContainerNetInfo
+from .discovery import ANY_IFACE, NOT_LO, ContainerNetInfo
 
 logger = logging.getLogger("nettap.capture")
 
@@ -305,6 +305,12 @@ class CaptureManager:
         else:
             prefix, where = [], info.veth
         cmd = prefix + self._tcpdump_cmd(info.veth, pattern)
+        if info.capture_in_netns and info.veth == ANY_IFACE:
+            # -p: the "any" device has no promiscuous mode (tcpdump warns),
+            # and the container's own traffic doesn't need it
+            cmd[cmd.index("tcpdump") + 1:cmd.index("tcpdump") + 1] = ["-p"]
+            cmd += NOT_LO  # lo has the app's own localhost traffic; DNS has its own capture
+            where = f"every interface but lo inside its netns ({info.link_kind} peer not on the host)"
         logger.info("attaching to %s on %s -> %s", info.name, where, pattern)
         proc = self._spawn(info.name, cmd)
         session = CaptureSession(info=info, process=proc, pcap_pattern=pattern,

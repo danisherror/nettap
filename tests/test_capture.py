@@ -220,6 +220,16 @@ def test_watch_captures_macvlan_container_inside_its_netns(mock_popen, mgr):
 
 
 @patch("nettap.capture.subprocess.Popen")
+def test_watch_captures_overlay_container_on_every_interface_but_lo(mock_popen, mgr):
+    mock_popen.return_value = _FakeProc()
+    mgr.attach(_info(veth="any", in_netns=True, kind="veth"))
+    main, dns = _cmds(mock_popen)
+    assert main[:6] == ["nsenter", "--net=sb1", "tcpdump", "-p", "-i", "any"]
+    assert main[-3:] == ["not", "ifindex", "1"]
+    assert dns[-2:] == ["host", "127.0.0.11"]
+
+
+@patch("nettap.capture.subprocess.Popen")
 def test_watch_skips_in_netns_capture_without_sandbox_key(mock_popen, mgr):
     assert mgr.attach(_info(veth="eth0", in_netns=True, kind="ipvlan", sandbox_key=None)) is None
     mock_popen.assert_not_called()

@@ -31,6 +31,11 @@ interface (e.g. the host's eth0), which carries the whole host's traffic.
 Those are captured on their own eth0 from inside their namespace instead
 (nsenter + tcpdump), like the `lo` DNS capture.
 
+Swarm overlay containers have a veth whose peer is in the overlay network's
+own namespace, not the host's, plus a second interface (eth1, on
+docker_gwbridge) that carries their internet traffic. Those are captured
+inside their namespace on every interface but lo (ANY_IFACE + NOT_LO).
+
 This intentionally avoids requiring --privileged + --pid=host; it only needs
 CAP_SYS_ADMIN (to enter another netns) and read access to
 /var/run/docker/netns. See TODO.md for the known gaps (host networking,
@@ -52,6 +57,11 @@ NET_CLASS_DIR = "/sys/class/net"
 # container's netns (https://docs.docker.com/engine/network/drivers/macvlan/,
 # https://docs.docker.com/engine/network/drivers/ipvlan/)
 NETNS_CAPTURE_KINDS = ("macvlan", "ipvlan")
+# tcpdump's pseudo-interface for all interfaces, and a filter that leaves out
+# lo (always ifindex 1 on Linux; the "ifindex" primitive needs libpcap 1.10+
+# and -i any, see https://www.tcpdump.org/manpages/pcap-filter.7.html)
+ANY_IFACE = "any"
+NOT_LO = ["not", "ifindex", "1"]
 
 
 @dataclass
@@ -110,33 +120,43 @@ def interface_exists(iface: str, sys_net: str = "/sys/class/net") -> bool:
     return os.path.exists(os.path.join(sys_net, iface))
 
 
-def interface_ips(iface: str = "eth0") -> dict[str, str]:
+def interface_ips(iface: str | None = "eth0", sandbox_key: str | None = None,
+                  skip_link_local: bool = False) -> dict[str, str]:
     """Addresses assigned to `iface` in *this* process's network namespace,
     shaped like ContainerNetInfo.ip_addresses. Used by `sidecar`, which shares
     the target container's netns, so these are the target's own addresses -
     no docker.sock needed. The first IPv4 address is keyed by the bare
     interface name; any others get "<iface>/<family>#<n>" keys. Returns {} if
-    `ip` fails (e.g. no such interface)."""
+    `ip` fails (e.g. no such interface).
+
+    iface=None reads every interface but lo; sandbox_key reads another
+    container's netns through nsenter (`watch`)."""
     import json
     import logging
 
+    cmd = ["ip", "-j", "addr", "show"] + (["dev", iface] if iface else [])
+    if sandbox_key:
+        cmd = ["nsenter", f"--net={sandbox_key}"] + cmd
     try:
-        data = json.loads(run(["ip", "-j", "addr", "show", "dev", iface]) or "[]")
+        data = json.loads(run(cmd) or "[]")
     except Exception as exc:  # noqa: BLE001 - best effort; report falls back to heuristics
-        logging.getLogger(__name__).warning("could not read addresses of %s: %s", iface, exc)
+        logging.getLogger(__name__).warning("could not read addresses of %s: %s", iface or "interfaces", exc)
         return {}
     out: dict[str, str] = {}
-    counts: dict[str, int] = {}
+    counts: dict[tuple[str, str], int] = {}
     for link in data:
+        name = link.get("ifname") or iface or "?"
+        if iface is None and name == "lo":
+            continue
         for addr in link.get("addr_info", []):
             ip, family = addr.get("local"), addr.get("family", "")
-            if not ip:
+            if not ip or (skip_link_local and addr.get("scope") == "link"):
                 continue
-            if family == "inet" and iface not in out:
-                out[iface] = ip
+            if family == "inet" and name not in out:
+                out[name] = ip
             else:
-                counts[family] = counts.get(family, 0) + 1
-                out[f"{iface}/{family}#{counts[family]}"] = ip
+                counts[(name, family)] = counts.get((name, family), 0) + 1
+                out[f"{name}/{family}#{counts[(name, family)]}"] = ip
     return out
 
 
@@ -207,7 +227,8 @@ def resolve_capture(sandbox_key: str, iface: str = "eth0") -> tuple[str | None, 
     For a veth: the host-side peer, provided its iflink points back at the
     container's interface. A peer in another namespace (a Swarm overlay
     network's) would otherwise match an unrelated host interface that
-    happens to share its ifindex.
+    happens to share its ifindex; such a container is captured inside its
+    netns on ANY_IFACE, which also covers its docker_gwbridge interface.
     For macvlan/ipvlan: the container's own interface, in_netns=True.
     Otherwise (None, False, kind)."""
     link = _link_info(sandbox_key, iface)
@@ -220,6 +241,7 @@ def resolve_capture(sandbox_key: str, iface: str = "eth0") -> tuple[str | None, 
         name = _ifindex_to_name(link["link_index"])
         if name and _read_int(f"{NET_CLASS_DIR}/{name}/iflink") == link["ifindex"]:
             return name, False, kind
+        return ANY_IFACE, True, kind
     return None, False, kind
 
 
@@ -289,6 +311,16 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
     veth, in_netns, kind = None, False, None
     if resolve and sandbox_key and not host_mode:
         veth, in_netns, kind = resolve_capture(sandbox_key)
+    if in_netns:
+        # Addresses the Docker API doesn't list, e.g. a Swarm overlay
+        # container's docker_gwbridge address on eth1, which its internet
+        # traffic comes from (seen live 2026-11-08) - without it the report
+        # leaves that traffic out of sent/received and lists the container's
+        # own address as a peer.
+        known = set(ip_addresses.values())
+        for key, ip in interface_ips(None, sandbox_key, skip_link_local=True).items():
+            if ip not in known and key not in ip_addresses:
+                ip_addresses[key] = ip
 
     return ContainerNetInfo(
         container_id=c.id,

@@ -23,6 +23,10 @@ there doesn't work: sysfs still shows the host's interfaces under
 macvlan and ipvlan containers have no veth: their `eth0` hangs off a parent
 interface that carries the whole host's traffic. `watch` captures those on
 their own `eth0` from inside their namespace instead (`nsenter` + tcpdump).
+Swarm overlay containers are similar: their veth's peer is in the overlay's
+own namespace, and their internet traffic leaves through a second interface
+on `docker_gwbridge`, so `watch` captures them inside their namespace on
+every interface but `lo`.
 Details and caveats are in `nettap/discovery.py`'s docstring.
 
 ## Architecture
@@ -308,10 +312,12 @@ nettap/
 
 - `--network host` containers are skipped (no dedicated veth to capture on).
 - In `watch`, a container whose `eth0` is neither a veth nor macvlan/ipvlan
-  is skipped with a warning.
+  is skipped with a warning. Containers on more than one bridge network
+  are only captured on `eth0`.
 - TLS/SSH traffic gives metadata (IPs, ports, byte counts, SNI) not
   plaintext payloads.
-- Single Docker host only; Swarm/overlay cross-host correlation isn't done.
+- Single Docker host only: overlay containers are captured, but flows aren't
+  matched across two hosts' nettap instances.
 - Pcaps are kept forever unless `watch`/`sidecar` is given
   `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
 - External IPs are named from TLS SNI, HTTP Host headers and DNS answers.
