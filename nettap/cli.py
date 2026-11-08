@@ -313,10 +313,14 @@ def analyze_protocols(ctx, container, fmt):
                    "published ports, from the Docker API (needs /var/run/docker.sock "
                    "mounted), so the report can name peers that don't have a sidecar "
                    "of their own.")
+@click.option("--allow-host-network", is_flag=True,
+              help="Capture even if the target uses --network host. Everything the "
+                   "Docker host sends or receives - other containers included - is then "
+                   "labelled as the target.")
 @_retention_options
 @click.pass_context
 def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
-            pcap_max_age_hours, pcap_max_size_mb):
+            allow_host_network, pcap_max_age_hours, pcap_max_size_mb):
     """Capture mode for platforms where the veth/host-networking trick behind
     'watch' doesn't work - notably Docker Desktop for Mac/Windows, where
     `network_mode: host` is unreliable (see TODO.md). Start THIS container
@@ -327,12 +331,29 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
     /var/run/docker.sock or /var/run/docker/netns mounts needed (docker.sock
     only for --docker-api). One sidecar watches one target container; run
     one per container of interest."""
-    from .discovery import ContainerNetInfo, interface_exists, interface_ips, split_by_netns
+    from .discovery import (ContainerNetInfo, bridge_interfaces, interface_exists,
+                            interface_ips, split_by_netns)
 
     if not interface_exists(iface):
         raise click.ClickException(
             f"no interface {iface!r} here - start this container with "
             f"--network container:<target> and make sure the target is running")
+
+    # A --network host target shares the host's netns, and so does this
+    # sidecar: tcpdump would see every container's traffic (NATed through
+    # the host) plus the host's own, all labelled as the target - seen live
+    # 2026-11-08 on Docker Desktop for Mac.
+    bridges = bridge_interfaces()
+    if bridges and not allow_host_network:
+        raise click.ClickException(
+            f"the target seems to use --network host: this network namespace has "
+            f"Docker's bridge interfaces ({', '.join(bridges)}), so it's the Docker "
+            f"host's. A capture here would label every container's traffic, and the "
+            f"host's own, as {target_label!r}. Pass --allow-host-network to capture "
+            f"anyway (e.g. for a Docker-in-Docker target, which has its own bridges)")
+    if bridges:
+        logger.warning("--allow-host-network: capturing in a namespace with bridges %s - "
+                       "all traffic here is labelled as %r", ", ".join(bridges), target_label)
 
     # We share the target's netns, so iface's addresses are the target's own.
     # Without them every reply packet into the target (dst = its own IP) gets

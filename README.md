@@ -202,6 +202,16 @@ docker run -d --name nettap-<target> --network container:<target> \
   nettap sidecar --target <target>
 ```
 
+**A `sidecar` refuses to start: "the target seems to use --network host".**
+A `--network host` container has no network namespace of its own - it uses
+the Docker host's - so a sidecar joined to it would capture every
+container's traffic (it leaves through the host) and the host's own, all
+labelled as the target. The sidecar spots this from Docker's bridge
+interfaces (`docker0`, `br-...`), which only exist in the host's namespace,
+and exits with code 1. nettap can't yet tell a host-network container's
+traffic apart from the rest (see TODO.md). `--allow-host-network` captures
+anyway, e.g. for a Docker-in-Docker target, which has bridges of its own.
+
 **Output seems frozen after the first report, even with new traffic.**
 As of this build this should self-heal (a background thread used to die
 silently on its first real write due to a cross-thread SQLite bug, and a

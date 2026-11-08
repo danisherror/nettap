@@ -52,6 +52,26 @@ class ContainerNetInfo:
     started_at: float | None = None
 
 
+def bridge_interfaces(sys_net: str = "/sys/class/net") -> list[str]:
+    """Linux bridges in this process's network namespace (docker0, br-...).
+    Docker creates them in the host's namespace - docker0 for the default
+    bridge network, br-<id> per user-defined one
+    (https://docs.docker.com/engine/network/drivers/bridge/) - and a normal
+    container's namespace has none. So if a sidecar sees any, its target
+    runs with --network host and shares the host's namespace
+    (https://docs.docker.com/engine/network/drivers/host/). Exception: a
+    container running its own Docker daemon (Docker-in-Docker). Seen live
+    2026-11-08 on Docker Desktop for Mac: docker0 and two br-* in the host
+    namespace, none in a bridge-network container's."""
+    import os
+
+    try:
+        names = os.listdir(sys_net)
+    except OSError:
+        return []
+    return sorted(n for n in names if os.path.isdir(os.path.join(sys_net, n, "bridge")))
+
+
 def interface_exists(iface: str, sys_net: str = "/sys/class/net") -> bool:
     """Whether `iface` exists in this process's network namespace. Assumes
     it does where /sys/class/net isn't available (not Linux)."""

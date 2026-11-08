@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 138 unit tests pass.
+attach/detach/status/analyze/report. All 142 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -61,9 +61,28 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
 ## P1 - correctness and safety
 
 - [ ] `--network host` containers currently produce a warning and are
-      skipped entirely (no dedicated veth exists to capture on). Needs either
+      skipped entirely in `watch` (no dedicated veth exists to capture on),
+      and `sidecar` refuses them (see below). Needs either
       eBPF/cgroup-based attribution or a documented "capture the host
       interface directly and attribute by port" fallback.
+- [x] **Fixed 2026-11-08: a sidecar on a `--network host` target captured
+      the whole Docker host and labelled it all as the target.** Live test
+      first (Docker Desktop for Mac, sidecar joined to an alpine
+      `--network host` container): it captured on the VM's `eth0`, and
+      another container's 3 requests to example.com (NATed to the VM's
+      192.168.65.3) plus ~110 packets of Docker Desktop's internal HTTP
+      (192.168.65.1 <-> .7) were all stored as the target's - 444 rows.
+      The host namespace held `docker0` and two `br-*` bridges; a
+      bridge-network container's held none. The sidecar now checks for
+      bridge interfaces (`discovery.bridge_interfaces()`, no docker.sock
+      needed) and exits 1 with an explanation; `--allow-host-network`
+      captures anyway with a warning (Docker-in-Docker targets have their
+      own bridges). Tests: 4 new, plus an autouse fixture so the sidecar
+      tests don't trip over a real `docker0` when run on a Linux host.
+      Live test after: refused the host-network target, started with the
+      flag (warning logged), and started normally on a bridge-network
+      target. Integration test not re-run (bridge targets only, unchanged
+      path; the bridge-target live check covers it).
 - [ ] macvlan/ipvlan network drivers: same problem as host networking - no
       standard veth-to-bridge topology. Needs investigation.
 - [ ] Swarm/overlay networks: traffic between containers on different hosts
