@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 104 unit tests pass.
+attach/detach/status/analyze/report. All 109 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -374,5 +374,12 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       stayed under 5s while running and `status` showed no flag; after
       `docker kill` of the sidecar, `status` from a fresh container showed
       `STALE: no heartbeat for 35s`.
-- [ ] CLI output is JSON-only for `analyze`; a `--format table` option would
-      make ad-hoc terminal use nicer.
+- [x] **Done 2026-11-08: `analyze` was JSON-only.** Every `analyze`
+      subcommand now takes `--format json|table` (JSON stays the default,
+      so scripts are unaffected). `utils.format_table()` takes the column
+      list from the rows (rows can differ - only local destinations have a
+      `hint`), shows byte columns human-readable, right-aligns numbers,
+      cuts cells at 60 characters, and escapes control characters like the
+      report does (`printable()`/`format_bytes()` moved from report.py to
+      utils.py for this). Unit-tested through the CLI only; output is
+      plain text with no Docker-specific behaviour to verify live.

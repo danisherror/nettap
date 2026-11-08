@@ -14,31 +14,10 @@ import html as html_escape
 import ipaddress
 import json
 import sqlite3
-import unicodedata
 from datetime import datetime, timezone
 
 from . import analyze
-
-
-def _printable(s: str) -> str:
-    """Show control and format characters (category C*: ESC, newlines, bidi
-    overrides, ...) as visible escapes. Hostnames come from captured traffic
-    (TLS SNI, HTTP Host, DNS) and tshark passes e.g. a raw ESC from an HTTP
-    Host header through, which printed as-is would drive the terminal."""
-    return "".join(
-        ch if not unicodedata.category(ch).startswith("C")
-        else f"\\x{ord(ch):02x}" if ord(ch) < 0x100 else f"\\u{ord(ch):04x}"
-        for ch in s
-    )
-
-
-def format_bytes(n: float | None) -> str:
-    n = float(n or 0)
-    for unit in ("B", "KB", "MB", "GB"):
-        if n < 1024:
-            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
-        n /= 1024
-    return f"{n:.1f} TB"
+from .utils import format_bytes, printable as _printable
 
 
 def _ip_counts(conn: sqlite3.Connection, container: str) -> list[tuple[str, int]]:

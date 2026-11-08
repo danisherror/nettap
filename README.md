@@ -78,7 +78,9 @@ attach/detach and the `analyze` subcommands.
 
 ### Plain-language reports (for non-technical readers)
 
-`analyze` prints raw JSON meant for scripting. For a summary a non-technical
+`analyze` prints raw JSON meant for scripting; add `--format table` to any
+`analyze` subcommand for an aligned table that's easier to scan in a
+terminal (byte counts human-readable, long values cut short). For a summary a non-technical
 person can read - "sent 12MB, mostly to example.com, no traffic to other
 containers" instead of rows of IPs and byte counts - use `report` instead:
 
@@ -240,7 +242,7 @@ nettap/
     controller.py  reconciliation loop (desired state -> attach/detach)
     enrich.py      pcap -> structured flow rows via tshark
     storage.py     SQLite schema + accessors
-    analyze.py     read-side queries (JSON)
+    analyze.py     read-side queries (JSON, or a table via --format table)
     report.py      read-side queries, rendered as plain language (text/HTML)
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)

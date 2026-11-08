@@ -34,7 +34,7 @@ from .capture import CaptureManager, capture_name, pcap_files, reap_orphans
 from .controller import Selector, run as run_controller
 from .enrich import parse_pcap
 from .report import build_report, render_html, render_text
-from .utils import parse_label_selector, setup_logging
+from .utils import format_table, parse_label_selector, setup_logging
 
 logger = logging.getLogger("nettap.cli")
 
@@ -230,55 +230,70 @@ def _warn_if_unknown_container(conn, container: str | None) -> None:
 
 @cli.group()
 def analyze():
-    """Query the flow store."""
+    """Query the flow store. Prints JSON (for scripts) unless given --format table."""
+
+
+def _format_option(f):
+    return click.option("--format", "fmt", type=click.Choice(["json", "table"]), default="json",
+                        show_default=True,
+                        help="'table' is easier to read in a terminal; 'json' has full values.")(f)
+
+
+def _emit(rows: list[dict], fmt: str) -> None:
+    click.echo(format_table(rows) if fmt == "table" else json.dumps(rows, indent=2))
 
 
 @analyze.command("top-talkers")
+@_format_option
 @click.option("--container")
 @click.option("--limit", default=10, show_default=True)
 @click.pass_context
-def analyze_top_talkers(ctx, container, limit):
+def analyze_top_talkers(ctx, container, limit, fmt):
     conn = storage.connect(ctx.obj["db_path"])
     _warn_if_unknown_container(conn, container)
-    click.echo(json.dumps(top_talkers(conn, container, limit), indent=2))
+    _emit(top_talkers(conn, container, limit), fmt)
 
 
 @analyze.command("matrix")
+@_format_option
 @click.pass_context
-def analyze_matrix(ctx):
+def analyze_matrix(ctx, fmt):
     conn = storage.connect(ctx.obj["db_path"])
-    click.echo(json.dumps(container_matrix(conn), indent=2))
+    _emit(container_matrix(conn), fmt)
 
 
 @analyze.command("dns")
+@_format_option
 @click.option("--container")
 @click.pass_context
-def analyze_dns(ctx, container):
+def analyze_dns(ctx, container, fmt):
     conn = storage.connect(ctx.obj["db_path"])
     _warn_if_unknown_container(conn, container)
-    click.echo(json.dumps(dns_queries(conn, container), indent=2))
+    _emit(dns_queries(conn, container), fmt)
 
 
 @analyze.command("external")
+@_format_option
 @click.option("--scope", type=click.Choice(["all", "internet", "local"]), default="all",
               show_default=True,
               help="'internet' = publicly routable addresses only; 'local' = private, "
                    "link-local, multicast etc. (e.g. Docker Desktop's DNS resolver).")
 @click.pass_context
-def analyze_external(ctx, scope):
+def analyze_external(ctx, scope, fmt):
     """Destinations that aren't a known container, each labelled with a scope."""
     conn = storage.connect(ctx.obj["db_path"])
     rows = external_destinations(conn, scope=None if scope == "all" else scope)
-    click.echo(json.dumps(rows, indent=2))
+    _emit(rows, fmt)
 
 
 @analyze.command("protocols")
+@_format_option
 @click.option("--container")
 @click.pass_context
-def analyze_protocols(ctx, container):
+def analyze_protocols(ctx, container, fmt):
     conn = storage.connect(ctx.obj["db_path"])
     _warn_if_unknown_container(conn, container)
-    click.echo(json.dumps(protocol_breakdown(conn, container), indent=2))
+    _emit(protocol_breakdown(conn, container), fmt)
 
 
 @cli.command()
