@@ -287,7 +287,9 @@ class CaptureManager:
             )
             return None
         if not info.veth:
-            logger.warning("could not resolve host veth for %s, skipping", info.name)
+            logger.warning(
+                "could not resolve a capture interface for %s (eth0 link kind: %s), skipping",
+                info.name, info.link_kind or "unknown")
             return None
         if info.container_id in self._sessions:
             return self._sessions[info.container_id]

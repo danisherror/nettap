@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock, patch
 import pytest
 
@@ -16,19 +17,69 @@ def test_ifindex_to_name(tmp_path, monkeypatch):
     assert discovery._ifindex_to_name(999) is None
 
 
+def _ip_link_json(kind, ifindex=11, link_index=247):
+    """`ip -j -d link show dev eth0` output (trimmed), as seen live 2026-11-08."""
+    return json.dumps([{"ifindex": ifindex, "ifname": "eth0", "link_index": link_index,
+                        "link_netnsid": 0, "linkinfo": {"info_kind": kind}}])
+
+
+def _host_net(tmp_path, monkeypatch, ifaces):
+    net_dir = tmp_path / "net"
+    for name, (ifindex, iflink) in ifaces.items():
+        (net_dir / name).mkdir(parents=True)
+        (net_dir / name / "ifindex").write_text(f"{ifindex}\n")
+        (net_dir / name / "iflink").write_text(f"{iflink}\n")
+    monkeypatch.setattr(discovery, "NET_CLASS_DIR", str(net_dir))
+
+
+HOST = {"eth0": (4, 4), "vethb56415c": (247, 11)}
+
+
 @patch("nettap.discovery.run")
-def test_peer_ifindex(mock_run):
-    mock_run.return_value = "42\n"
-    assert discovery._peer_ifindex("/var/run/docker/netns/abc") == 42
-    mock_run.assert_called_once()
+def test_link_info_asks_netlink_inside_the_netns(mock_run):
+    mock_run.return_value = _ip_link_json("veth")
+    assert discovery._link_info("/var/run/docker/netns/abc") == {
+        "ifindex": 11, "link_index": 247, "kind": "veth"}
     args = mock_run.call_args[0][0]
-    assert args[0] == "nsenter"
-    assert "--net=/var/run/docker/netns/abc" in args
+    assert args[:2] == ["nsenter", "--net=/var/run/docker/netns/abc"]
+    # not sysfs: under nsenter --net, /sys/class/net still shows the host's
+    # interfaces (seen live 2026-11-08)
+    assert args[2:] == ["ip", "-j", "-d", "link", "show", "dev", "eth0"]
 
 
-@patch("nettap.discovery.run", side_effect=RuntimeError("boom"))
-def test_peer_ifindex_failure_returns_none(mock_run):
-    assert discovery._peer_ifindex("/does/not/exist") is None
+@pytest.mark.parametrize("effect", [RuntimeError("boom"), OSError("no ip"), "not json", "[]"])
+def test_link_info_failure_returns_none(effect):
+    kw = {"side_effect": effect} if isinstance(effect, Exception) else {"return_value": effect}
+    with patch("nettap.discovery.run", **kw):
+        assert discovery._link_info("/does/not/exist") is None
+
+
+def test_resolve_capture_veth_maps_peer_to_host_interface(tmp_path, monkeypatch):
+    _host_net(tmp_path, monkeypatch, HOST)
+    with patch("nettap.discovery.run", return_value=_ip_link_json("veth")):
+        assert discovery.resolve_capture("sb") == ("vethb56415c", "veth")
+
+
+def test_resolve_capture_rejects_peer_that_does_not_point_back(tmp_path, monkeypatch):
+    # a veth whose peer lives in another netns (a Swarm overlay network's):
+    # the host interface with that ifindex is unrelated
+    _host_net(tmp_path, monkeypatch, {"vethother": (247, 99)})
+    with patch("nettap.discovery.run", return_value=_ip_link_json("veth")):
+        assert discovery.resolve_capture("sb") == (None, "veth")
+
+
+def test_resolve_capture_macvlan_is_not_captured_on_its_parent(tmp_path, monkeypatch):
+    # its link is the parent (the host's eth0) - capturing there would record
+    # the whole host's traffic as this container's
+    _host_net(tmp_path, monkeypatch, HOST)
+    with patch("nettap.discovery.run", return_value=_ip_link_json("macvlan", 246, 4)):
+        assert discovery.resolve_capture("sb") == (None, "macvlan")
+
+
+def test_resolve_capture_unknown_kind(tmp_path, monkeypatch):
+    _host_net(tmp_path, monkeypatch, HOST)
+    with patch("nettap.discovery.run", return_value=_ip_link_json("vxlan", 11, 4)):
+        assert discovery.resolve_capture("sb") == (None, "vxlan")
 
 
 def _fake_container(id_="abc123", name="web", image="nginx:latest",
@@ -53,7 +104,7 @@ def _fake_container(id_="abc123", name="web", image="nginx:latest",
 def test_inspect_container_resolves_veth(monkeypatch):
     client = MagicMock()
     client.containers.get.return_value = _fake_container()
-    monkeypatch.setattr(discovery, "resolve_veth", lambda sandbox_key: "veth999")
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: ("veth999", "veth"))
 
     info = discovery.inspect_container(client, "abc123")
     assert info.name == "web"
@@ -67,7 +118,7 @@ def test_inspect_container_host_network_skips_veth(monkeypatch):
     client = MagicMock()
     client.containers.get.return_value = _fake_container(host_mode=True)
     called = []
-    monkeypatch.setattr(discovery, "resolve_veth", lambda sandbox_key: called.append(1) or "shouldnt-happen")
+    monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: called.append(1) or ("shouldnt-happen", "veth"))
 
     info = discovery.inspect_container(client, "abc123")
     assert info.veth is None
@@ -117,3 +168,4 @@ def test_inspect_container_reads_start_time():
     client = MagicMock()
     client.containers.get.return_value = c
     assert discovery.inspect_container(client, c.id, resolve=False).started_at == 1794123632.5
+

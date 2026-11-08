@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 151 unit tests pass.
+attach/detach/status/analyze/report. All 158 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -36,9 +36,22 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       example.com from inside it. pcap was written, `enrich` inserted 118
       rows, every `analyze` subcommand and both `report` formats worked.
       Only tested on Mac, not Windows.
-- [ ] Confirm the SandboxKey-based `nsenter` trick works on the target Docker
-      version/storage driver (logic was reasoned through and unit-tested with
-      mocks, not exercised against a live netns).
+- [x] **Fixed 2026-11-08: the SandboxKey-based `nsenter` trick resolved
+      every container to the host's `eth0`.** Live test first (Docker
+      Desktop for Mac, nettap image with the compose file's caps/mounts):
+      `resolve_veth()` returned `eth0` for a bridge, a macvlan and an ipvlan
+      container. Cause: `nsenter --net` + `cat /sys/class/net/eth0/iflink`
+      reads the *host's* sysfs (sysfs shows the namespace that mounted it -
+      same MAC as the host's eth0, host interface list), so it got the host
+      eth0's own ifindex. `ip netns exec` remounts /sys for this reason
+      (netns_switch() in
+      [iproute2 lib/namespace.c](https://github.com/iproute2/iproute2/blob/main/lib/namespace.c)).
+      `watch` would have captured the whole host's traffic per container.
+      Now `discovery.resolve_capture()` asks netlink inside the netns
+      (`nsenter ... ip -j -d link show dev eth0`: ifindex, link kind,
+      link_index) and only accepts a host interface whose iflink points back
+      at the container's eth0. Live test after: the bridge container
+      resolved to its real veth (`vethb56415c`, on its `br-*`).
 - [x] **Done 2026-11-08 for `sidecar` mode:** `scripts/integration_test.sh`
       starts a throwaway nginx server + alpine client on their own network,
       a sidecar on each sharing one data dir, sends HTTP client->server and

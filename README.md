@@ -15,9 +15,11 @@ to other containers on the same bridge, and traffic out to the internet
 `nettap` resolves that host-side interface for a container without needing
 anything installed inside the container image: it enters the container's
 network namespace (via the netns file Docker already exposes under
-`/var/run/docker/netns`) and reads the kernel's own record of which host
-interface is its veth peer. Details and caveats are in
-`nettap/discovery.py`'s docstring.
+`/var/run/docker/netns`) and asks the kernel over netlink (`ip -j -d link`)
+which host interface is its veth peer. (Reading `/sys/class/net/eth0/iflink`
+there doesn't work: sysfs still shows the host's interfaces under
+`nsenter --net`, which is why `ip netns exec` remounts it.)
+Details and caveats are in `nettap/discovery.py`'s docstring.
 
 ## Architecture
 
@@ -294,6 +296,8 @@ nettap/
 ## Known limitations
 
 - `--network host` containers are skipped (no dedicated veth to capture on).
+- In `watch`, a container whose `eth0` isn't a veth (macvlan, ipvlan) is
+  skipped with a warning.
 - TLS/SSH traffic gives metadata (IPs, ports, byte counts, SNI) not
   plaintext payloads.
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.

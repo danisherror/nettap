@@ -31,7 +31,7 @@ CONTAINERS = (
 
 
 def test_other_containers_skips_target_and_ipless(monkeypatch):
-    monkeypatch.setattr(discovery, "resolve_veth", lambda key: 1 / 0)  # must not be called
+    monkeypatch.setattr(discovery, "resolve_capture", lambda key: 1 / 0)  # must not be called
     found = discovery.other_containers(_client(*CONTAINERS), [TARGET_IP, "fd00::2"])
     assert [(c.name, c.ip_addresses, c.veth) for c in found] == [("db", {"app": "172.18.0.3"}, None)]
 
