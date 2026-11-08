@@ -72,10 +72,14 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
     # Drop the container's own IP as a backstop: if its addresses were never
     # recorded (e.g. data from an older sidecar), replies into it would
     # otherwise show up as an "internet destination".
-    external = [
+    non_container = [
         r for r in analyze.external_destinations(conn, limit=200)
         if container in (r["containers"] or "").split(",") and r["dst_ip"] != self_ip
     ]
+    # private/link-local/multicast addresses (e.g. Docker Desktop's DNS
+    # resolver) aren't the internet - list them separately
+    external = [r for r in non_container if r["scope"] == "internet"]
+    local = [r for r in non_container if r["scope"] == "local"]
     # attach a human-readable hostname where we saw one via TLS SNI for that IP
     sni_by_ip = {
         r["dst_ip"]: r["tls_sni"]
@@ -101,6 +105,7 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
         "received_packets": received["n"] or 0,
         "container_peers": sorted(peers, key=lambda r: -(r["bytes"] or 0)),
         "external_destinations": sorted(external, key=lambda r: -(r["bytes"] or 0)),
+        "local_destinations": sorted(local, key=lambda r: -(r["bytes"] or 0)),
         "dns_queries": analyze.dns_queries(conn, container, limit=50),
         "protocols": analyze.protocol_breakdown(conn, container),
     }
@@ -158,6 +163,15 @@ def render_text(report: dict) -> str:
     else:
         lines.append("  (none - no traffic left the Docker network)")
     lines.append("")
+
+    local = report.get("local_destinations") or []
+    if local:
+        lines.append("Local / private network addresses it reached (not the internet):")
+        for r in local:
+            hint = f" - {r['hint']}" if r.get("hint") else ""
+            lines.append(f"  - {r['dst_ip']}: {format_bytes(r['bytes'])} "
+                         f"across {r['packets']} packets{hint}")
+        lines.append("")
 
     if report["dns_queries"]:
         lines.append("Domain names it looked up (DNS):")
@@ -221,6 +235,21 @@ def render_html(report: dict) -> str:
         ext_html = "".join(_ext_row(r) for r in report["external_destinations"]) or \
             "<p class='empty'>No traffic left the Docker network to the internet.</p>"
 
+        local = report.get("local_destinations") or []
+        local_max = max([r["bytes"] or 0 for r in local], default=0)
+        local_html = "".join(
+            f"<div class='row'><div class='row-label' title='{esc(r.get('hint') or '')}'>"
+            f"{esc(r['dst_ip'])}"
+            + (f" <span class='muted'>({esc(r['hint'])})</span>" if r.get("hint") else "")
+            + f"</div>{_bar(r['bytes'], local_max)}"
+            f"<div class='row-value'>{format_bytes(r['bytes'])}</div></div>"
+            for r in local
+        )
+        local_section = (
+            "<h2>Local / private network addresses it reached (not the internet)</h2>"
+            f"<div class='rows'>{local_html}</div>"
+        ) if local else ""
+
         dns_html = "".join(
             f"<li>{esc(r['dns_query'])} <span class='muted'>"
             f"({r['lookups']} lookup{'s' if r['lookups'] != 1 else ''})</span></li>"
@@ -247,6 +276,8 @@ def render_html(report: dict) -> str:
 
         <h2>Internet destinations it reached</h2>
         <div class="rows">{ext_html}</div>
+
+        {local_section}
 
         <h2>Domain names it looked up (DNS)</h2>
         <ul class="dns-list">{dns_html}</ul>

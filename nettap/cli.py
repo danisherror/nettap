@@ -220,10 +220,16 @@ def analyze_dns(ctx, container):
 
 
 @analyze.command("external")
+@click.option("--scope", type=click.Choice(["all", "internet", "local"]), default="all",
+              show_default=True,
+              help="'internet' = publicly routable addresses only; 'local' = private, "
+                   "link-local, multicast etc. (e.g. Docker Desktop's DNS resolver).")
 @click.pass_context
-def analyze_external(ctx):
+def analyze_external(ctx, scope):
+    """Destinations that aren't a known container, each labelled with a scope."""
     conn = storage.connect(ctx.obj["db_path"])
-    click.echo(json.dumps(external_destinations(conn), indent=2))
+    rows = external_destinations(conn, scope=None if scope == "all" else scope)
+    click.echo(json.dumps(rows, indent=2))
 
 
 @analyze.command("protocols")

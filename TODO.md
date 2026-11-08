@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 34 unit tests pass.
+attach/detach/status/analyze/report. All 49 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -187,9 +187,21 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       `analyze external` or the report, and the 25.8 KB now shows correctly
       as "received by this container". The target had no IPv6 address, so
       the IPv6 key path is only unit-tested.
-- [ ] Docker Desktop's internal DNS resolver (`192.168.65.7`) shows up as an
-      internet destination. Consider labelling private/RFC1918 and
-      Docker-internal addresses separately from real internet traffic.
+- [x] **Fixed 2026-11-08:** Docker Desktop's internal DNS resolver
+      (`192.168.65.7`) showed up as an internet destination.
+      `analyze.external_destinations()` now tags every row with
+      `scope: internet|local` (`ip_scope()`: publicly routable unicast =
+      internet; private/RFC1918, link-local, CGNAT, multicast, broadcast =
+      local), plus a `hint` for local rows (e.g. Docker Desktop's
+      `192.168.65.0/24` subnet, which runs its DNS server and proxy; the
+      subnet is configurable, so it's only a hint - source:
+      https://docs.docker.com/desktop/settings-and-maintenance/settings/).
+      `analyze external --scope internet|local|all` filters; the report
+      shows a separate "Local / private network addresses (not the
+      internet)" section. Tests: `tests/test_ip_scope.py`. **Live-verified
+      2026-11-08** on Docker Desktop for Mac: `192.168.65.7` came out as
+      `local` with the Docker Desktop hint, and the report's internet
+      section listed only example.com.
 - [ ] `analyze top-talkers` returns a row with `src_ip: null, dst_ip: null`
       (16 packets in the live test) - most likely ARP / other non-IP frames.
       Either filter them out or label them (e.g. "non-IP (ARP etc.)").

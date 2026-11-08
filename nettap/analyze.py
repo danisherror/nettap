@@ -3,7 +3,40 @@ matrix, DNS lookups, protocol mix, and "traffic that left the Docker network
 entirely" (i.e. docker-internet)."""
 from __future__ import annotations
 
+import ipaddress
 import sqlite3
+
+# Docker Desktop's default internal subnet, where it runs its own DNS server
+# and HTTP proxy. Users can change it, so this is only a hint.
+# Source: https://docs.docker.com/desktop/settings-and-maintenance/settings/
+DOCKER_DESKTOP_SUBNET = ipaddress.ip_network("192.168.65.0/24")
+
+
+def ip_scope(ip: str | None) -> str:
+    """'internet' for publicly routable unicast addresses, else 'local'
+    (private/RFC1918, link-local, CGNAT, loopback, multicast, broadcast, or
+    anything that doesn't parse as an IP). Multicast is checked separately
+    because Python counts e.g. ff02::1 as is_global."""
+    try:
+        addr = ipaddress.ip_address(ip or "")
+    except ValueError:
+        return "local"
+    return "internet" if addr.is_global and not addr.is_multicast else "local"
+
+
+def local_hint(ip: str | None) -> str | None:
+    """Short plain-language guess at what a local address is, or None."""
+    try:
+        addr = ipaddress.ip_address(ip or "")
+    except ValueError:
+        return None
+    if addr.version == 4 and addr in DOCKER_DESKTOP_SUBNET:
+        return "likely Docker Desktop's internal DNS server or proxy"
+    if addr.is_multicast:
+        return "multicast, used for local discovery such as mDNS or IPv6 neighbour discovery"
+    if addr.is_link_local:
+        return "link-local, only valid on this network segment"
+    return None
 
 
 def top_talkers(conn: sqlite3.Connection, container: str | None = None, limit: int = 10) -> list[dict]:
@@ -45,8 +78,14 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
-def external_destinations(conn: sqlite3.Connection, limit: int = 20) -> list[dict]:
-    """dst_ips that don't belong to any known container - i.e. docker-internet traffic."""
+def external_destinations(conn: sqlite3.Connection, limit: int = 20,
+                          scope: str | None = None) -> list[dict]:
+    """dst_ips that don't belong to any known container. Each row gets a
+    `scope`: 'internet' (docker-internet traffic) or 'local' (private,
+    link-local, multicast etc. - e.g. Docker Desktop's DNS resolver; see
+    ip_scope). Local rows also get a `hint` (may be None). Pass
+    scope='internet' or 'local' to keep only one kind; `limit` applies
+    before that filter."""
     cur = conn.execute(
         """
         SELECT f.dst_ip, SUM(f.length) AS bytes, COUNT(*) AS packets,
@@ -62,7 +101,15 @@ def external_destinations(conn: sqlite3.Connection, limit: int = 20) -> list[dic
         """,
         (limit,),
     )
-    return [dict(r) for r in cur.fetchall()]
+    rows = []
+    for r in cur.fetchall():
+        row = dict(r)
+        row["scope"] = ip_scope(row["dst_ip"])
+        if row["scope"] == "local":
+            row["hint"] = local_hint(row["dst_ip"])
+        if scope is None or row["scope"] == scope:
+            rows.append(row)
+    return rows
 
 
 def dns_queries(conn: sqlite3.Connection, container: str | None = None, limit: int = 50) -> list[dict]:
