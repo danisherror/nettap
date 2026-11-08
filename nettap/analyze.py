@@ -86,16 +86,43 @@ _CONTAINER_IPS = """
     )"""
 
 
+# True when {ip} is also an address of the flow's own container. One container
+# can have two names (a sidecar's --target label and the real name another
+# sidecar's --docker-api records), and the other name isn't a peer.
+_OWN_IP = """EXISTS (SELECT 1 FROM container_ips own
+                    WHERE own.name = f.container_name AND own.ip = {ip})"""
+
+
 def _published_port_owners(conn: sqlite3.Connection) -> dict[int, str]:
-    """{host port: container name} for ports published by exactly one
-    container (a port two names claim is ambiguous, so left out)."""
-    owners: dict[int, set] = {}
+    """{host port: container name} for ports published by one container.
+
+    One container can be stored under two names that share an address - a
+    sidecar's --target label, and its real name from another sidecar's
+    --docker-api - and both rows then list its ports. Those count as one
+    owner, named by the name its own capture uses (flows.container_name) if
+    any. A port claimed by names with no address in common is ambiguous and
+    left out."""
+    claims: dict[int, set] = {}
     for r in conn.execute(
             "SELECT DISTINCT c.name, json_extract(je.value, '$.host_port') AS port "
             "FROM containers c, json_each(c.published_ports) je "
             "WHERE c.name IS NOT NULL AND c.published_ports IS NOT NULL"):
-        owners.setdefault(r["port"], set()).add(r["name"])
-    return {port: names.pop() for port, names in owners.items() if len(names) == 1}
+        claims.setdefault(r["port"], set()).add(r["name"])
+    ips: dict[str, set] = {}
+    for r in conn.execute(f"WITH {_CONTAINER_IPS} SELECT name, ip FROM container_ips"):
+        ips.setdefault(r["name"], set()).add(r["ip"])
+    captured = None
+    owners = {}
+    for port, names in claims.items():
+        if len(names) > 1:
+            if not set.intersection(*(ips.get(n, set()) for n in names)):
+                continue
+            if captured is None:
+                captured = {r[0] for r in conn.execute(
+                    "SELECT DISTINCT container_name FROM flows")}
+            names = {n for n in names if n in captured} or names
+        owners[port] = min(names)
+    return owners
 
 
 def _published_port_flows(conn: sqlite3.Connection, container: str | None = None):
@@ -153,6 +180,8 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
         FROM flows f
         JOIN container_ips ci ON ci.ip = f.dst_ip
         WHERE f.container_name != ci.name
+          -- the capture's own address under another name (see _OWN_IP)
+          AND NOT {_OWN_IP.format(ip="ci.ip")}
         GROUP BY src_container, dst_container
         """
     )
@@ -187,6 +216,7 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
             FROM flows f
             JOIN container_ips ci ON ci.ip IN (f.src_ip, f.dst_ip)
             WHERE f.container_name = ? AND ci.name != ?
+              AND NOT {_OWN_IP.format(ip="ci.ip")}
         )
         SELECT name AS container,
                SUM(length) AS bytes, COUNT(*) AS packets,

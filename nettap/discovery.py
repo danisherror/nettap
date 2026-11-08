@@ -174,17 +174,29 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
     )
 
 
-def other_containers(docker_client, own_ips) -> list[ContainerNetInfo]:
-    """Every running container with an IP of its own, except the one whose
-    network namespace we share (any IP in `own_ips`) - for a sidecar, which
-    already records its target under the --target name and would otherwise
-    see the target as its own peer. Containers without an IP (e.g. other
-    sidecars, which use the netns of their target) are skipped too."""
+def split_by_netns(docker_client, own_ips) -> tuple[ContainerNetInfo | None, list[ContainerNetInfo]]:
+    """Running containers as (the one whose network namespace we share, the
+    others). For a sidecar: the first is its target, found by any IP in
+    `own_ips` (the shared interface's addresses), the second its possible
+    peers. Containers without an IP (e.g. other sidecars, which use the
+    netns of their target) are left out of both."""
     own = set(own_ips)
-    found = []
+    target, others = None, []
     for c in docker_client.containers.list():
         info = inspect_container(docker_client, c.id, resolve=False)
         ips = {ip for ip in info.ip_addresses.values() if ip}
-        if ips and not ips & own:
-            found.append(info)
-    return found
+        if not ips:
+            continue
+        if ips & own:
+            target = target or info
+        else:
+            others.append(info)
+    return target, others
+
+
+def other_containers(docker_client, own_ips) -> list[ContainerNetInfo]:
+    """Every running container with an IP of its own, except the one whose
+    network namespace we share - for a sidecar, which already records its
+    target under the --target name and would otherwise see the target as its
+    own peer. See split_by_netns."""
+    return split_by_netns(docker_client, own_ips)[1]

@@ -309,9 +309,10 @@ def analyze_protocols(ctx, container, fmt):
 @click.option("--rotate-seconds", default=60, show_default=True)
 @click.option("--auto-enrich/--no-auto-enrich", default=True)
 @click.option("--docker-api", is_flag=True,
-              help="Also record the other containers' names and IPs from the Docker API "
-                   "(needs /var/run/docker.sock mounted), so the report can name peers "
-                   "that don't have a sidecar of their own.")
+              help="Also record the other containers' names and IPs, and the target's "
+                   "published ports, from the Docker API (needs /var/run/docker.sock "
+                   "mounted), so the report can name peers that don't have a sidecar "
+                   "of their own.")
 @_retention_options
 @click.pass_context
 def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
@@ -326,7 +327,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
     /var/run/docker.sock or /var/run/docker/netns mounts needed (docker.sock
     only for --docker-api). One sidecar watches one target container; run
     one per container of interest."""
-    from .discovery import ContainerNetInfo, interface_exists, interface_ips, other_containers
+    from .discovery import ContainerNetInfo, interface_exists, interface_ips, split_by_netns
 
     if not interface_exists(iface):
         raise click.ClickException(
@@ -353,8 +354,15 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
 
     def _sync_peers():
         try:
-            for peer in other_containers(client, info.ip_addresses.values()):
+            target, peers = split_by_netns(client, info.ip_addresses.values())
+            for peer in peers:
                 storage.upsert_container(conn, peer)
+            # Only the API knows the target's published ports; without them a
+            # peer reaching the target through one isn't matched to it (see
+            # analyze._published_port_flows). Name and IPs stay ours.
+            if target and target.published_ports != info.published_ports:
+                info.published_ports = target.published_ports
+                storage.upsert_container(conn, info)
         except Exception:
             logger.exception("reading other containers from the Docker API failed, continuing")
 

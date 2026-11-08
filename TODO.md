@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 125 unit tests pass.
+attach/detach/status/analyze/report. All 128 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -90,9 +90,9 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       containers". Open: (1) only the client side is matched - the
       server's capture still shows the proxy address as an unknown local
       destination; on a Linux host conntrack could link the two; (2)
-      **fixed 2026-11-08, see next item**; (3) ports are only known with `--docker-api` or
-      in `watch` mode, and a sidecar never records its own target's ports
-      (another sidecar's `--docker-api` does); (4) TCP vs UDP isn't
+      **fixed 2026-11-08, see next item**; (3) ports are only known with
+      `--docker-api` or in `watch` mode (a sidecar's own target's ports:
+      **fixed 2026-11-08, see below**); (4) TCP vs UDP isn't
       checked; (5) not tried on Linux, where the client would hit the
       host's address or the bridge gateway instead.
 - [x] **Fixed 2026-11-08: published-port traffic was counted twice in the
@@ -112,6 +112,25 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       KB sent, matching the raw flows (1518 B to port 18080); the shared
       `ff02::16` row shows the client's 1.0 KB instead of both containers'
       2.1 KB.
+- [x] **Fixed 2026-11-08: a sidecar never recorded its own target's
+      published ports**, so a peer reaching the target through one was only
+      matched if *another* sidecar ran with `--docker-api`. With
+      `--docker-api` the sidecar now finds its target in the API (the
+      container holding the shared interface's IP,
+      `discovery.split_by_netns()`) and stores its ports on its own row,
+      keeping the `--target` name and interface IPs. That surfaced two
+      problems when the label differs from the real name and another
+      sidecar's `--docker-api` stores the real name too: (a) both names
+      claimed the port, so it was dropped as ambiguous - names that share an
+      address now count as one owner, named after the one with a capture;
+      (b) the container's own replies matched its other name, so the matrix
+      showed it talking to itself - `container_matrix()`/`container_peers()`
+      now skip addresses the captured container holds itself. Tests: 3 new,
+      all failed before. Live test (Docker Desktop for Mac, server `-p
+      18080:80` with a sidecar labelled `srvlabel`, client on another
+      network, both `--docker-api`): `srvlabel`'s row holds port 18080, the
+      matrix has one row `cli -> srvlabel 1.5 KB, published port` and no
+      self rows, and the client's report names `srvlabel` as its peer.
 - [x] **Fixed 2026-11-08: tcpdump children were orphaned when nettap was
       SIGKILLed.** Live test (nettap run as a non-PID-1 child in the image,
       then `kill -9`): tcpdump kept running as uid 100. Two fixes in

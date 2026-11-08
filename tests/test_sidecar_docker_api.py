@@ -74,3 +74,21 @@ def test_sidecar_refuses_to_start_without_the_docker_api(tmp_path, monkeypatch):
     result = _sidecar(tmp_path, monkeypatch, client)
     assert result.exit_code == 1 and "/var/run/docker.sock" in result.output
     assert FakeMgr.last is None
+
+
+def test_sidecar_records_its_targets_published_ports(tmp_path, monkeypatch):
+    result = _sidecar(tmp_path, monkeypatch, _client(*CONTAINERS))
+    assert result.exit_code == 3
+    conn = storage.connect(str(tmp_path / "nettap.db"))
+    row = conn.execute("SELECT name, ip_addresses, published_ports FROM containers "
+                       "WHERE container_id = 'web'").fetchone()
+    assert row["name"] == "web"  # still the --target label, not the API's name
+    assert row["ip_addresses"] == '{"eth0": "172.18.0.2"}'
+    assert row["published_ports"] == \
+        '[{"host_port": 8080, "container_port": 80, "protocol": "tcp"}]'
+
+
+def test_split_by_netns_returns_the_target(monkeypatch):
+    target, others = discovery.split_by_netns(_client(*CONTAINERS), [TARGET_IP])
+    assert target.name == "real-target-name"
+    assert [c.name for c in others] == ["db"]

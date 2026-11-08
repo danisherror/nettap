@@ -163,3 +163,17 @@ def test_external_destinations_counts_one_containers_bytes(tmp_path):
     assert (both["bytes"], both["packets"], both["containers"]) == (1000, 2, "a,b")
     (only_a,) = analyze.external_destinations(conn, container="a")
     assert (only_a["bytes"], only_a["packets"], only_a["containers"]) == (100, 1, "a")
+
+
+def test_a_port_two_names_of_one_container_claim_is_attributed(tmp_path):
+    # srv's own sidecar labels it "srv"; cli's --docker-api stores the real name
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed_published(conn)
+    storage.upsert_container(conn, ContainerNetInfo(
+        "s1-real", "proj-srv-1", "", None, {"a": "172.20.0.2"}, [], {}, None, False,
+        [{"host_port": 18080, "container_port": 80, "protocol": "tcp"}]))
+    assert analyze.container_matrix(conn) == [
+        {"src_container": "cli", "dst_container": "srv", "bytes": 300, "packets": 1,
+         "via": "published port"}]
+    # srv's replies to itself aren't traffic to "proj-srv-1"
+    assert analyze.container_peers(conn, "srv") == []
