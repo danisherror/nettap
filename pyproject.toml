@@ -2,6 +2,7 @@
 name = "nettap"
 version = "0.1.0"
 description = "Attach traffic capture to one or many Docker containers and analyze docker-host, docker-docker, and docker-internet flows."
+license = { text = "MIT" }
 requires-python = ">=3.9"
 dependencies = [
     "docker>=6.0",

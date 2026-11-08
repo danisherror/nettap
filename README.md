@@ -339,3 +339,7 @@ nettap/
   recreate it if the target was recreated (see Troubleshooting above).
 
 See `TODO.md` for the full list, what's already been fixed, and what's next.
+
+## License
+
+MIT - see `LICENSE`.
