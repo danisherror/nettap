@@ -86,3 +86,39 @@ def test_format_bytes():
     assert report.format_bytes(500) == "500 B"
     assert report.format_bytes(2048) == "2.0 KB"
     assert report.format_bytes(5 * 1024 * 1024) == "5.0 MB"
+
+
+def _flow(src, dst, proto="ICMPv6", length=100):
+    return {"ts": 1, "container_id": "c1", "container_name": "v6", "src_ip": src,
+            "dst_ip": dst, "src_port": None, "dst_port": None, "protocol": proto,
+            "length": length, "dns_query": None, "tls_sni": None, "pcap_file": "a.pcap"}
+
+
+# IPv6 neighbour-discovery chatter to multicast outnumbers the container's
+# own traffic (seen live 2026-11-08: the report named ff02::16 as the container)
+V6_FLOWS = [_flow("::", "ff02::16")] * 5 + [_flow("fe80::1", "ff02::2")] * 4 + [
+    _flow("172.20.0.3", "172.20.0.2", "ICMP", 98),
+    _flow("172.20.0.2", "172.20.0.3", "ICMP", 98),
+    _flow("fd00::3", "fd00::2", "ICMPv6", 118),
+    _flow("fd00::2", "fd00::3", "ICMPv6", 118),
+]
+
+
+def test_report_uses_recorded_ips_across_ipv4_and_ipv6(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    info = ContainerNetInfo("c1", "v6", "alpine", None,
+                            {"eth0": "172.20.0.3", "eth0/inet6#1": "fd00::3"}, [], {}, None, False)
+    storage.upsert_container(conn, info)
+    storage.insert_flows(conn, V6_FLOWS)
+    data = report.build_report(conn, "v6")
+
+    assert set(data["self_ips"]) == {"172.20.0.3", "fd00::3"}
+    assert data["sent_bytes"] == 98 + 118
+    assert data["received_bytes"] == 98 + 118
+    assert "172.20.0.3" in report.render_text(data) and "fd00::3" in report.render_text(data)
+
+
+def test_self_ip_guess_skips_multicast_and_unspecified(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    storage.insert_flows(conn, V6_FLOWS)   # no containers row: falls back to the guess
+    assert report._self_ip(conn, "v6") == "fe80::1"

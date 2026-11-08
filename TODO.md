@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 49 unit tests pass.
+attach/detach/status/analyze/report. All 54 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -202,18 +202,42 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       2026-11-08** on Docker Desktop for Mac: `192.168.65.7` came out as
       `local` with the Docker Desktop hint, and the report's internet
       section listed only example.com.
-- [ ] `analyze top-talkers` returns a row with `src_ip: null, dst_ip: null`
-      (16 packets in the live test) - most likely ARP / other non-IP frames.
-      Either filter them out or label them (e.g. "non-IP (ARP etc.)").
+- [x] **Fixed 2026-11-08: `analyze top-talkers` returned a row with
+      `src_ip: null, dst_ip: null`.** Checked against real tshark output on
+      a hand-built pcap: it was three bugs, not one. (1) ARP has no IP
+      layer - expected, so `top_talkers()` now adds a `note` to that row and
+      every row lists its `protocols`. (2) **All IPv6 packets** were stored
+      with null addresses, because `enrich.FIELDS` only asked tshark for
+      `ip.src`/`ip.dst`; it now also reads `ipv6.src`/`ipv6.dst`. (3) ICMP
+      error packets quote the original IP header, so tshark returned
+      `ip.src` as `"10.0.0.1,172.17.0.2"` and that was stored as one bogus
+      address; `parse_pcap` now passes `-E occurrence=f`. Pcaps enriched
+      before this fix keep their null IPv6 rows - re-run `enrich` on them
+      into a fresh DB to fix. Tests: `tests/test_enrich.py` (one test runs
+      real tshark, skipped if it isn't installed),
+      `test_top_talkers_labels_non_ip_rows`. **Live-verified 2026-11-08** on
+      Docker Desktop for Mac (alpine target + peer on an IPv6-enabled
+      network, ping and ping -6): IPv6 rows carry addresses, ARP shows as
+      one labelled row, no comma-joined addresses in `flows`. ICMP error
+      rows still carry ports from the quoted inner header (e.g. 5555->53) -
+      harmless, but not the ICMP packet's own ports.
+- [x] **Fixed 2026-11-08 (surfaced by the IPv6 fix above):** with IPv6
+      visible, the report named the container as `ff02::16` (multicast
+      neighbour-discovery chatter outnumbered its own traffic) and said it
+      sent 0 B. `report.build_report()` now uses the container's recorded
+      `containers.ip_addresses` and counts sent/received across all of them
+      (IPv4 and IPv6); the frequency guess is only a fallback and skips
+      multicast and `::`/`0.0.0.0`. Live-verified the same day on the same
+      capture: report lists `172.20.0.3` plus its two IPv6 addresses and
+      shows 2.1 KB sent / 820 B received.
 
 ## report.py (plain-language summary) - known gaps
 
-- [ ] The "which IP is the container itself" heuristic in `report._self_ip`
-      (most-frequent IP across src/dst) will misfire for a container that
-      talks to one single peer overwhelmingly more than everything else
-      combined - worth cross-checking against `containers.ip_addresses`,
-      which is now populated in both `watch` and `sidecar` mode (sidecar
-      since 2026-11-08).
+- [x] **Fixed 2026-11-08:** the report now uses `containers.ip_addresses`
+      for "which IP is the container itself" (see the IPv6 entry above).
+      The most-frequent-IP guess remains only for data with no recorded
+      addresses, and can still misfire there for a container that talks to
+      one peer far more than everything else.
 - [ ] Sidecar mode (`nettap sidecar`) doesn't call the Docker API. Since
       2026-11-08 it records the target's own IPs from its interface, but it
       still knows nothing about *other* containers, so the

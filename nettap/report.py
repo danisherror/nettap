@@ -11,6 +11,8 @@ everything is inlined).
 from __future__ import annotations
 
 import html as html_escape
+import ipaddress
+import json
 import sqlite3
 from datetime import datetime, timezone
 
@@ -26,23 +28,55 @@ def format_bytes(n: float | None) -> str:
     return f"{n:.1f} TB"
 
 
-def _self_ip(conn: sqlite3.Connection, container: str) -> str | None:
-    """Heuristic: every packet captured on a container's own interface has
-    that container's address on one side or the other, so the IP that shows
-    up (as either src or dst) across the most rows is almost certainly the
-    container itself."""
-    row = conn.execute(
+def _ip_counts(conn: sqlite3.Connection, container: str) -> list[tuple[str, int]]:
+    """Every IP seen in this container's flows (as src or dst), most rows first."""
+    rows = conn.execute(
         """
         SELECT ip, COUNT(*) AS n FROM (
             SELECT src_ip AS ip FROM flows WHERE container_name = ? AND src_ip IS NOT NULL
             UNION ALL
             SELECT dst_ip AS ip FROM flows WHERE container_name = ? AND dst_ip IS NOT NULL
         )
-        GROUP BY ip ORDER BY n DESC LIMIT 1
+        GROUP BY ip ORDER BY n DESC
         """,
         (container, container),
-    ).fetchone()
-    return row["ip"] if row else None
+    ).fetchall()
+    return [(r["ip"], r["n"]) for r in rows]
+
+
+def _can_be_host_address(ip: str) -> bool:
+    """False for multicast and unspecified addresses (::, 0.0.0.0), which show
+    up a lot in IPv6 neighbour discovery but never belong to the container."""
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return not (addr.is_multicast or addr.is_unspecified)
+
+
+def _self_ips(conn: sqlite3.Connection, container: str) -> list[str]:
+    """The container's own addresses, most-seen first.
+
+    Uses the addresses recorded in `containers.ip_addresses` (both `watch`
+    and `sidecar` store them). Only if none are recorded does it guess: the
+    unicast IP seen in the most rows, since every packet on the container's
+    interface has its own address on one side. That guess can misfire for a
+    container that talks to one peer far more than anything else."""
+    recorded: set[str] = set()
+    for r in conn.execute("SELECT ip_addresses FROM containers WHERE name = ?", (container,)):
+        recorded.update(v for v in json.loads(r["ip_addresses"] or "{}").values() if v)
+    counts = _ip_counts(conn, container)
+    if recorded:
+        seen = [ip for ip, _ in counts if ip in recorded]
+        return seen + sorted(recorded - set(seen))
+    guess = next((ip for ip, _ in counts if _can_be_host_address(ip)), None)
+    return [guess] if guess else []
+
+
+def _self_ip(conn: sqlite3.Connection, container: str) -> str | None:
+    """The container's main address (see _self_ips), or None."""
+    ips = _self_ips(conn, container)
+    return ips[0] if ips else None
 
 
 def build_report(conn: sqlite3.Connection, container: str) -> dict:
@@ -53,15 +87,20 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
         (container,),
     ).fetchone()
 
-    self_ip = _self_ip(conn, container)
+    self_ips = _self_ips(conn, container)
+    self_ip = self_ips[0] if self_ips else None
 
+    # count across all the container's addresses (e.g. its IPv4 and IPv6)
+    marks = ",".join("?" * len(self_ips))
     sent = conn.execute(
-        "SELECT SUM(length) AS b, COUNT(*) AS n FROM flows WHERE container_name = ? AND src_ip = ?",
-        (container, self_ip),
+        f"SELECT SUM(length) AS b, COUNT(*) AS n FROM flows "
+        f"WHERE container_name = ? AND src_ip IN ({marks})",
+        (container, *self_ips),
     ).fetchone()
     received = conn.execute(
-        "SELECT SUM(length) AS b, COUNT(*) AS n FROM flows WHERE container_name = ? AND dst_ip = ?",
-        (container, self_ip),
+        f"SELECT SUM(length) AS b, COUNT(*) AS n FROM flows "
+        f"WHERE container_name = ? AND dst_ip IN ({marks})",
+        (container, *self_ips),
     ).fetchone()
 
     peers = [
@@ -74,7 +113,7 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
     # otherwise show up as an "internet destination".
     non_container = [
         r for r in analyze.external_destinations(conn, limit=200)
-        if container in (r["containers"] or "").split(",") and r["dst_ip"] != self_ip
+        if container in (r["containers"] or "").split(",") and r["dst_ip"] not in self_ips
     ]
     # private/link-local/multicast addresses (e.g. Docker Desktop's DNS
     # resolver) aren't the internet - list them separately
@@ -95,6 +134,7 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
     return {
         "container": container,
         "self_ip": self_ip,
+        "self_ips": self_ips,
         "packet_count": totals["n"] or 0,
         "total_bytes": totals["bytes"] or 0,
         "start": totals["start"],
@@ -120,8 +160,9 @@ def _fmt_time(ts: float | None) -> str | None:
 def render_text(report: dict) -> str:
     c = report["container"]
     lines = [f"Traffic report for container: {c}"]
-    if report["self_ip"]:
-        lines.append(f"(identified on the network as {report['self_ip']})")
+    self_ips = report.get("self_ips") or ([report["self_ip"]] if report["self_ip"] else [])
+    if self_ips:
+        lines.append(f"(identified on the network as {', '.join(self_ips)})")
     lines.append("")
 
     if report["packet_count"] == 0:
