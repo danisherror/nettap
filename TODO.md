@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 117 unit tests pass.
+attach/detach/status/analyze/report. All 118 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -325,6 +325,17 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       sessions that aren't finished are skipped. Live test after the fix:
       17 rows before a restart, 21 after (4 new ARP rows), no duplicate
       rows, and `nettap enrich` inserted 0.
+- [x] **Fixed 2026-11-08: with `--docker-api`, traffic between containers
+      was counted twice.** Each sidecar stores its target under the
+      target's name, and the other sidecar's `--docker-api` stores the
+      same container under its real ID, so `containers` had two rows per
+      container and `container_matrix()`/`container_peers()` counted each
+      flow once per row (100 bytes showed as 200). Both now join on a
+      deduplicated (name, address) list. Live test (two sidecars with
+      `--docker-api`, one HTTP request): 4 container rows, and the matrix
+      matched the raw flows (client->server 559 B / 7 packets). Still open:
+      if a recreated container under a *different* name reuses an old
+      address, both names match its flows.
 - [x] **Fixed 2026-11-08: external IPs were only named from TLS SNI.**
       enrich.py now also stores DNS answer addresses (`dns.a`/`dns.aaaa`,
       new `flows.dns_answers` column, JSON list) and the HTTP `Host` header

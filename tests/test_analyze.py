@@ -70,3 +70,16 @@ def test_top_talkers_labels_non_ip_rows(tmp_path):
     assert rows[(None, None)]["protocols"] == "ARP"
     assert "note" not in rows[("172.17.0.2", "93.184.216.34")]
     assert rows[("172.17.0.2", "93.184.216.34")]["protocols"] == "TLS"
+
+
+def test_container_queries_count_a_container_with_two_rows_once(tmp_path):
+    # live test 2026-11-08: a sidecar stores its target under the target's
+    # name, and another sidecar's --docker-api stores it under its real ID
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed(conn)
+    storage.upsert_container(conn, ContainerNetInfo(
+        "db", "db", "", "eth0", {"eth0": "172.17.0.3"}, [], {}, None, False))
+    assert analyze.container_matrix(conn) == [
+        {"src_container": "web", "dst_container": "db", "bytes": 500, "packets": 1}]
+    assert analyze.container_peers(conn, "web") == [
+        {"container": "db", "bytes": 500, "packets": 1, "sent_bytes": 500, "received_bytes": 0}]

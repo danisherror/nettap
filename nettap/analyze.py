@@ -73,21 +73,33 @@ def top_talkers(conn: sqlite3.Connection, container: str | None = None, limit: i
     return rows
 
 
+# One row per (container name, address). `containers` can hold several rows
+# for one container - a sidecar stores its target under the target's name and
+# `--docker-api` stores the same container under its real ID - and joining
+# on those rows directly counted each flow once per row (seen live
+# 2026-11-08: two sidecars with --docker-api doubled every peer's bytes).
+_CONTAINER_IPS = """
+    container_ips AS (
+        SELECT DISTINCT c.name, je.value AS ip
+        FROM containers c, json_each(c.ip_addresses) je
+        WHERE c.name IS NOT NULL AND je.value != ''
+    )"""
+
+
 def container_matrix(conn: sqlite3.Connection) -> list[dict]:
     """Traffic between containers, resolved by matching dst_ip against known
     container IPs. See TODO.md: this misses NATed/published-port traffic
     where the observed dst_ip isn't the peer container's own address."""
     cur = conn.execute(
-        """
+        f"""
+        WITH {_CONTAINER_IPS}
         SELECT f.container_name AS src_container,
-               c.name AS dst_container,
+               ci.name AS dst_container,
                SUM(f.length) AS bytes,
                COUNT(*) AS packets
         FROM flows f
-        JOIN containers c ON EXISTS (
-            SELECT 1 FROM json_each(c.ip_addresses) je WHERE je.value = f.dst_ip
-        )
-        WHERE f.container_name != c.name
+        JOIN container_ips ci ON ci.ip = f.dst_ip
+        WHERE f.container_name != ci.name
         GROUP BY src_container, dst_container
         ORDER BY bytes DESC
         """
@@ -102,21 +114,23 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
     doesn't depend on the peer being captured too; container_matrix()
     instead gives one row per capture and direction."""
     cur = conn.execute(
-        """
-        SELECT c.name AS container,
-               SUM(f.length) AS bytes, COUNT(*) AS packets,
-               SUM(CASE WHEN EXISTS (SELECT 1 FROM json_each(c.ip_addresses) je
-                                     WHERE je.value = f.dst_ip)
-                        THEN f.length ELSE 0 END) AS sent_bytes,
-               SUM(CASE WHEN EXISTS (SELECT 1 FROM json_each(c.ip_addresses) je
-                                     WHERE je.value = f.dst_ip)
-                        THEN 0 ELSE f.length END) AS received_bytes
-        FROM flows f
-        JOIN containers c ON EXISTS (
-            SELECT 1 FROM json_each(c.ip_addresses) je WHERE je.value IN (f.src_ip, f.dst_ip)
+        f"""
+        WITH {_CONTAINER_IPS},
+        peer_flows AS (
+            -- one row per flow and peer, even if both ends are that peer's
+            SELECT DISTINCT f.id, f.length, ci.name,
+                   EXISTS (SELECT 1 FROM container_ips d
+                           WHERE d.name = ci.name AND d.ip = f.dst_ip) AS sent
+            FROM flows f
+            JOIN container_ips ci ON ci.ip IN (f.src_ip, f.dst_ip)
+            WHERE f.container_name = ? AND ci.name != ?
         )
-        WHERE f.container_name = ? AND c.name != ?
-        GROUP BY c.name
+        SELECT name AS container,
+               SUM(length) AS bytes, COUNT(*) AS packets,
+               SUM(CASE WHEN sent THEN length ELSE 0 END) AS sent_bytes,
+               SUM(CASE WHEN sent THEN 0 ELSE length END) AS received_bytes
+        FROM peer_flows
+        GROUP BY name
         ORDER BY bytes DESC
         """,
         (container, container),
