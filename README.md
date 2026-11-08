@@ -134,7 +134,7 @@ docker run -d --name nettap-web \
 
 docker exec nettap-web nettap --data-dir /data status
 docker exec nettap-web nettap --data-dir /data analyze top-talkers --container web
-docker exec nettap-web nettap --data-dir /data analyze external   # add --scope internet to hide private/Docker-internal addresses
+docker exec nettap-web nettap --data-dir /data analyze external   # --scope internet hides private/Docker-internal addresses; --container X counts one container
 docker exec nettap-web nettap --data-dir /data analyze dns --container web
 
 docker stop nettap-web && docker rm nettap-web   # tear down when done

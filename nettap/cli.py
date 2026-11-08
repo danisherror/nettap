@@ -280,11 +280,14 @@ def analyze_dns(ctx, container, fmt):
               show_default=True,
               help="'internet' = publicly routable addresses only; 'local' = private, "
                    "link-local, multicast etc. (e.g. Docker Desktop's DNS resolver).")
+@click.option("--container", help="Only count this container's capture.")
 @click.pass_context
-def analyze_external(ctx, scope, fmt):
+def analyze_external(ctx, scope, container, fmt):
     """Destinations that aren't a known container, each labelled with a scope."""
     conn = storage.connect(ctx.obj["db_path"])
-    rows = external_destinations(conn, scope=None if scope == "all" else scope)
+    _warn_if_unknown_container(conn, container)
+    rows = external_destinations(conn, scope=None if scope == "all" else scope,
+                                 container=container)
     _emit(rows, fmt)
 
 

@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 121 unit tests pass.
+attach/detach/status/analyze/report. All 125 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -89,13 +89,29 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       packets, published port`, report lists srv under "Other
       containers". Open: (1) only the client side is matched - the
       server's capture still shows the proxy address as an unknown local
-      destination; on a Linux host conntrack could link the two; (2) the
-      client report also still lists 192.168.65.254 under local addresses
-      for the same bytes; (3) ports are only known with `--docker-api` or
+      destination; on a Linux host conntrack could link the two; (2)
+      **fixed 2026-11-08, see next item**; (3) ports are only known with `--docker-api` or
       in `watch` mode, and a sidecar never records its own target's ports
       (another sidecar's `--docker-api` does); (4) TCP vs UDP isn't
       checked; (5) not tried on Linux, where the client would hit the
       host's address or the bridge gateway instead.
+- [x] **Fixed 2026-11-08: published-port traffic was counted twice in the
+      client's report, and every report's internet/local byte counts
+      included other containers' traffic.** The report listed the same
+      bytes under the peer container and under local addresses
+      (192.168.65.254). Separately, `external_destinations()` summed bytes
+      per address across all containers and the report only filtered which
+      rows to show, so two containers reaching the same address each showed
+      the combined total. `external_destinations()` now takes `container`
+      (also `analyze external --container`), counts only that capture and
+      names hosts from it, and leaves out flows `_published_port_flows()`
+      already attributes to a container. Tests in `test_analyze.py` /
+      `test_report.py` (4 failed before the fix). Live test (Docker Desktop
+      for Mac, same setup as above plus a request to neverssl.com): the
+      client report no longer lists 192.168.65.254 and shows srv with 1.5
+      KB sent, matching the raw flows (1518 B to port 18080); the shared
+      `ff02::16` row shows the client's 1.0 KB instead of both containers'
+      2.1 KB.
 - [x] **Fixed 2026-11-08: tcpdump children were orphaned when nettap was
       SIGKILLed.** Live test (nettap run as a non-PID-1 child in the image,
       then `kill -9`): tcpdump kept running as uid 100. Two fixes in

@@ -130,3 +130,36 @@ def test_a_port_published_by_two_containers_is_not_attributed(tmp_path):
         "s2", "srv2", "", None, {"a": "172.20.0.3"}, [], {}, None, False,
         [{"host_port": 18080, "container_port": 80, "protocol": "tcp"}]))
     assert analyze.container_matrix(conn) == []
+
+
+def test_published_port_traffic_is_not_also_a_local_destination(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed_published(conn)
+    ext = {r["dst_ip"]: r for r in analyze.external_destinations(conn, container="cli")}
+    # only the 50 B to a port nobody publishes is left on the host address
+    assert ext["192.168.65.254"]["bytes"] == 50
+    assert ext["192.168.65.254"]["packets"] == 1
+    assert ext["93.184.216.34"]["bytes"] == 70
+    # srv's side can't be matched, so the proxy stays a local destination
+    assert analyze.external_destinations(conn, container="srv")[0]["dst_ip"] == "192.168.65.1"
+
+
+def test_external_destinations_drops_a_host_address_used_only_for_published_ports(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    pub = [{"host_port": 18080, "container_port": 80, "protocol": "tcp"}]
+    storage.upsert_container(conn, ContainerNetInfo(
+        "s1", "srv", "", None, {"a": "172.20.0.2"}, [], {}, None, False, pub))
+    storage.insert_flows(conn, [_flow("cli", "172.21.0.2", 36762, "192.168.65.254", 18080, 300)])
+    assert analyze.external_destinations(conn) == []
+
+
+def test_external_destinations_counts_one_containers_bytes(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    storage.insert_flows(conn, [
+        _flow("a", "172.17.0.2", 4000, "93.184.216.34", 443, 100),
+        _flow("b", "172.17.0.3", 4000, "93.184.216.34", 443, 900),
+    ])
+    (both,) = analyze.external_destinations(conn)
+    assert (both["bytes"], both["packets"], both["containers"]) == (1000, 2, "a,b")
+    (only_a,) = analyze.external_destinations(conn, container="a")
+    assert (only_a["bytes"], only_a["packets"], only_a["containers"]) == (100, 1, "a")

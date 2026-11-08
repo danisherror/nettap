@@ -174,3 +174,17 @@ def test_render_text_shows_control_characters_as_escapes():
     assert "\\x1b[31m\\x0a\\u202e" in text
     empty = dict(_hostile_report(), packet_count=0)
     assert "\x1b" not in report.render_text(empty)
+
+
+def test_report_counts_only_this_containers_bytes_to_a_shared_destination(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed(conn)
+    storage.insert_flows(conn, [
+        {"ts": 1004, "container_id": "c2", "container_name": "db", "src_ip": "172.18.0.3",
+         "dst_ip": "93.184.216.34", "src_port": 4001, "dst_port": 443, "protocol": "TLS",
+         "length": 5000, "dns_query": None, "tls_sni": "other.example", "pcap_file": "b.pcap"},
+    ])
+    data = report.build_report(conn, "web")
+    ext = {r["dst_ip"]: r for r in data["external_destinations"]}
+    assert ext["93.184.216.34"]["bytes"] == 12000  # not 17000
+    assert ext["93.184.216.34"]["hostname"] == "example.com"  # web's own name for it

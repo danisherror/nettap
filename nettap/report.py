@@ -101,18 +101,13 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
     # recorded (e.g. data from an older sidecar), replies into it would
     # otherwise show up as an "internet destination".
     non_container = [
-        r for r in analyze.external_destinations(conn, limit=200)
-        if container in (r["containers"] or "").split(",") and r["dst_ip"] not in self_ips
+        r for r in analyze.external_destinations(conn, limit=200, container=container)
+        if r["dst_ip"] not in self_ips
     ]
     # private/link-local/multicast addresses (e.g. Docker Desktop's DNS
     # resolver) aren't the internet - list them separately
     external = [r for r in non_container if r["scope"] == "internet"]
     local = [r for r in non_container if r["scope"] == "local"]
-    # name each destination from this container's own traffic (TLS SNI, HTTP
-    # Host, DNS answers), not names other containers happened to use
-    names = analyze.hostnames(conn, container)
-    for row in external:
-        row["hostname"] = names.get(row["dst_ip"], {}).get("hostname")
 
     return {
         "container": container,

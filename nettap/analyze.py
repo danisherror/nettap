@@ -100,8 +100,8 @@ def _published_port_owners(conn: sqlite3.Connection) -> dict[int, str]:
 
 def _published_port_flows(conn: sqlite3.Connection, container: str | None = None):
     """Flows that reached another container through a port it publishes on
-    the host, as (flow container, peer, length, sent) - sent is False for
-    the replies. Seen on the wire, such a request goes to the host (e.g.
+    the host, as (flow container, peer, length, sent, flow) - sent is False
+    for the replies, flow is the flows row. Seen on the wire, such a request goes to the host (e.g.
     host.docker.internal, 192.168.65.254 on Docker Desktop) on the host
     port, not to the peer's own address, and the peer's capture sees a
     proxy address on a random port (live test, Docker Desktop for Mac,
@@ -118,7 +118,7 @@ def _published_port_flows(conn: sqlite3.Connection, container: str | None = None
     cur = conn.execute(
         f"""
         WITH {_CONTAINER_IPS}
-        SELECT f.container_name, f.src_ip, f.dst_ip, f.src_port, f.dst_port, f.length
+        SELECT f.id, f.container_name, f.src_ip, f.dst_ip, f.src_port, f.dst_port, f.length
         FROM flows f
         WHERE (f.dst_port IN ({marks}) OR f.src_port IN ({marks})){where}
           AND NOT EXISTS (SELECT 1 FROM container_ips ci WHERE ci.ip IN (f.src_ip, f.dst_ip)
@@ -131,7 +131,7 @@ def _published_port_flows(conn: sqlite3.Connection, container: str | None = None
                                  (f["src_ip"], f["src_port"], False)):
             peer = owners.get(port)
             if peer and peer != f["container_name"] and addr and ip_scope(addr) == "local":
-                yield f["container_name"], peer, f["length"], sent
+                yield f["container_name"], peer, f["length"], sent, f
                 break
 
 
@@ -158,7 +158,7 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
     )
     rows = [{**dict(r), "via": "direct"} for r in cur.fetchall()]
     published: dict[tuple, dict] = {}
-    for src, peer, length, sent in _published_port_flows(conn):
+    for src, peer, length, sent, _ in _published_port_flows(conn):
         if sent:
             row = published.setdefault((src, peer), {
                 "src_container": src, "dst_container": peer, "bytes": 0, "packets": 0,
@@ -198,7 +198,7 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
         (container, container),
     )
     peers = {r["container"]: dict(r) for r in cur.fetchall()}
-    for _, peer, length, sent in _published_port_flows(conn, container):
+    for _, peer, length, sent, _ in _published_port_flows(conn, container):
         row = peers.setdefault(peer, {"container": peer, "bytes": 0, "packets": 0,
                                       "sent_bytes": 0, "received_bytes": 0})
         length = length or 0
@@ -270,33 +270,57 @@ def hostnames(conn: sqlite3.Connection, container: str | None = None) -> dict[st
 
 
 def external_destinations(conn: sqlite3.Connection, limit: int = 20,
-                          scope: str | None = None) -> list[dict]:
+                          scope: str | None = None,
+                          container: str | None = None) -> list[dict]:
     """dst_ips that don't belong to any known container. Each row gets a
     `scope`: 'internet' (docker-internet traffic) or 'local' (private,
     link-local, multicast etc. - e.g. Docker Desktop's DNS resolver; see
     ip_scope), and a `hostname` / `hostname_source` from hostnames() (None
     if no name was seen). Local rows also get a `hint` (may be None). Pass
     scope='internet' or 'local' to keep only one kind; `limit` applies
-    before that filter."""
+    before that filter. `container` counts only that container's capture
+    (bytes, packets and hostnames).
+
+    Flows that went to the host on a port another container publishes are
+    left out: container_matrix() and container_peers() already count them
+    as traffic to that container (see _published_port_flows)."""
+    where, params = "", ()
+    if container:
+        where, params = " AND f.container_name = ?", (container,)
     cur = conn.execute(
-        """
-        SELECT f.dst_ip, SUM(f.length) AS bytes, COUNT(*) AS packets,
-               GROUP_CONCAT(DISTINCT f.container_name) AS containers
+        f"""
+        SELECT f.dst_ip, f.container_name, SUM(f.length) AS bytes, COUNT(*) AS packets
         FROM flows f
-        WHERE f.dst_ip IS NOT NULL
+        WHERE f.dst_ip IS NOT NULL{where}
           AND NOT EXISTS (
               SELECT 1 FROM containers c, json_each(c.ip_addresses) je WHERE je.value = f.dst_ip
           )
-        GROUP BY f.dst_ip
-        ORDER BY bytes DESC
-        LIMIT ?
+        GROUP BY f.dst_ip, f.container_name
         """,
-        (limit,),
+        params,
     )
-    names = hostnames(conn)
+    groups = {(r["dst_ip"], r["container_name"]): dict(r) for r in cur.fetchall()}
+    for owner, _, length, _, f in _published_port_flows(conn, container):
+        g = groups.get((f["dst_ip"], owner))
+        if g:  # only the request direction is here; replies go to owner's own IP
+            g["bytes"] = (g["bytes"] or 0) - (length or 0)
+            g["packets"] -= 1
+
+    by_ip: dict[str, dict] = {}
+    for (ip, name), g in groups.items():
+        if g["packets"] <= 0:
+            continue
+        row = by_ip.setdefault(ip, {"dst_ip": ip, "bytes": 0, "packets": 0, "containers": []})
+        row["bytes"] += g["bytes"] or 0
+        row["packets"] += g["packets"]
+        if name:
+            row["containers"].append(name)
+    ranked = sorted(by_ip.values(), key=lambda r: (-r["bytes"], r["dst_ip"]))[:limit]
+
+    names = hostnames(conn, container)
     rows = []
-    for r in cur.fetchall():
-        row = dict(r)
+    for row in ranked:
+        row["containers"] = ",".join(sorted(row["containers"])) or None
         name = names.get(row["dst_ip"], {})
         row["hostname"] = name.get("hostname")
         row["hostname_source"] = name.get("source")
