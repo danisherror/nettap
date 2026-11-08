@@ -213,3 +213,15 @@ def test_one_port_two_protocols_two_owners(tmp_path):
                                 _proto_flow(None, 8053, 400)])  # can't tell: left out
     assert sorted((r["dst_container"], r["bytes"]) for r in analyze.container_matrix(conn)) == [
         ("dns", 100), ("web", 200)]
+
+
+def test_a_peer_reached_over_ipv6_is_named(tmp_path):
+    from nettap.discovery import network_ips
+    conn = storage.connect(str(tmp_path / "n.db"))
+    storage.upsert_container(conn, ContainerNetInfo(
+        "d1", "db", "", None, network_ips({"app": {"IPAddress": "172.20.0.3",
+                                                   "GlobalIPv6Address": "fd00:20::3"}}),
+        ["app"], {}, None, False))
+    storage.insert_flows(conn, [_flow("web", "fd00:20::2", 4000, "fd00:20::3", 5432, 100)])
+    assert [p["container"] for p in analyze.container_peers(conn, "web")] == ["db"]
+    assert analyze.external_destinations(conn) == []

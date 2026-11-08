@@ -83,3 +83,18 @@ def test_published_ports_reads_docker_inspect_bindings():
         {"host_port": 5353, "container_port": 53, "protocol": "udp"},
         {"host_port": 18080, "container_port": 80, "protocol": "tcp"}]
     assert published_ports(None) == []
+
+
+def test_inspect_container_reads_ipv6_addresses(monkeypatch):
+    c = _fake_container(networks={
+        "app": {"IPAddress": "172.20.0.3", "GlobalIPv6Address": "fd00:20::3"},
+        "v6only": {"IPAddress": "", "GlobalIPv6Address": "fd00:30::3"},
+        "plain": {"IPAddress": "172.21.0.3", "GlobalIPv6Address": ""},
+    })
+    client = MagicMock()
+    client.containers.get.return_value = c
+    info = discovery.inspect_container(client, c.id, resolve=False)
+    assert info.ip_addresses == {"app": "172.20.0.3", "app/inet6": "fd00:20::3",
+                                 "v6only": "", "v6only/inet6": "fd00:30::3",
+                                 "plain": "172.21.0.3"}
+    assert info.networks == ["app", "v6only", "plain"]

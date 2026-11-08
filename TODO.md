@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 131 unit tests pass.
+attach/detach/status/analyze/report. All 133 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -369,9 +369,22 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       a `--docker-api` sidecar labelled `dapi-client` (real name
       `nettap-dapi-client`). The report listed `nettap-dapi-srv` as the one
       peer (561 B sent / 1.5 KB received); the containers table held only
-      the sidecar's own row and the server. Open: only IPv4 addresses are
-      read from the API (`IPAddress`, not `GlobalIPv6Address`), same as
-      `watch`.
+      the sidecar's own row and the server. IPv6 from the API: **fixed
+      2026-11-08, see next item**.
+- [x] **Fixed 2026-11-08: only IPv4 addresses were read from the Docker
+      API** (`IPAddress`, not `GlobalIPv6Address`) - in `watch` and in
+      `sidecar --docker-api` - so a peer reached over IPv6 showed up as an
+      unknown local address instead of by name. New
+      `discovery.network_ips()` also stores each network's IPv6 address,
+      under `<network>/inet6` (the sidecar's own `interface_ips()` uses the
+      same `/inet6` style). Link-local addresses aren't in the API, so a
+      peer reached only via `fe80::` still isn't named. Tests: 2 new, both
+      failed before. Live test (Docker Desktop for Mac, `docker network
+      create --ipv6`, nginx without a sidecar, alpine client with a
+      `--docker-api` sidecar, `wget http://[<server IPv6>]/`): the server's
+      row holds `fdac:b22d:f5d5::2`, all 39 flows (6.9 KB) to it count as
+      that peer in the report, and the address no longer appears under
+      local addresses. `watch` uses the same function but wasn't run live.
 - [x] **Fixed 2026-11-08: traffic from a container that then went quiet
       wasn't reported until its next packet.** In the `--docker-api` live
       test (10s rotation) the first file stayed open for over 2 minutes

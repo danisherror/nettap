@@ -143,6 +143,22 @@ def published_ports(ports: dict | None) -> list[dict]:
     return sorted(found.values(), key=lambda p: (p["host_port"], p["protocol"]))
 
 
+def network_ips(networks: dict) -> dict[str, str]:
+    """NetworkSettings.Networks from `docker inspect` as ContainerNetInfo.
+    ip_addresses: the IPv4 address keyed by network name (empty string if
+    none), plus the IPv6 one, if any, under "<network>/inet6" - like
+    interface_ips(), so a peer reached over IPv6 is still recognised.
+    Link-local IPv6 addresses aren't listed by the API.
+    https://docs.docker.com/reference/api/engine/version/v1.47/#tag/Container/operation/ContainerInspect"""
+    out = {}
+    for net, info in networks.items():
+        info = info or {}
+        out[net] = info.get("IPAddress") or ""
+        if info.get("GlobalIPv6Address"):
+            out[f"{net}/inet6"] = info["GlobalIPv6Address"]
+    return out
+
+
 def inspect_container(docker_client, container_id: str, resolve: bool = True) -> ContainerNetInfo:
     """Build a ContainerNetInfo from the Docker API, resolving the veth as a
     side effect unless resolve=False (it needs the host's netns, which a
@@ -154,7 +170,7 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
     sandbox_key = net_settings.get("SandboxKey") or None
     host_mode = (attrs.get("HostConfig", {}) or {}).get("NetworkMode") == "host"
 
-    ip_addresses = {net: (info.get("IPAddress") or "") for net, info in networks.items()}
+    ip_addresses = network_ips(networks)
 
     veth = None
     if resolve and sandbox_key and not host_mode:
