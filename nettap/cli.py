@@ -153,6 +153,24 @@ def _sample_ports(db_path: str, container: str, stop) -> None:
         time.sleep(hostports.SAMPLE_SECONDS)
 
 
+def _sample_host_network_ports(mgr: CaptureManager, db_path: str, stop) -> None:
+    """watch: record the ports of every attached --network host container
+    every hostports.SAMPLE_SECONDS, from one `ss --cgroup` call. Own
+    thread, so its own connection (see _enrich_loop)."""
+    conn = storage.connect(db_path)
+    while not stop["flag"]:
+        try:
+            names = {s["container_id"]: s["container"] for s in mgr.status()
+                     if s.get("capture_scope") == "ports"}
+            if names:
+                now = time.time()
+                for cid, ports in hostports.ports_by_container(names).items():
+                    hostports.record(conn, names[cid], ports, now)
+        except Exception:
+            logger.exception("sampling host-network containers' ports failed, continuing")
+        time.sleep(hostports.SAMPLE_SECONDS)
+
+
 def _retention_options(f):
     """--pcap-max-age-hours / --pcap-max-size-mb, shared by watch and sidecar."""
     f = click.option("--pcap-max-size-mb", type=click.FloatRange(min=0, min_open=True), default=None,
@@ -202,6 +220,9 @@ def watch_cmd(ctx, label, all_, rotate_seconds, poll_interval, auto_enrich,
         threading.Thread(
             target=_enrich_loop, args=(mgr, ctx.obj["db_path"], poll_interval, stop), daemon=True
         ).start()
+    threading.Thread(
+        target=_sample_host_network_ports, args=(mgr, ctx.obj["db_path"], stop), daemon=True
+    ).start()
 
     click.echo("nettap watching (Ctrl+C to stop)...")
     try:

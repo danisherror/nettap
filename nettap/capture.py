@@ -279,12 +279,10 @@ class CaptureManager:
         return set(self._sessions.keys())
 
     def attach(self, info: ContainerNetInfo) -> CaptureSession | None:
-        if info.uses_host_network:
+        if info.uses_host_network and (info.capture_scope != "ports" or not info.veth):
             logger.warning(
-                "%s uses --network host: no dedicated veth exists, skipping "
-                "(see TODO.md: host-network attribution needs the eBPF path)",
-                info.name,
-            )
+                "%s uses --network host and its sockets can't be attributed to it "
+                "(see the warning above), skipping", info.name)
             return None
         if not info.veth:
             logger.warning(
@@ -302,6 +300,10 @@ class CaptureManager:
                 return None
             prefix = self._nsenter(info)
             where = f"{info.veth} inside its netns ({info.link_kind})"
+        elif info.uses_host_network:
+            # the host's own interface; enrichment keeps only the container's
+            # ports (hostports.py)
+            prefix, where = [], f"the host's {info.veth}, kept to its own ports"
         else:
             prefix, where = [], info.veth
         cmd = prefix + self._tcpdump_cmd(info.veth, pattern)
@@ -316,7 +318,10 @@ class CaptureManager:
         proc = self._spawn(info.name, cmd)
         session = CaptureSession(info=info, process=proc, pcap_pattern=pattern,
                                  rotate_seconds=self.rotate_seconds)
-        self._start_dns(session)
+        if not info.uses_host_network:
+            # a host-network container uses the host's resolv.conf, not
+            # Docker's embedded DNS, and the host's lo isn't its own
+            self._start_dns(session)
         self._sessions[info.container_id] = session
         return session
 
@@ -444,7 +449,9 @@ class CaptureManager:
 
     def status(self) -> list[dict]:
         out = []
-        for session in self._sessions.values():
+        # list(): the enrich and port-sampling threads call this while the
+        # main thread attaches and detaches
+        for session in list(self._sessions.values()):
             alive = session.process.poll() is None
             out.append(
                 {
@@ -456,6 +463,7 @@ class CaptureManager:
                     "rotate_seconds": session.rotate_seconds,
                     "alive": alive,
                     "started_at": session.started_at,
+                    "capture_scope": session.info.capture_scope,
                 }
             )
         return out

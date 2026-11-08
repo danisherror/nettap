@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 173 unit tests pass.
+attach/detach/status/analyze/report. All 183 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -83,12 +83,43 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
 
 ## P1 - correctness and safety
 
-- [ ] `--network host` containers currently produce a warning and are
-      skipped entirely in `watch` (no dedicated veth exists to capture on).
-      `sidecar --attribute-by-port` covers them by port (see below); still
-      open: the same for `watch`, short connections (eBPF/cgroup
-      attribution would catch every packet), traffic with other containers
-      on the host (only `eth0` is captured), and ICMP.
+- [ ] `--network host` containers are captured by port in `watch` (next
+      item) and `sidecar --attribute-by-port` (below). Still open: short
+      connections (eBPF/cgroup attribution would catch every packet),
+      traffic with other containers on the host (only the internet-facing
+      interface is captured; `-i any` would see bridge traffic twice, on
+      the bridge and the veth), ICMP, and a Linux-host test of `watch`.
+- [x] **Done 2026-11-08: `--network host` containers in `watch`.** They
+      used to be skipped. `watch` has no `--pid=host`, so it can't read
+      their `/proc/<pid>/fd` like the sidecar. Live check first (Docker
+      Desktop for Mac, kernel 7.0.12-linuxkit, iproute2 6.15): `ss -tuan
+      --cgroup` in the nettap image labels each socket with its creator's
+      cgroup v2 path, `cgroup:/docker/<full container id>`
+      ([ss(8)](https://manpages.debian.org/testing/iproute2/ss.8.en.html)),
+      for LISTEN, ESTAB and SYN-SENT sockets, not TIME-WAIT. This works only
+      with `--cgroupns host`; in the default private cgroup namespace ss
+      prints `cgroup:unreachable:1` and "Failed to open cgroup2 by ID". So:
+      compose gets `cgroup: host`
+      ([compose spec](https://docs.docker.com/reference/compose-file/services/#cgroup)).
+      Such containers are captured on the host's internet-facing interface,
+      with no `lo` DNS capture: they use the host's resolver. A watch thread
+      runs one `ss` every 0.25s for all of them into `owned_ports`, matching
+      the container ID in the cgroup path (cgroupfs and systemd drivers),
+      and the existing `keep_owned()` filter does the rest
+      (`capture_scope = 'ports'`). Without host cgroupns they're skipped
+      with a warning saying why. The live test also turned up that Docker
+      Desktop's VM has no default route in the main table (policy rule ->
+      table 2), so the interface comes from `ip route get 1.1.1.1` (IPv6
+      fallback). Live test (`watch --label` in the nettap image with
+      `--cgroupns host`; host-net nginx, a host-net client and a
+      bridge-network client both holding 3s HTTP connections to
+      example.com): the raw `eth0` pcaps had 58 connections, 29 kept as the
+      client's, all on ports its cgroup held; none of the bridge client's
+      NATed ports (39871, 39907, 43243, read from its netns) were kept; the
+      one owned port not yet in flows was in the newest, not yet enriched
+      pcap. nginx got 0 rows (nothing reached it over eth0), its port 80
+      was recorded for the full 60s. The report shows the host-network
+      note. Tests: 10 new in `tests/test_watch_host_network.py`.
 - [x] **Done 2026-11-08: `sidecar --attribute-by-port` for `--network host`
       targets.** Needs `--pid container:<target>` and `--cap-add
       SYS_PTRACE`. Live check first: with the shared PID namespace the

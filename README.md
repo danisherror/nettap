@@ -235,6 +235,15 @@ lookups and quick requests - can be missed, ICMP isn't attributed, and only
 seen. `--allow-host-network` instead captures everything, labelled as the
 target - e.g. for a Docker-in-Docker target, which has bridges of its own.
 
+**`watch` logs "uses --network host and its sockets can't be attributed
+to it".** `watch` captures `--network host` containers on the host's
+internet-facing interface (the one `ip route get 1.1.1.1` names) and keeps
+the traffic on ports the container's sockets held, with the same limits as
+above. It finds those sockets with `ss --cgroup`, which needs nettap in the
+host's cgroup namespace: `cgroup: host` in `docker-compose.yml` (already
+set), or `--cgroupns host` with `docker run`. Run directly on the host
+(`sudo nettap watch`), nothing extra is needed. Needs cgroup v2.
+
 **Output seems frozen after the first report, even with new traffic.**
 As of this build this should self-heal (a background thread used to die
 silently on its first real write due to a cross-thread SQLite bug, and a
@@ -310,7 +319,10 @@ nettap/
 
 ## Known limitations
 
-- `--network host` containers are skipped (no dedicated veth to capture on).
+- `--network host` containers have no interface of their own: they're
+  captured on the host's internet-facing interface and kept to the ports
+  they held (see Troubleshooting), so short connections, ICMP and traffic
+  with other containers on the same host can be missing.
 - In `watch`, a container whose `eth0` is neither a veth nor macvlan/ipvlan
   is skipped with a warning.
 - TLS/SSH traffic gives metadata (IPs, ports, byte counts, SNI) not

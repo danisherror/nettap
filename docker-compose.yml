@@ -9,6 +9,11 @@ services:
     # traded off against NOT needing --privileged or --pid=host (see
     # nettap/discovery.py for why those aren't required).
     network_mode: host
+    # Lets `ss --cgroup` name the container that owns each host socket, so
+    # --network host containers can be captured and kept to their own ports
+    # (nettap/hostports.py).
+    # https://docs.docker.com/reference/compose-file/services/#cgroup
+    cgroup: host
     cap_add:
       - NET_ADMIN
       - NET_RAW

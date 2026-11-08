@@ -164,6 +164,28 @@ def interface_ips(iface: str | None = "eth0", sandbox_key: str | None = None,
     return out
 
 
+# public addresses whose route is the internet route (nothing is sent)
+_ROUTE_PROBES = ("1.1.1.1", "2606:4700:4700::1111")
+
+
+def default_route_interface() -> str | None:
+    """The interface this namespace sends internet traffic out of (IPv4,
+    else IPv6), e.g. eth0 on Docker Desktop's VM. `watch` runs in the host's
+    namespace, so that's where a --network host container's internet
+    traffic goes. Asks `ip route get` rather than reading the main table's
+    default route: Docker Desktop's VM has none there - it routes through a
+    policy rule to table 2 (seen live 2026-11-08)."""
+    for probe in _ROUTE_PROBES:
+        try:
+            routes = json.loads(run(["ip", "-j", "route", "get", probe]) or "[]")
+        except Exception:  # noqa: BLE001 - no ip, no route: caller skips the container
+            continue
+        for route in routes:
+            if route.get("dev"):
+                return route["dev"]
+    return None
+
+
 def _link_info(sandbox_key: str, iface: str = "eth0") -> dict | None:
     """eth0's ifindex, link kind and link_index (a veth's peer, or a
     macvlan/ipvlan's parent), read over netlink inside the container's
@@ -330,8 +352,10 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
 
     ip_addresses = network_ips(networks)
 
-    veth, in_netns, kind = None, False, None
-    if resolve and sandbox_key and not host_mode:
+    veth, in_netns, kind, scope = None, False, None, None
+    if resolve and host_mode:
+        veth, ip_addresses, scope = _host_network_capture()
+    elif resolve and sandbox_key:
         veth, in_netns, kind = resolve_capture(sandbox_key)
     if in_netns:
         # Addresses the Docker API doesn't list, e.g. a Swarm overlay
@@ -358,7 +382,30 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
         started_at=docker_time((attrs.get("State", {}) or {}).get("StartedAt")),
         capture_in_netns=in_netns,
         link_kind=kind,
+        capture_scope=scope,
     )
+
+
+def _host_network_capture() -> tuple[str | None, dict[str, str], str | None]:
+    """(interface, its addresses, capture scope) for a --network host
+    container in `watch`: the host's default-route interface, kept to the
+    container's own ports at enrichment (hostports.py). The scope is None,
+    so the container is skipped, if ss can't tell which container owns a
+    socket (nettap isn't in the host's cgroup namespace)."""
+    from . import hostports
+
+    iface = default_route_interface()
+    if not iface:
+        logger.warning("no default route found on the host - can't capture "
+                       "--network host containers")
+        return None, {}, None
+    if not hostports.cgroup_attribution_works():
+        logger.warning(
+            "--network host containers need nettap in the host's cgroup namespace "
+            "(compose `cgroup: host`, docker run --cgroupns host) so `ss --cgroup` "
+            "can tell which container owns a socket")
+        return iface, {}, None
+    return iface, interface_ips(iface, skip_link_local=True), "ports"
 
 
 def split_by_netns(docker_client, own_ips) -> tuple[ContainerNetInfo | None, list[ContainerNetInfo]]:
