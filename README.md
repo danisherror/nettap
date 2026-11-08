@@ -208,9 +208,17 @@ Tests use mocked Docker/tcpdump/tshark calls (no real Docker daemon
 required) and cover the veth-resolution logic, storage layer, capture
 lifecycle (including the dead-process restart path), the `analyze`/`report`
 queries, and a real-threading regression test for the background enrich
-loop's SQLite usage. There is no integration test against a live Docker host
-yet - see TODO.md, that's the first thing to run before trusting this in
-production.
+loop's SQLite usage. One enrich test runs the real `tshark` and is skipped
+if it isn't installed.
+
+`scripts/integration_test.sh` is an end-to-end check against a real Docker
+daemon: it starts a throwaway nginx server and alpine client, a `sidecar` on
+each, sends HTTP between them and HTTPS to example.com, then checks the flow
+store (container IPs, HTTP in both captures, the container matrix, internet
+destinations and SNI, and the report). Pass `--no-internet` to skip the
+internet part, `--keep` to keep the data dir. Everything it creates is named
+`nettap-it-*` and removed on exit. It covers `sidecar` mode only; `watch`
+mode still needs testing on a Linux host (see TODO.md).
 
 ## Project layout
 
@@ -226,6 +234,7 @@ nettap/
     report.py      read-side queries, rendered as plain language (text/HTML)
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
+  scripts/         integration_test.sh - end-to-end check on a live Docker host
   examples/        sample CLI session
   Dockerfile, docker-compose.yml
   TODO.md          roadmap - read this before your next session

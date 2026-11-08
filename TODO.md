@@ -39,10 +39,19 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
 - [ ] Confirm the SandboxKey-based `nsenter` trick works on the target Docker
       version/storage driver (logic was reasoned through and unit-tested with
       mocks, not exercised against a live netns).
-- [ ] Add an integration test script (`scripts/integration_test.sh`) that
-      spins up two throwaway containers, attaches, generates traffic between
-      them and to the internet, and asserts flow rows land in SQLite
-      correctly.
+- [x] **Done 2026-11-08 for `sidecar` mode:** `scripts/integration_test.sh`
+      starts a throwaway nginx server + alpine client on their own network,
+      a sidecar on each sharing one data dir, sends HTTP client->server and
+      HTTPS to example.com, enriches, and checks the flow store with
+      nettap's own query functions (14 checks: both containers' IPs
+      recorded, HTTP seen in both captures, container matrix links both
+      ways, no comma-joined IPs, internet destinations + SNI, no
+      container's own IP counted as internet, report self-IPs/bytes/peers).
+      `--no-internet` skips the internet checks (11 left). Passed on Docker
+      Desktop for Mac 2026-11-08 in both modes, cleans up after itself, and
+      exits 1 when a check fails (confirmed with a deliberately broken
+      check). Open: add a `watch` mode variant (`attach` + host-network
+      nettap container) once there's a Linux host to run it on.
 - [x] Verify tshark's default dissectors are available in the slim Docker
       image. **Done 2026-11-08:** the `python:3.11-slim` image correctly
       dissected TLSv1.2/1.3 (including SNI), HTTP, DNS, TCP, ICMPv6 and ARP
