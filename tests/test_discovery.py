@@ -37,6 +37,7 @@ def _fake_container(id_="abc123", name="web", image="nginx:latest",
         "NetworkSettings": {
             "SandboxKey": sandbox_key,
             "Networks": networks or {"bridge": {"IPAddress": "172.17.0.2"}},
+            "Ports": {"80/tcp": [{"HostIp": "0.0.0.0", "HostPort": "8080"}]},
         },
         "Config": {"Image": image, "Labels": labels or {}},
         "HostConfig": {"NetworkMode": "host" if host_mode else "bridge"},
@@ -57,6 +58,7 @@ def test_inspect_container_resolves_veth(monkeypatch):
     assert info.name == "web"
     assert info.veth == "veth999"
     assert info.ip_addresses == {"bridge": "172.17.0.2"}
+    assert info.published_ports == [{"host_port": 8080, "container_port": 80, "protocol": "tcp"}]
     assert not info.uses_host_network
 
 
@@ -70,3 +72,14 @@ def test_inspect_container_host_network_skips_veth(monkeypatch):
     assert info.veth is None
     assert info.uses_host_network
     assert called == []
+
+
+def test_published_ports_reads_docker_inspect_bindings():
+    from nettap.discovery import published_ports
+    ports = {"80/tcp": [{"HostIp": "0.0.0.0", "HostPort": "18080"},
+                        {"HostIp": "::", "HostPort": "18080"}],
+             "443/tcp": None, "53/udp": [{"HostIp": "", "HostPort": "5353"}]}
+    assert published_ports(ports) == [
+        {"host_port": 5353, "container_port": 53, "protocol": "udp"},
+        {"host_port": 18080, "container_port": 80, "protocol": "tcp"}]
+    assert published_ports(None) == []

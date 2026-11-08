@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 118 unit tests pass.
+attach/detach/status/analyze/report. All 121 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -71,11 +71,31 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       but cross-host correlation (matching flows between two hosts' nettap
       instances) isn't implemented - each host is currently an independent
       island.
-- [ ] `container_matrix()` in analyze.py resolves the destination container
-      by exact IP match against `containers.ip_addresses` - this misses
-      traffic through a published host port (the observed dst_ip on the wire
-      isn't the peer container's own address). Needs conntrack
-      cross-referencing.
+- [x] **Partly fixed 2026-11-08: `container_matrix()` missed traffic
+      through a published host port** (it only matched dst_ip against
+      container addresses). Live test first (Docker Desktop for Mac,
+      sidecars with `--docker-api`, server `-p 18080:80` on one network,
+      client on another, `wget http://host.docker.internal:18080/`): the
+      client's capture shows `192.168.65.254:18080`, the server's shows
+      the request coming from `192.168.65.1` on a random port - a proxy in
+      between, so there's no port pair for conntrack-style matching even
+      in principle. Now `containers.published_ports` stores each
+      container's host-port bindings from the Docker API
+      (`NetworkSettings.Ports`), and a flow to a *local* (non-internet),
+      non-container address on a host port exactly one container
+      publishes is counted as that container's traffic: matrix rows gained
+      `via` ("direct" / "published port") and `container_peers()` (the
+      report) includes it. Live test after: matrix `cli -> srv 506 B, 6
+      packets, published port`, report lists srv under "Other
+      containers". Open: (1) only the client side is matched - the
+      server's capture still shows the proxy address as an unknown local
+      destination; on a Linux host conntrack could link the two; (2) the
+      client report also still lists 192.168.65.254 under local addresses
+      for the same bytes; (3) ports are only known with `--docker-api` or
+      in `watch` mode, and a sidecar never records its own target's ports
+      (another sidecar's `--docker-api` does); (4) TCP vs UDP isn't
+      checked; (5) not tried on Linux, where the client would hit the
+      host's address or the bridge gateway instead.
 - [x] **Fixed 2026-11-08: tcpdump children were orphaned when nettap was
       SIGKILLed.** Live test (nettap run as a non-PID-1 child in the image,
       then `kill -9`): tcpdump kept running as uid 100. Two fixes in

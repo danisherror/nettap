@@ -86,10 +86,63 @@ _CONTAINER_IPS = """
     )"""
 
 
+def _published_port_owners(conn: sqlite3.Connection) -> dict[int, str]:
+    """{host port: container name} for ports published by exactly one
+    container (a port two names claim is ambiguous, so left out)."""
+    owners: dict[int, set] = {}
+    for r in conn.execute(
+            "SELECT DISTINCT c.name, json_extract(je.value, '$.host_port') AS port "
+            "FROM containers c, json_each(c.published_ports) je "
+            "WHERE c.name IS NOT NULL AND c.published_ports IS NOT NULL"):
+        owners.setdefault(r["port"], set()).add(r["name"])
+    return {port: names.pop() for port, names in owners.items() if len(names) == 1}
+
+
+def _published_port_flows(conn: sqlite3.Connection, container: str | None = None):
+    """Flows that reached another container through a port it publishes on
+    the host, as (flow container, peer, length, sent) - sent is False for
+    the replies. Seen on the wire, such a request goes to the host (e.g.
+    host.docker.internal, 192.168.65.254 on Docker Desktop) on the host
+    port, not to the peer's own address, and the peer's capture sees a
+    proxy address on a random port (live test, Docker Desktop for Mac,
+    2026-11-08), so only the client's side can be matched - by a local,
+    non-container address plus a published host port. Transport protocol
+    isn't checked (flows.protocol is the top layer, e.g. HTTP)."""
+    owners = _published_port_owners(conn)
+    if not owners:
+        return
+    where, params = "", ()
+    if container:
+        where, params = " AND f.container_name = ?", (container,)
+    marks = ",".join("?" * len(owners))
+    cur = conn.execute(
+        f"""
+        WITH {_CONTAINER_IPS}
+        SELECT f.container_name, f.src_ip, f.dst_ip, f.src_port, f.dst_port, f.length
+        FROM flows f
+        WHERE (f.dst_port IN ({marks}) OR f.src_port IN ({marks})){where}
+          AND NOT EXISTS (SELECT 1 FROM container_ips ci WHERE ci.ip IN (f.src_ip, f.dst_ip)
+                                                          AND ci.name != f.container_name)
+        """,
+        (*owners, *owners, *params),
+    )
+    for f in cur:
+        for addr, port, sent in ((f["dst_ip"], f["dst_port"], True),
+                                 (f["src_ip"], f["src_port"], False)):
+            peer = owners.get(port)
+            if peer and peer != f["container_name"] and addr and ip_scope(addr) == "local":
+                yield f["container_name"], peer, f["length"], sent
+                break
+
+
 def container_matrix(conn: sqlite3.Connection) -> list[dict]:
-    """Traffic between containers, resolved by matching dst_ip against known
-    container IPs. See TODO.md: this misses NATed/published-port traffic
-    where the observed dst_ip isn't the peer container's own address."""
+    """Traffic between containers, one row per (source capture, destination
+    container, via), biggest first. `via` is "direct" when dst_ip is the
+    destination container's own address, or "published port" when the
+    flow went to the host on a port that container publishes (see
+    _published_port_flows). Traffic through a published port is only
+    counted from the client's capture; in the server's it shows up as a
+    local destination."""
     cur = conn.execute(
         f"""
         WITH {_CONTAINER_IPS}
@@ -101,10 +154,19 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
         JOIN container_ips ci ON ci.ip = f.dst_ip
         WHERE f.container_name != ci.name
         GROUP BY src_container, dst_container
-        ORDER BY bytes DESC
         """
     )
-    return [dict(r) for r in cur.fetchall()]
+    rows = [{**dict(r), "via": "direct"} for r in cur.fetchall()]
+    published: dict[tuple, dict] = {}
+    for src, peer, length, sent in _published_port_flows(conn):
+        if sent:
+            row = published.setdefault((src, peer), {
+                "src_container": src, "dst_container": peer, "bytes": 0, "packets": 0,
+                "via": "published port"})
+            row["bytes"] += length or 0
+            row["packets"] += 1
+    rows += published.values()
+    return sorted(rows, key=lambda r: -r["bytes"])
 
 
 def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
@@ -112,7 +174,8 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
     biggest first: {"container", "bytes", "packets", "sent_bytes",
     "received_bytes"}. Counted from `container`'s own capture only, so it
     doesn't depend on the peer being captured too; container_matrix()
-    instead gives one row per capture and direction."""
+    instead gives one row per capture and direction. Includes traffic
+    through a port the peer publishes on the host."""
     cur = conn.execute(
         f"""
         WITH {_CONTAINER_IPS},
@@ -131,11 +194,18 @@ def container_peers(conn: sqlite3.Connection, container: str) -> list[dict]:
                SUM(CASE WHEN sent THEN 0 ELSE length END) AS received_bytes
         FROM peer_flows
         GROUP BY name
-        ORDER BY bytes DESC
         """,
         (container, container),
     )
-    return [dict(r) for r in cur.fetchall()]
+    peers = {r["container"]: dict(r) for r in cur.fetchall()}
+    for _, peer, length, sent in _published_port_flows(conn, container):
+        row = peers.setdefault(peer, {"container": peer, "bytes": 0, "packets": 0,
+                                      "sent_bytes": 0, "received_bytes": 0})
+        length = length or 0
+        row["bytes"] += length
+        row["packets"] += 1
+        row["sent_bytes" if sent else "received_bytes"] += length
+    return sorted(peers.values(), key=lambda r: -r["bytes"])
 
 
 def _strip_port(host: str) -> str:

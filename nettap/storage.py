@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS containers (
     networks        TEXT,   -- JSON list
     ip_addresses    TEXT,   -- JSON: {network: ip}
     labels          TEXT,   -- JSON
-    first_seen      REAL
+    first_seen      REAL,
+    published_ports TEXT    -- JSON: discovery.ContainerNetInfo.published_ports
 );
 
 CREATE TABLE IF NOT EXISTS flows (
@@ -95,6 +96,7 @@ def connect(db_path: str) -> sqlite3.Connection:
 # Columns added after a table's first release. CREATE TABLE IF NOT EXISTS
 # leaves an older table alone, so add them to existing databases here.
 _ADDED_COLUMNS = {
+    "containers": {"published_ports": "TEXT"},
     "flows": {"dns_answers": "TEXT", "http_host": "TEXT"},
     "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER",
                       "heartbeat_interval": "REAL", "rotate_seconds": "REAL"},
@@ -124,16 +126,19 @@ def upsert_container(conn: sqlite3.Connection, info) -> None:
     with cursor(conn) as cur:
         cur.execute(
             """
-            INSERT INTO containers (container_id, name, image, veth, networks, ip_addresses, labels, first_seen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO containers (container_id, name, image, veth, networks, ip_addresses, labels,
+                                    first_seen, published_ports)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(container_id) DO UPDATE SET
                 name=excluded.name, image=excluded.image, veth=excluded.veth,
-                networks=excluded.networks, ip_addresses=excluded.ip_addresses, labels=excluded.labels
+                networks=excluded.networks, ip_addresses=excluded.ip_addresses, labels=excluded.labels,
+                published_ports=excluded.published_ports
             """,
             (
                 info.container_id, info.name, info.image, info.veth,
                 json.dumps(info.networks), json.dumps(info.ip_addresses),
                 json.dumps(info.labels), time.time(),
+                json.dumps(getattr(info, "published_ports", None) or []),
             ),
         )
 

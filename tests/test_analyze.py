@@ -31,7 +31,8 @@ def test_container_matrix(tmp_path):
     conn = storage.connect(str(tmp_path / "n.db"))
     _seed(conn)
     matrix = analyze.container_matrix(conn)
-    assert matrix == [{"src_container": "web", "dst_container": "db", "bytes": 500, "packets": 1}]
+    assert matrix == [{"src_container": "web", "dst_container": "db", "bytes": 500, "packets": 1,
+         "via": "direct"}]
 
 
 def test_external_destinations(tmp_path):
@@ -80,6 +81,52 @@ def test_container_queries_count_a_container_with_two_rows_once(tmp_path):
     storage.upsert_container(conn, ContainerNetInfo(
         "db", "db", "", "eth0", {"eth0": "172.17.0.3"}, [], {}, None, False))
     assert analyze.container_matrix(conn) == [
-        {"src_container": "web", "dst_container": "db", "bytes": 500, "packets": 1}]
+        {"src_container": "web", "dst_container": "db", "bytes": 500, "packets": 1,
+         "via": "direct"}]
     assert analyze.container_peers(conn, "web") == [
         {"container": "db", "bytes": 500, "packets": 1, "sent_bytes": 500, "received_bytes": 0}]
+
+
+def _flow(container, src, sport, dst, dport, length):
+    return {"ts": 1, "container_id": container, "container_name": container, "src_ip": src,
+            "dst_ip": dst, "src_port": sport, "dst_port": dport, "protocol": "TCP",
+            "length": length, "dns_query": None, "tls_sni": None, "pcap_file": "p.pcap"}
+
+
+def _seed_published(conn):
+    # shapes from a live test on Docker Desktop for Mac (2026-11-08): cli asks
+    # host.docker.internal:18080, srv sees the request come from a proxy
+    pub = [{"host_port": 18080, "container_port": 80, "protocol": "tcp"}]
+    storage.upsert_container(conn, ContainerNetInfo(
+        "s1", "srv", "", None, {"a": "172.20.0.2"}, [], {}, None, False, pub))
+    storage.upsert_container(conn, ContainerNetInfo(
+        "c1", "cli", "", None, {"b": "172.21.0.2"}, [], {}, None, False))
+    storage.insert_flows(conn, [
+        _flow("cli", "172.21.0.2", 36762, "192.168.65.254", 18080, 300),
+        _flow("cli", "192.168.65.254", 18080, "172.21.0.2", 36762, 900),
+        _flow("srv", "192.168.65.1", 53143, "172.20.0.2", 80, 300),
+        _flow("srv", "172.20.0.2", 80, "192.168.65.1", 53143, 900),
+        # not the published port, or not a local address: not srv's
+        _flow("cli", "172.21.0.2", 36763, "192.168.65.254", 18081, 50),
+        _flow("cli", "172.21.0.2", 36764, "93.184.216.34", 18080, 70),
+    ])
+
+
+def test_container_matrix_counts_traffic_through_a_published_port(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed_published(conn)
+    assert analyze.container_matrix(conn) == [
+        {"src_container": "cli", "dst_container": "srv", "bytes": 300, "packets": 1,
+         "via": "published port"}]
+    assert analyze.container_peers(conn, "cli") == [
+        {"container": "srv", "bytes": 1200, "packets": 2, "sent_bytes": 300, "received_bytes": 900}]
+    assert analyze.container_peers(conn, "srv") == []  # the proxy hides the client
+
+
+def test_a_port_published_by_two_containers_is_not_attributed(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed_published(conn)
+    storage.upsert_container(conn, ContainerNetInfo(
+        "s2", "srv2", "", None, {"a": "172.20.0.3"}, [], {}, None, False,
+        [{"host_port": 18080, "container_port": 80, "protocol": "tcp"}]))
+    assert analyze.container_matrix(conn) == []

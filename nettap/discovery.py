@@ -28,7 +28,7 @@ macvlan, overlay networks) where this trick doesn't apply.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .utils import run
 
@@ -46,6 +46,8 @@ class ContainerNetInfo:
     labels: dict[str, str]
     sandbox_key: str | None
     uses_host_network: bool
+    # ports published on the host: [{"host_port", "container_port", "protocol"}]
+    published_ports: list[dict] = field(default_factory=list)
 
 
 def interface_exists(iface: str, sys_net: str = "/sys/class/net") -> bool:
@@ -122,6 +124,25 @@ def resolve_veth(sandbox_key: str) -> str | None:
     return _ifindex_to_name(peer)
 
 
+def published_ports(ports: dict | None) -> list[dict]:
+    """NetworkSettings.Ports from `docker inspect` ({"80/tcp": [{"HostIp":
+    "0.0.0.0", "HostPort": "18080"}, ...], "443/tcp": null}) as one entry per
+    distinct host port; unpublished ports (null) are left out.
+    https://docs.docker.com/reference/api/engine/version/v1.47/#tag/Container/operation/ContainerInspect"""
+    found = {}
+    for spec, bindings in (ports or {}).items():
+        port, _, proto = spec.partition("/")
+        for b in bindings or []:
+            try:
+                host_port, container_port = int(b.get("HostPort") or ""), int(port)
+            except ValueError:
+                continue
+            proto = proto or "tcp"
+            found[(host_port, proto)] = {"host_port": host_port,
+                                         "container_port": container_port, "protocol": proto}
+    return sorted(found.values(), key=lambda p: (p["host_port"], p["protocol"]))
+
+
 def inspect_container(docker_client, container_id: str, resolve: bool = True) -> ContainerNetInfo:
     """Build a ContainerNetInfo from the Docker API, resolving the veth as a
     side effect unless resolve=False (it needs the host's netns, which a
@@ -149,6 +170,7 @@ def inspect_container(docker_client, container_id: str, resolve: bool = True) ->
         labels=(attrs.get("Config", {}) or {}).get("Labels") or {},
         sandbox_key=sandbox_key,
         uses_host_network=host_mode,
+        published_ports=published_ports(net_settings.get("Ports")),
     )
 
 
