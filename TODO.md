@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 54 unit tests pass.
+attach/detach/status/analyze/report. All 62 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -75,10 +75,24 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       traffic through a published host port (the observed dst_ip on the wire
       isn't the peer container's own address). Needs conntrack
       cross-referencing.
-- [ ] tcpdump processes are children of the `nettap watch` process; if that
-      process is killed with SIGKILL (not SIGTERM) the capture children are
-      orphaned and keep running. Either reap orphans on daemon startup, or
-      run tcpdump in its own process group and kill the group.
+- [x] **Fixed 2026-11-08: tcpdump children were orphaned when nettap was
+      SIGKILLed.** Live test (nettap run as a non-PID-1 child in the image,
+      then `kill -9`): tcpdump kept running as uid 100. Two fixes in
+      capture.py: (1) on Linux each tcpdump gets `PR_SET_PDEATHSIG=SIGTERM`
+      so the kernel stops it when nettap dies, plus `-Z root`, because
+      Debian's tcpdump otherwise switches to the `tcpdump` user and a user
+      change clears that signal
+      ([prctl(2)](https://man7.org/linux/man-pages/man2/prctl.2.html));
+      (2) `reap_orphans()` runs at `watch`/`sidecar` startup and kills
+      tcpdumps still listed in `live_sessions`, only if that pid is still
+      tcpdump writing the row's pcap pattern (sidecar only reaps its own
+      row). After the fix the same live test shows tcpdump (uid 0) gone
+      right after `kill -9`; the startup reap was also seen killing the
+      orphan before the fix. Integration test still passes. Notes: the
+      signal fires when the *thread* that started tcpdump exits, so
+      `attach()` must stay on the main thread; the normal Docker setup was
+      never affected (nettap is PID 1 there, and the kernel kills the whole
+      PID namespace when it exits). Not tested on a bare Linux host.
 - [ ] No disk-usage cap on `data/pcap/` - long-running captures will fill the
       disk. Add retention (max age and/or max total bytes, oldest-first
       purge).

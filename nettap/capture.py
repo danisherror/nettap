@@ -3,9 +3,14 @@ discovery.py, rotating pcap files so a long-running capture doesn't grow
 unbounded."""
 from __future__ import annotations
 
+import ctypes
+import ctypes.util
 import logging
+import os
 import shutil
+import signal
 import subprocess
+import sys
 import threading
 import time
 from dataclasses import dataclass, field
@@ -14,6 +19,84 @@ from pathlib import Path
 from .discovery import ContainerNetInfo
 
 logger = logging.getLogger("nettap.capture")
+
+_PR_SET_PDEATHSIG = 1  # from <linux/prctl.h>
+
+
+def _load_prctl():
+    """libc's prctl, looked up once in the parent so the forked child only
+    has to call it. None off Linux."""
+    if not sys.platform.startswith("linux"):
+        return None
+    try:
+        return ctypes.CDLL(ctypes.util.find_library("c") or "libc.so.6", use_errno=True).prctl
+    except (OSError, AttributeError):
+        return None
+
+
+_prctl = _load_prctl()
+
+
+def _die_with_parent(parent_pid: int):
+    """preexec_fn for tcpdump: have the kernel send it SIGTERM when nettap
+    dies, even by SIGKILL, so captures aren't left running as orphans.
+    The signal fires when the *thread* that started the child exits, so
+    attach() must be called from a long-lived thread (watch and sidecar
+    both call it from the main thread). See prctl(2):
+    https://man7.org/linux/man-pages/man2/prctl.2.html"""
+    def fn():
+        _prctl(_PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+        if os.getppid() != parent_pid:  # parent already gone before prctl ran
+            os._exit(1)
+    return fn
+
+
+def _cmdline(pid: int) -> str | None:
+    """A process's command line, space-joined, or None if it isn't running
+    (or we can't see it)."""
+    try:
+        raw = Path(f"/proc/{pid}/cmdline").read_bytes()
+        return raw.replace(b"\0", b" ").decode(errors="replace").strip()
+    except FileNotFoundError:
+        if Path("/proc").is_dir():
+            return None
+    except OSError:
+        return None
+    try:  # no /proc (macOS)
+        out = subprocess.run(["ps", "-p", str(pid), "-o", "args="],
+                             capture_output=True, text=True, check=False)
+    except OSError:
+        return None
+    return out.stdout.strip() or None
+
+
+def reap_orphans(sessions: list[dict]) -> list[int]:
+    """Kill tcpdumps left behind by an earlier nettap that died without
+    cleaning up, using the rows it left in live_sessions. A pid is only
+    killed if it is still tcpdump writing that row's pcap pattern, so a pid
+    reused by something else is left alone. Returns the pids killed.
+
+    On Linux the PDEATHSIG set in attach() normally stops orphans happening
+    at all, and inside the nettap container the kernel kills every child
+    when nettap (PID 1) exits; this is the backstop for everything else."""
+    killed = []
+    for row in sessions:
+        pid, pattern = row.get("pid"), row.get("pcap_pattern")
+        if not pid or not pattern or pid == os.getpid():
+            continue
+        cmd = _cmdline(pid)
+        if not cmd or "tcpdump" not in cmd.split(" ", 1)[0] or pattern not in cmd:
+            continue
+        logger.warning("killing orphaned tcpdump for %s (pid %s) left by an earlier run",
+                       row.get("container_name"), pid)
+        try:
+            os.kill(pid, signal.SIGTERM)
+            killed.append(pid)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            logger.warning("no permission to kill orphaned tcpdump pid %s", pid)
+    return killed
 
 
 def _pump_stderr(name: str, pipe) -> None:
@@ -96,10 +179,17 @@ class CaptureManager:
         ]
         if self.snaplen:
             cmd += ["-s", str(self.snaplen)]
+        if _prctl:
+            # Debian's tcpdump otherwise switches to a 'tcpdump' user, and a
+            # user change clears the parent-death signal (prctl(2)) - seen in
+            # a live test 2026-11-08. With -w it writes raw packets without
+            # decoding them, so staying root adds little risk.
+            cmd += ["-Z", "root"]
 
         logger.info("attaching to %s on %s -> %s", info.name, info.veth, pattern)
         proc = subprocess.Popen(
-            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, bufsize=1
+            cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, bufsize=1,
+            preexec_fn=_die_with_parent(os.getpid()) if _prctl else None,
         )
         if proc.stderr:
             threading.Thread(target=_pump_stderr, args=(info.name, proc.stderr), daemon=True).start()

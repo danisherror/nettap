@@ -107,3 +107,82 @@ def test_restart_dead_is_noop_when_all_alive(mock_popen, mgr):
     mgr.attach(_info())
     assert mgr.restart_dead() == []
     assert mock_popen.call_count == 1
+
+
+# --- orphan handling -------------------------------------------------------
+
+from nettap import capture  # noqa: E402
+
+
+@patch("nettap.capture.subprocess.Popen")
+def test_attach_sets_parent_death_signal_when_available(mock_popen, mgr, monkeypatch):
+    mock_popen.return_value = _FakeProc()
+    monkeypatch.setattr(capture, "_prctl", lambda *a: 0)
+    mgr.attach(_info())
+    assert callable(mock_popen.call_args.kwargs["preexec_fn"])
+
+
+@patch("nettap.capture.subprocess.Popen")
+def test_attach_skips_parent_death_signal_off_linux(mock_popen, mgr, monkeypatch):
+    mock_popen.return_value = _FakeProc()
+    monkeypatch.setattr(capture, "_prctl", None)
+    mgr.attach(_info())
+    assert mock_popen.call_args.kwargs["preexec_fn"] is None
+
+
+PATTERN = "/data/pcap/web_%Y%m%d%H%M%S.pcap"
+
+
+def _reap(monkeypatch, cmdlines, rows):
+    killed = []
+    monkeypatch.setattr(capture, "_cmdline", lambda pid: cmdlines.get(pid))
+    monkeypatch.setattr(capture.os, "kill", lambda pid, sig: killed.append((pid, sig)))
+    return capture.reap_orphans(rows), killed
+
+
+def test_reap_orphans_kills_matching_tcpdump(monkeypatch):
+    rows = [{"pid": 100, "pcap_pattern": PATTERN, "container_name": "web"}]
+    cmd = {100: f"tcpdump -i veth1 -w {PATTERN} -G 60 -U -n"}
+    result, killed = _reap(monkeypatch, cmd, rows)
+    assert result == [100]
+    assert killed == [(100, capture.signal.SIGTERM)]
+
+
+def test_reap_orphans_accepts_full_tcpdump_path(monkeypatch):
+    rows = [{"pid": 100, "pcap_pattern": PATTERN, "container_name": "web"}]
+    result, _ = _reap(monkeypatch, {100: f"/usr/bin/tcpdump -i veth1 -w {PATTERN}"}, rows)
+    assert result == [100]
+
+
+def test_reap_orphans_leaves_reused_pid_alone(monkeypatch):
+    rows = [{"pid": 100, "pcap_pattern": PATTERN, "container_name": "web"},
+            {"pid": 101, "pcap_pattern": PATTERN, "container_name": "web"}]
+    cmd = {100: "nginx: worker process",
+           101: "tcpdump -i veth9 -w /data/pcap/other_%Y%m%d%H%M%S.pcap"}
+    result, killed = _reap(monkeypatch, cmd, rows)
+    assert result == [] and killed == []
+
+
+def test_reap_orphans_skips_dead_and_incomplete_rows(monkeypatch):
+    rows = [{"pid": 100, "pcap_pattern": PATTERN},  # not running
+            {"pid": None, "pcap_pattern": PATTERN},
+            {"pid": 102, "pcap_pattern": None}]
+    result, killed = _reap(monkeypatch, {102: "tcpdump -i x"}, rows)
+    assert result == [] and killed == []
+
+
+def test_cmdline_of_this_process():
+    import os
+    assert "python" in (capture._cmdline(os.getpid()) or "").lower()
+
+
+@patch("nettap.capture.subprocess.Popen")
+def test_tcpdump_keeps_root_only_with_parent_death_signal(mock_popen, mgr, monkeypatch):
+    mock_popen.return_value = _FakeProc()
+    monkeypatch.setattr(capture, "_prctl", lambda *a: 0)
+    mgr.attach(_info())
+    assert mock_popen.call_args.args[0][-2:] == ["-Z", "root"]
+
+    monkeypatch.setattr(capture, "_prctl", None)
+    mgr.attach(_info(cid="c2", name="db"))
+    assert "-Z" not in mock_popen.call_args.args[0]

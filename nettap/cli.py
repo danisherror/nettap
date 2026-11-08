@@ -30,7 +30,7 @@ import click
 
 from . import storage
 from .analyze import container_matrix, dns_queries, external_destinations, protocol_breakdown, top_talkers
-from .capture import CaptureManager
+from .capture import CaptureManager, reap_orphans
 from .controller import Selector, run as run_controller
 from .enrich import parse_pcap
 from .report import build_report, render_html, render_text
@@ -139,6 +139,8 @@ def watch_cmd(ctx, label, all_, rotate_seconds, poll_interval, auto_enrich):
     client = _docker_client()
     mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds)
     conn = storage.connect(ctx.obj["db_path"])
+    # rows still here mean an earlier daemon died without cleaning up
+    reap_orphans(storage.list_live_sessions(conn))
     selector = Selector(match_all=all_, base_labels=parse_label_selector(label))
 
     stop = {"flag": False}
@@ -271,6 +273,9 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich):
     mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds)
     conn = storage.connect(ctx.obj["db_path"])
     storage.upsert_container(conn, info)
+    # only our own row: other sidecars may share this DB from other containers
+    reap_orphans([r for r in storage.list_live_sessions(conn)
+                  if r["container_id"] == info.container_id])
     session = mgr.attach(info)
     if session:
         storage.set_live_session(conn, info, session.pcap_pattern, session.process.pid)
