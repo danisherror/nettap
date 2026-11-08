@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 113 unit tests pass.
+attach/detach/status/analyze/report. All 117 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -299,14 +299,32 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       the sidecar's own row and the server. Open: only IPv4 addresses are
       read from the API (`IPAddress`, not `GlobalIPv6Address`), same as
       `watch`.
-- [ ] **Seen 2026-11-08: traffic from a container that then goes quiet
-      isn't reported until its next packet.** In the `--docker-api` live
-      test (10s rotation), the first file stayed open for over 2 minutes
-      after the last request; it only rotated, and got enriched, once new
-      traffic arrived. tcpdump's `-G` seems to rotate only when a packet
-      comes in - check the tcpdump source/docs before relying on that. A
-      fix could have nettap restart tcpdump (or parse the open file) when
-      a pcap is older than the rotation interval.
+- [x] **Fixed 2026-11-08: traffic from a container that then went quiet
+      wasn't reported until its next packet.** In the `--docker-api` live
+      test (10s rotation) the first file stayed open for over 2 minutes
+      after the last request. tcpdump's `-G` only checks the time when a
+      packet arrives, and writes that packet to the new file
+      (`dump_packet_and_trunc()` in
+      [tcpdump.c](https://github.com/the-tcpdump-group/tcpdump/blob/master/tcpdump.c)),
+      so a file is complete once the interval since the time in its name
+      has passed. New `capture.finished_pcaps()` counts the newest file as
+      done from then on (+2s slack), and the enrich loop uses it - no
+      tcpdump restart, no lost packets. Live test (sidecar, 5s rotation):
+      one HTTP request, then silence; the DNS capture never rotated again,
+      but its file was enriched 7s after the request.
+- [x] **Fixed 2026-11-08: a restarted sidecar/daemon stored every old pcap's
+      flows again.** The enrich loop only remembered parsed files in
+      memory and `flows` has no unique key, so after `docker restart` (which
+      the README tells you to do after the target restarts) every report
+      counted the old traffic twice. Live test before the fix: 51 rows ->
+      118 after a restart, HTTP rows 4 -> 8. The loop now checks the DB
+      first (`storage.pcap_enriched()`, new index on `flows.pcap_file`).
+      `nettap enrich` also stopped parsing files a running daemon is still
+      writing, which would now leave the rest of such a file unread:
+      `live_sessions` gained `rotate_seconds`, and files of non-stale
+      sessions that aren't finished are skipped. Live test after the fix:
+      17 rows before a restart, 21 after (4 new ARP rows), no duplicate
+      rows, and `nettap enrich` inserted 0.
 - [x] **Fixed 2026-11-08: external IPs were only named from TLS SNI.**
       enrich.py now also stores DNS answer addresses (`dns.a`/`dns.aaaa`,
       new `flows.dns_answers` column, JSON list) and the HTTP `Host` header

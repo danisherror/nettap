@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS flows (
 CREATE INDEX IF NOT EXISTS idx_flows_container ON flows(container_id);
 CREATE INDEX IF NOT EXISTS idx_flows_ts ON flows(ts);
 CREATE INDEX IF NOT EXISTS idx_flows_dst ON flows(dst_ip);
+CREATE INDEX IF NOT EXISTS idx_flows_pcap ON flows(pcap_file);
 
 -- "desired state": what nettap attach/detach requests, honored by the poller
 -- in controller.py within one poll cycle of a running `nettap watch`.
@@ -76,7 +77,8 @@ CREATE TABLE IF NOT EXISTS live_sessions (
     updated_at      REAL,
     dns_pcap_pattern TEXT,   -- the container's lo capture (capture.EMBEDDED_DNS)
     dns_pid         INTEGER,
-    heartbeat_interval REAL  -- seconds between updated_at refreshes by the daemon
+    heartbeat_interval REAL, -- seconds between updated_at refreshes by the daemon
+    rotate_seconds  REAL     -- tcpdump -G interval, so `enrich` knows when a pcap is done
 );
 """
 
@@ -95,7 +97,7 @@ def connect(db_path: str) -> sqlite3.Connection:
 _ADDED_COLUMNS = {
     "flows": {"dns_answers": "TEXT", "http_host": "TEXT"},
     "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER",
-                      "heartbeat_interval": "REAL"},
+                      "heartbeat_interval": "REAL", "rotate_seconds": "REAL"},
 }
 
 
@@ -134,6 +136,13 @@ def upsert_container(conn: sqlite3.Connection, info) -> None:
                 json.dumps(info.labels), time.time(),
             ),
         )
+
+
+def pcap_enriched(conn: sqlite3.Connection, path: str) -> bool:
+    """Whether flows from this pcap are already stored - the enrich loop's
+    in-memory list starts empty after a restart, and parsing a file twice
+    doubles its traffic in every report (seen live 2026-11-08)."""
+    return conn.execute("SELECT 1 FROM flows WHERE pcap_file = ? LIMIT 1", (path,)).fetchone() is not None
 
 
 def insert_flows(conn: sqlite3.Connection, rows: list[dict]) -> int:
@@ -204,21 +213,24 @@ def clear_desired_state(conn: sqlite3.Connection) -> None:
 # ---- live sessions (what the running daemon reports) -----------------------
 
 def set_live_session(conn: sqlite3.Connection, info, pcap_pattern: str, pid: int,
-                     dns_pcap_pattern: str | None = None, dns_pid: int | None = None) -> None:
+                     dns_pcap_pattern: str | None = None, dns_pid: int | None = None,
+                     rotate_seconds: float | None = None) -> None:
     with cursor(conn) as cur:
         now = time.time()
         cur.execute(
             """
             INSERT INTO live_sessions (container_id, container_name, veth, pcap_pattern, pid,
-                                       started_at, updated_at, dns_pcap_pattern, dns_pid)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                       started_at, updated_at, dns_pcap_pattern, dns_pid,
+                                       rotate_seconds)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(container_id) DO UPDATE SET
                 container_name=excluded.container_name, veth=excluded.veth,
                 pcap_pattern=excluded.pcap_pattern, pid=excluded.pid, updated_at=excluded.updated_at,
-                dns_pcap_pattern=excluded.dns_pcap_pattern, dns_pid=excluded.dns_pid
+                dns_pcap_pattern=excluded.dns_pcap_pattern, dns_pid=excluded.dns_pid,
+                rotate_seconds=excluded.rotate_seconds
             """,
             (info.container_id, info.name, info.veth, pcap_pattern, pid, now, now,
-             dns_pcap_pattern, dns_pid),
+             dns_pcap_pattern, dns_pid, rotate_seconds),
         )
 
 
@@ -226,7 +238,8 @@ def save_capture_session(conn: sqlite3.Connection, session) -> None:
     """set_live_session() for a capture.CaptureSession: both of its tcpdumps."""
     dns = session.dns_process
     set_live_session(conn, session.info, session.pcap_pattern, session.process.pid,
-                     session.dns_pcap_pattern if dns else None, dns.pid if dns else None)
+                     session.dns_pcap_pattern if dns else None, dns.pid if dns else None,
+                     session.rotate_seconds)
 
 
 def heartbeat_live_sessions(conn: sqlite3.Connection, container_ids, interval: float) -> None:

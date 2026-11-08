@@ -125,7 +125,7 @@ def _pump_stderr(name: str, pipe) -> None:
 
 
 _TS = "%Y%m%d%H%M%S"  # tcpdump -G fills this in when it rotates
-_PCAP_NAME = re.compile(r"^(?P<name>.+)_\d{14}(?P<kind>\.dns)?\.pcap$")
+_PCAP_NAME = re.compile(r"^(?P<name>.+)_(?P<ts>\d{14})(?P<kind>\.dns)?\.pcap$")
 
 # Docker's embedded DNS server. Containers on user-defined networks (every
 # Compose network included) resolve names through it, over their own `lo`,
@@ -148,6 +148,33 @@ def pcap_files(pattern: str) -> list[str]:
     web_2_<ts>.pcap or web_<ts>.dns.pcap for the pattern web_<ts>.pcap."""
     exact = re.compile(re.escape(pattern).replace(re.escape(_TS), r"\d{14}") + "$")
     return sorted(p for p in glob.glob(pattern.replace(_TS, "*")) if exact.match(p))
+
+
+def pcap_opened_at(path) -> float | None:
+    """When tcpdump opened this file, from the timestamp in its name (which
+    tcpdump formats in local time - nettap runs in the same environment)."""
+    m = _PCAP_NAME.match(Path(path).name)
+    return time.mktime(time.strptime(m["ts"], _TS)) if m else None
+
+
+def finished_pcaps(pattern: str, rotate_seconds: float, now: float | None = None,
+                   slack: float = 2.0) -> list[str]:
+    """The files for one -w pattern that tcpdump won't write to again.
+
+    That's every file but the newest, and the newest too once its rotation
+    interval has passed: tcpdump's -G only rotates when a packet arrives,
+    and writes that packet to the new file, so a container that went quiet
+    leaves its last file open but complete (dump_packet_and_trunc() in
+    https://github.com/the-tcpdump-group/tcpdump/blob/master/tcpdump.c).
+    Waiting for the next packet instead used to hold back the last traffic
+    of an idle container indefinitely (seen live 2026-11-08). Assumes no -C
+    (size-based rotation), which would reuse the timestamp."""
+    files = pcap_files(pattern)
+    if files:
+        opened = pcap_opened_at(files[-1])
+        if opened is None or opened + rotate_seconds + slack > (now or time.time()):
+            files = files[:-1]
+    return files
 
 
 def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
@@ -207,6 +234,7 @@ class CaptureSession:
     info: ContainerNetInfo
     process: subprocess.Popen
     pcap_pattern: str
+    rotate_seconds: int = 60
     started_at: float = field(default_factory=time.time)
     # second tcpdump on the container's lo, for lookups to EMBEDDED_DNS
     dns_process: subprocess.Popen | None = None
@@ -267,7 +295,8 @@ class CaptureManager:
         pattern = str(self.pcap_dir / f"{self._safe_name(info)}_{_TS}.pcap")
         logger.info("attaching to %s on %s -> %s", info.name, info.veth, pattern)
         proc = self._spawn(info.name, self._tcpdump_cmd(info.veth, pattern))
-        session = CaptureSession(info=info, process=proc, pcap_pattern=pattern)
+        session = CaptureSession(info=info, process=proc, pcap_pattern=pattern,
+                                 rotate_seconds=self.rotate_seconds)
         self._start_dns(session)
         self._sessions[info.container_id] = session
         return session
@@ -401,6 +430,7 @@ class CaptureManager:
                     "veth": session.info.veth,
                     "pcap_pattern": session.pcap_pattern,
                     "dns_pcap_pattern": session.dns_pcap_pattern,
+                    "rotate_seconds": session.rotate_seconds,
                     "alive": alive,
                     "started_at": session.started_at,
                 }

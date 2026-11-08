@@ -281,3 +281,21 @@ def test_reap_orphans_does_not_mix_up_main_and_dns_patterns(monkeypatch):
              "dns_pcap_pattern": "/data/pcap/web_%Y%m%d%H%M%S.dns.pcap"}]
     result, _ = _reap(monkeypatch, {101: f"tcpdump -i eth0 -w {PATTERN}"}, rows)
     assert result == []
+
+
+def test_finished_pcaps_includes_the_newest_once_its_interval_passed(tmp_path):
+    for name in ["web_20261108120000.pcap", "web_20261108120100.pcap"]:
+        (tmp_path / name).write_bytes(b"")
+    pattern = str(tmp_path / "web_%Y%m%d%H%M%S.pcap")
+    newest = capture.pcap_opened_at(tmp_path / "web_20261108120100.pcap")
+    names = lambda now: [p.rsplit("/", 1)[1] for p in capture.finished_pcaps(pattern, 60, now)]
+    assert names(newest + 30) == ["web_20261108120000.pcap"]  # still within -G 60
+    assert names(newest + 63) == ["web_20261108120000.pcap", "web_20261108120100.pcap"]
+    assert capture.finished_pcaps(str(tmp_path / "db_%Y%m%d%H%M%S.pcap"), 60) == []
+
+
+def test_pcap_opened_at_reads_the_name_in_local_time():
+    import time
+    t = capture.pcap_opened_at("/d/web_20261108120000.dns.pcap")
+    assert time.strftime("%Y%m%d%H%M%S", time.localtime(t)) == "20261108120000"
+    assert capture.pcap_opened_at("/d/random.pcap") is None

@@ -30,7 +30,7 @@ import click
 
 from . import storage
 from .analyze import container_matrix, dns_queries, external_destinations, protocol_breakdown, top_talkers
-from .capture import CaptureManager, capture_name, pcap_files, reap_orphans
+from .capture import CaptureManager, capture_name, finished_pcaps, pcap_files, reap_orphans
 from .controller import Selector, run as run_controller
 from .enrich import parse_pcap
 from .report import build_report, render_html, render_text
@@ -117,12 +117,12 @@ def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
                 for pattern in (session["pcap_pattern"], session.get("dns_pcap_pattern")):
                     if not pattern:
                         continue
-                    # the most recent file is still being written by tcpdump;
-                    # only enrich files that have already been rotated past
-                    for path in pcap_files(pattern)[:-1]:
+                    for path in finished_pcaps(pattern, session["rotate_seconds"]):
                         if path in seen:
                             continue
                         seen.add(path)
+                        if storage.pcap_enriched(conn, path):  # e.g. before a restart
+                            continue
                         rows = parse_pcap(path, session["container_id"], session["container"])
                         storage.insert_flows(conn, rows)
                         logger.info("enriched %s -> %d flow rows", path, len(rows))
@@ -466,9 +466,20 @@ def enrich(ctx, pcap_dir):
     conn = storage.connect(ctx.obj["db_path"])
     pcap_dir = pcap_dir or f"{ctx.obj['data_dir']}/pcap"
     already = {r["pcap_file"] for r in conn.execute("SELECT DISTINCT pcap_file FROM flows")}
+    # A file a running daemon is still writing would be stored half-parsed,
+    # and the rest never read (the enrich loop skips files already in the DB).
+    now = time.time()
+    writing = set()
+    for row in storage.list_live_sessions(conn):
+        if storage.is_stale(row, now):
+            continue
+        for pattern in (row["pcap_pattern"], row.get("dns_pcap_pattern")):
+            if pattern:
+                writing |= set(pcap_files(pattern)) - set(
+                    finished_pcaps(pattern, row.get("rotate_seconds") or 60, now))
     total = 0
     for path in sorted(glob.glob(f"{pcap_dir}/*.pcap")):
-        if path in already:
+        if path in already or path in writing:
             continue
         name = capture_name(path) or path.split("/")[-1].rsplit("_", 1)[0]
         rows = parse_pcap(path, container_id="", container_name=name)
