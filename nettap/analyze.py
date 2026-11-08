@@ -93,8 +93,11 @@ _OWN_IP = """EXISTS (SELECT 1 FROM container_ips own
                     WHERE own.name = f.container_name AND own.ip = {ip})"""
 
 
-def _published_port_owners(conn: sqlite3.Connection) -> dict[int, str]:
-    """{host port: container name} for ports published by one container.
+def _published_port_owners(conn: sqlite3.Connection) -> dict[tuple, str]:
+    """{(host port, protocol): container name} for ports published by one
+    container, protocol as Docker names it (tcp/udp/sctp). Each port is also
+    listed as (port, None) when every protocol on it has the same owner -
+    used for flows stored before flows.transport existed.
 
     One container can be stored under two names that share an address - a
     sidecar's --target label, and its real name from another sidecar's
@@ -102,18 +105,19 @@ def _published_port_owners(conn: sqlite3.Connection) -> dict[int, str]:
     owner, named by the name its own capture uses (flows.container_name) if
     any. A port claimed by names with no address in common is ambiguous and
     left out."""
-    claims: dict[int, set] = {}
+    claims: dict[tuple, set] = {}
     for r in conn.execute(
-            "SELECT DISTINCT c.name, json_extract(je.value, '$.host_port') AS port "
+            "SELECT DISTINCT c.name, json_extract(je.value, '$.host_port') AS port, "
+            "       COALESCE(json_extract(je.value, '$.protocol'), 'tcp') AS proto "
             "FROM containers c, json_each(c.published_ports) je "
             "WHERE c.name IS NOT NULL AND c.published_ports IS NOT NULL"):
-        claims.setdefault(r["port"], set()).add(r["name"])
+        claims.setdefault((r["port"], r["proto"]), set()).add(r["name"])
     ips: dict[str, set] = {}
     for r in conn.execute(f"WITH {_CONTAINER_IPS} SELECT name, ip FROM container_ips"):
         ips.setdefault(r["name"], set()).add(r["ip"])
     captured = None
-    owners = {}
-    for port, names in claims.items():
+    owners: dict[tuple, str] = {}
+    for key, names in claims.items():
         if len(names) > 1:
             if not set.intersection(*(ips.get(n, set()) for n in names)):
                 continue
@@ -121,42 +125,52 @@ def _published_port_owners(conn: sqlite3.Connection) -> dict[int, str]:
                 captured = {r[0] for r in conn.execute(
                     "SELECT DISTINCT container_name FROM flows")}
             names = {n for n in names if n in captured} or names
-        owners[port] = min(names)
+        owners[key] = min(names)
+    by_port: dict[int, set] = {}
+    for (port, _), name in owners.items():
+        by_port.setdefault(port, set()).add(name)
+    ambiguous = {port for port, _ in claims.keys() - owners.keys()}
+    for port, names in by_port.items():
+        if len(names) == 1 and port not in ambiguous:
+            owners[(port, None)] = names.pop()
     return owners
 
 
 def _published_port_flows(conn: sqlite3.Connection, container: str | None = None):
     """Flows that reached another container through a port it publishes on
     the host, as (flow container, peer, length, sent, flow) - sent is False
-    for the replies, flow is the flows row. Seen on the wire, such a request goes to the host (e.g.
-    host.docker.internal, 192.168.65.254 on Docker Desktop) on the host
-    port, not to the peer's own address, and the peer's capture sees a
-    proxy address on a random port (live test, Docker Desktop for Mac,
-    2026-11-08), so only the client's side can be matched - by a local,
-    non-container address plus a published host port. Transport protocol
-    isn't checked (flows.protocol is the top layer, e.g. HTTP)."""
+    for the replies, flow is the flows row. Seen on the wire, such a request
+    goes to the host (e.g. host.docker.internal, 192.168.65.254 on Docker
+    Desktop) on the host port, not to the peer's own address, and the peer's
+    capture sees a proxy address on a random port (live test, Docker Desktop
+    for Mac, 2026-11-08), so only the client's side can be matched - by a
+    local, non-container address plus a published host port and transport
+    (a flow with no transport recorded, from before that column, matches on
+    the port alone)."""
     owners = _published_port_owners(conn)
     if not owners:
         return
+    ports = sorted({port for port, _ in owners})
     where, params = "", ()
     if container:
         where, params = " AND f.container_name = ?", (container,)
-    marks = ",".join("?" * len(owners))
+    marks = ",".join("?" * len(ports))
     cur = conn.execute(
         f"""
         WITH {_CONTAINER_IPS}
-        SELECT f.id, f.container_name, f.src_ip, f.dst_ip, f.src_port, f.dst_port, f.length
+        SELECT f.id, f.container_name, f.src_ip, f.dst_ip, f.src_port, f.dst_port,
+               f.length, f.transport
         FROM flows f
         WHERE (f.dst_port IN ({marks}) OR f.src_port IN ({marks})){where}
           AND NOT EXISTS (SELECT 1 FROM container_ips ci WHERE ci.ip IN (f.src_ip, f.dst_ip)
                                                           AND ci.name != f.container_name)
         """,
-        (*owners, *owners, *params),
+        (*ports, *ports, *params),
     )
     for f in cur:
         for addr, port, sent in ((f["dst_ip"], f["dst_port"], True),
                                  (f["src_ip"], f["src_port"], False)):
-            peer = owners.get(port)
+            peer = owners.get((port, f["transport"]))
             if peer and peer != f["container_name"] and addr and ip_scope(addr) == "local":
                 yield f["container_name"], peer, f["length"], sent, f
                 break

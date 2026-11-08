@@ -15,12 +15,14 @@ from nettap import enrich
 # HTTP request, using the current FIELDS order with -E occurrence=a and
 # aggregator=|.
 TSHARK_OUT = (
-    '"1000.0",,,,,,,,,"ARP","42",,,,,\n'
-    '"1001.0",,,"fe80::1","ff02::2",,,,,"ICMPv6","62",,,,,\n'
-    '"1003.0","10.0.0.1|172.17.0.2","172.17.0.2|93.184.216.34",,,,"5555",,"53","ICMP","70",,,,,\n'
+    '"1000.0",,,,,,,,,"ARP","42",,,"eth:ethertype:arp",,,\n'
+    '"1001.0",,,"fe80::1","ff02::2",,,,,"ICMPv6","62",,,"eth:ethertype:ipv6:icmpv6",,,\n'
+    '"1003.0","10.0.0.1|172.17.0.2","172.17.0.2|93.184.216.34",,,,"5555",,"53","ICMP","70",,,'
+    '"eth:ethertype:ip:icmp:ip:udp",,,\n'
     '"1004.0","192.168.65.7","172.17.0.2",,,,"53",,"40000","DNS","120","example.com",,'
-    '"172.66.147.243|104.20.23.154|172.66.147.243",,\n'
-    '"1005.0","172.17.0.2","172.66.147.243",,,"40001",,"80",,"HTTP","140",,,,,"example.com"\n'
+    '"eth:ethertype:ip:udp:dns","172.66.147.243|104.20.23.154|172.66.147.243",,\n'
+    '"1005.0","172.17.0.2","172.66.147.243",,,"40001",,"80",,"HTTP","140",,,'
+    '"eth:ethertype:ip:tcp:http",,,"example.com"\n'
 )
 
 
@@ -42,6 +44,16 @@ def test_parse_pcap_ipv6_and_first_occurrence(mock_run, _req):
     assert (rows["ICMP"]["src_ip"], rows["ICMP"]["dst_ip"]) == ("10.0.0.1", "172.17.0.2")
     assert rows["ARP"]["src_ip"] is None and rows["ARP"]["dst_ip"] is None
     assert rows["ICMP"]["src_port"] == 5555
+
+
+@mock.patch("nettap.enrich.require_tshark")
+@mock.patch("nettap.enrich.subprocess.run")
+def test_parse_pcap_transport(mock_run, _req):
+    mock_run.return_value = mock.Mock(returncode=0, stdout=TSHARK_OUT, stderr="")
+    rows = _by_proto(enrich.parse_pcap("x.pcap", "c1", "web"))
+    assert {p: r["transport"] for p, r in rows.items()} == {
+        "ARP": None, "ICMPv6": "icmpv6", "DNS": "udp", "HTTP": "tcp",
+        "ICMP": "icmp"}  # not the quoted header's udp
 
 
 @mock.patch("nettap.enrich.require_tshark")
@@ -112,3 +124,4 @@ def test_parse_pcap_with_real_tshark(tmp_path):
     assert json.loads(by_src["192.168.65.7"]["dns_answers"]) == [
         "172.66.147.243", "104.20.23.154", "2606:4700::6812:1"]
     assert by_src["172.17.0.2"]["http_host"] == "example.com"
+    assert [r["transport"] for r in rows] == [None, "udp", "icmp", "udp", "tcp"]

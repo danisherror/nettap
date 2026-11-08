@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 128 unit tests pass.
+attach/detach/status/analyze/report. All 131 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -92,8 +92,8 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       destination; on a Linux host conntrack could link the two; (2)
       **fixed 2026-11-08, see next item**; (3) ports are only known with
       `--docker-api` or in `watch` mode (a sidecar's own target's ports:
-      **fixed 2026-11-08, see below**); (4) TCP vs UDP isn't
-      checked; (5) not tried on Linux, where the client would hit the
+      **fixed 2026-11-08, see below**); (4) TCP vs UDP: **fixed
+      2026-11-08, see below**; (5) not tried on Linux, where the client would hit the
       host's address or the bridge gateway instead.
 - [x] **Fixed 2026-11-08: published-port traffic was counted twice in the
       client's report, and every report's internet/local byte counts
@@ -131,6 +131,24 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       network, both `--docker-api`): `srvlabel`'s row holds port 18080, the
       matrix has one row `cli -> srvlabel 1.5 KB, published port` and no
       self rows, and the client's report names `srvlabel` as its peer.
+- [x] **Fixed 2026-11-08: the published-port match ignored TCP vs UDP.**
+      `flows.protocol` is the top layer (HTTP, DNS...), so the transport
+      wasn't stored at all. enrich now reads tshark's `frame.protocols` and
+      stores the first transport layer in new `flows.transport`
+      (tcp/udp/sctp/icmp/icmpv6; added to existing databases on connect).
+      An ICMP error quoting a UDP header is `ip:icmp:ip:udp`, so it's stored
+      as `icmp` - its ports come from the quoted header and no longer match
+      a published port. Ports are now owned per (port, protocol), so one
+      host port published as TCP by one container and UDP by another is
+      attributed to each instead of being dropped as ambiguous. Flows
+      enriched before this have no transport and match on the port alone
+      (only if one container owns every protocol on it). Tests: 6 failed
+      before (incl. the real-tshark test). Live test (Docker Desktop for
+      Mac, client sidecar with `--docker-api`; nginx `-p 18080:80/tcp`,
+      alpine `nc -lu` `-p 18080:5000/udp`, client sends HTTP and UDP to
+      host.docker.internal:18080): matrix shows cli -> tcp server 1012 B
+      sent and cli -> udp server 156 B; the report's per-peer totals
+      (4.0 KB / 156 B) match the raw flows by transport.
 - [x] **Fixed 2026-11-08: tcpdump children were orphaned when nettap was
       SIGKILLed.** Live test (nettap run as a non-PID-1 child in the image,
       then `kill -9`): tcpdump kept running as uid 100. Two fixes in

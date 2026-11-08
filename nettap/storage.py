@@ -44,7 +44,8 @@ CREATE TABLE IF NOT EXISTS flows (
     tls_sni         TEXT,
     pcap_file       TEXT,
     dns_answers     TEXT,   -- JSON list of A/AAAA addresses in a DNS response
-    http_host       TEXT    -- Host header of a plaintext HTTP request
+    http_host       TEXT,   -- Host header of a plaintext HTTP request
+    transport       TEXT    -- tcp/udp/sctp/icmp/icmpv6 (enrich.transport_of), NULL if none
 );
 
 CREATE INDEX IF NOT EXISTS idx_flows_container ON flows(container_id);
@@ -97,7 +98,7 @@ def connect(db_path: str) -> sqlite3.Connection:
 # leaves an older table alone, so add them to existing databases here.
 _ADDED_COLUMNS = {
     "containers": {"published_ports": "TEXT"},
-    "flows": {"dns_answers": "TEXT", "http_host": "TEXT"},
+    "flows": {"dns_answers": "TEXT", "http_host": "TEXT", "transport": "TEXT"},
     "live_sessions": {"dns_pcap_pattern": "TEXT", "dns_pid": "INTEGER",
                       "heartbeat_interval": "REAL", "rotate_seconds": "REAL"},
 }
@@ -158,12 +159,12 @@ def insert_flows(conn: sqlite3.Connection, rows: list[dict]) -> int:
             """
             INSERT INTO flows (ts, container_id, container_name, src_ip, dst_ip,
                                 src_port, dst_port, protocol, length, dns_query, tls_sni,
-                                pcap_file, dns_answers, http_host)
+                                pcap_file, dns_answers, http_host, transport)
             VALUES (:ts, :container_id, :container_name, :src_ip, :dst_ip,
                     :src_port, :dst_port, :protocol, :length, :dns_query, :tls_sni,
-                    :pcap_file, :dns_answers, :http_host)
+                    :pcap_file, :dns_answers, :http_host, :transport)
             """,
-            [{"dns_answers": None, "http_host": None, **r} for r in rows],
+            [{"dns_answers": None, "http_host": None, "transport": None, **r} for r in rows],
         )
     return len(rows)
 

@@ -177,3 +177,39 @@ def test_a_port_two_names_of_one_container_claim_is_attributed(tmp_path):
          "via": "published port"}]
     # srv's replies to itself aren't traffic to "proj-srv-1"
     assert analyze.container_peers(conn, "srv") == []
+
+
+def _proto_flow(transport, dport, length):
+    return {**_flow("cli", "172.21.0.2", 40000, "192.168.65.254", dport, length),
+            "transport": transport}
+
+
+def test_published_port_match_checks_the_transport(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    storage.upsert_container(conn, ContainerNetInfo(
+        "s1", "srv", "", None, {"a": "172.20.0.2"}, [], {}, None, False,
+        [{"host_port": 5353, "container_port": 53, "protocol": "udp"}]))
+    storage.upsert_container(conn, ContainerNetInfo(
+        "c1", "cli", "", None, {"b": "172.21.0.2"}, [], {}, None, False))
+    storage.insert_flows(conn, [
+        _proto_flow("udp", 5353, 100),   # srv's
+        _proto_flow("tcp", 5353, 200),   # nothing publishes 5353/tcp
+        _proto_flow("icmp", 5353, 300),  # ICMP error quoting a header - not srv's
+        _proto_flow(None, 5353, 400),    # stored before flows.transport: port only
+    ])
+    assert analyze.container_matrix(conn) == [
+        {"src_container": "cli", "dst_container": "srv", "bytes": 500, "packets": 2,
+         "via": "published port"}]
+
+
+def test_one_port_two_protocols_two_owners(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    for cid, name, ip, proto in (("s1", "dns", "172.20.0.2", "udp"),
+                                 ("s2", "web", "172.20.0.3", "tcp")):
+        storage.upsert_container(conn, ContainerNetInfo(
+            cid, name, "", None, {"a": ip}, [], {}, None, False,
+            [{"host_port": 8053, "container_port": 53, "protocol": proto}]))
+    storage.insert_flows(conn, [_proto_flow("udp", 8053, 100), _proto_flow("tcp", 8053, 200),
+                                _proto_flow(None, 8053, 400)])  # can't tell: left out
+    assert sorted((r["dst_container"], r["bytes"]) for r in analyze.container_matrix(conn)) == [
+        ("dns", 100), ("web", 200)]

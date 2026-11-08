@@ -30,9 +30,22 @@ FIELDS = [
     "frame.len",
     "dns.qry.name",
     "tls.handshake.extensions_server_name",
+    "frame.protocols",
     "dns.a", "dns.aaaa",
     "http.host",
 ]
+
+# Layers that carry ports, as named in frame.protocols.
+TRANSPORTS = {"tcp", "udp", "sctp", "icmp", "icmpv6"}
+
+
+def transport_of(protocols: str) -> str | None:
+    """First transport layer in tshark's frame.protocols, e.g. 'udp' for
+    'eth:ethertype:ip:udp:dns'. An ICMP error quoting a UDP header is
+    'eth:ethertype:ip:icmp:ip:udp' -> 'icmp': its ports come from the quoted
+    header, not from a UDP packet of its own."""
+    return next((p for p in protocols.split(":") if p in TRANSPORTS), None)
+
 
 # tshark joins repeated values of a field with this. "|" can't appear in an
 # IP address, port, protocol name or hostname.
@@ -73,7 +86,7 @@ def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[d
             continue
         *firsts, dns_a, dns_aaaa, http_host = parts
         (ts, src4, dst4, src6, dst6, tcp_sport, udp_sport, tcp_dport, udp_dport,
-         proto, length, dns_qry, tls_sni) = (v.split(_AGG, 1)[0] for v in firsts)
+         proto, length, dns_qry, tls_sni, layers) = (v.split(_AGG, 1)[0] for v in firsts)
         answers = list(dict.fromkeys(  # dedupe, keep order
             a for a in f"{dns_a}{_AGG}{dns_aaaa}".split(_AGG) if a))
 
@@ -90,6 +103,7 @@ def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[d
             "src_port": int(sport) if sport else None,
             "dst_port": int(dport) if dport else None,
             "protocol": proto or None,
+            "transport": transport_of(layers),
             "length": int(length) if length else None,
             "dns_query": dns_qry or None,
             "tls_sni": tls_sni or None,
