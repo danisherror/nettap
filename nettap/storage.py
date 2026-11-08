@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS flows (
     length          INTEGER,
     dns_query       TEXT,
     tls_sni         TEXT,
-    pcap_file       TEXT
+    pcap_file       TEXT,
+    dns_answers     TEXT,   -- JSON list of A/AAAA addresses in a DNS response
+    http_host       TEXT    -- Host header of a plaintext HTTP request
 );
 
 CREATE INDEX IF NOT EXISTS idx_flows_container ON flows(container_id);
@@ -81,7 +83,21 @@ def connect(db_path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
+    _add_missing_columns(conn)
     return conn
+
+
+# Columns added to `flows` after its first release. CREATE TABLE IF NOT
+# EXISTS leaves an older table alone, so add them to existing databases here.
+_ADDED_FLOW_COLUMNS = {"dns_answers": "TEXT", "http_host": "TEXT"}
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(flows)")}
+    for name, sql_type in _ADDED_FLOW_COLUMNS.items():
+        if name not in have:
+            conn.execute(f"ALTER TABLE flows ADD COLUMN {name} {sql_type}")
+    conn.commit()
 
 
 @contextmanager
@@ -119,11 +135,13 @@ def insert_flows(conn: sqlite3.Connection, rows: list[dict]) -> int:
         cur.executemany(
             """
             INSERT INTO flows (ts, container_id, container_name, src_ip, dst_ip,
-                                src_port, dst_port, protocol, length, dns_query, tls_sni, pcap_file)
+                                src_port, dst_port, protocol, length, dns_query, tls_sni,
+                                pcap_file, dns_answers, http_host)
             VALUES (:ts, :container_id, :container_name, :src_ip, :dst_ip,
-                    :src_port, :dst_port, :protocol, :length, :dns_query, :tls_sni, :pcap_file)
+                    :src_port, :dst_port, :protocol, :length, :dns_query, :tls_sni,
+                    :pcap_file, :dns_answers, :http_host)
             """,
-            rows,
+            [{"dns_answers": None, "http_host": None, **r} for r in rows],
         )
     return len(rows)
 

@@ -40,7 +40,7 @@ interface is its veth peer. Details and caveats are in
   for diagnosing a dead/misbehaving capture), and detects + restarts a
   tcpdump that exited unexpectedly (`restart_dead()`).
 - **enrich.py** - parses each rotated pcap with `tshark` into flow-level rows
-  (5-tuple, byte length, DNS query, TLS SNI). Runs on a background thread
+  (5-tuple, byte length, DNS query and answers, TLS SNI, HTTP Host). Runs on a background thread
   with its own SQLite connection (a shared connection across threads is a
   real bug we hit and fixed - see TODO.md).
 - **storage.py** - SQLite: container metadata, flow rows, and the shared
@@ -86,7 +86,7 @@ docker exec nettap-web nettap --data-dir /data report --container web --format h
 ```
 
 The HTML version shows total traffic, who it talked to (other containers vs.
-the internet, with hostnames resolved from TLS SNI where possible), DNS
+the internet, with hostnames from TLS SNI, HTTP Host or DNS answers where seen), DNS
 lookups, and the protocol mix - as a self-contained file with no server or
 internet connection needed to view it.
 
@@ -252,6 +252,10 @@ nettap/
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.
 - Pcaps are kept forever unless `watch`/`sidecar` is given
   `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
+- External IPs are named from TLS SNI, HTTP Host headers and DNS answers,
+  but DNS answers are only seen on Docker's default bridge network - on
+  user-defined networks (including Compose's) lookups go over the
+  container's loopback interface, which isn't captured.
 - A `sidecar` exits when its target stops; start it again afterwards, or
   recreate it if the target was recreated (see Troubleshooting above).
 

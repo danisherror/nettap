@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 73 unit tests pass.
+attach/detach/status/analyze/report. All 81 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -288,10 +288,34 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       container talks to. Consider having
       `sidecar` optionally accept `--docker-api` to still enrich this via
       docker.sock if it's mounted, for a more reliable report.
-- [ ] Hostname resolution for external destinations only uses TLS SNI seen
-      on that connection - plaintext HTTP (Host header) and DNS-answer-to-IP
-      correlation aren't used yet, so some external IPs will show as bare
-      IPs even though a hostname was knowable from the capture.
+- [x] **Fixed 2026-11-08: external IPs were only named from TLS SNI.**
+      enrich.py now also stores DNS answer addresses (`dns.a`/`dns.aaaa`,
+      new `flows.dns_answers` column, JSON list) and the HTTP `Host` header
+      (`flows.http_host`); existing databases get the columns on connect.
+      tshark now runs with `-E occurrence=a -E aggregator=|` and every other
+      field keeps only its first value, so the ICMP inner-header fix still
+      holds. `analyze.hostnames()` picks a name per IP - TLS SNI, then HTTP
+      Host, then DNS answer, most frequent within each - and both
+      `analyze external` (new `hostname`/`hostname_source` fields) and the
+      report use it. Live test (sidecar, default bridge): github.com named
+      from SNI, neverssl.com from the Host header, and one.one.one.one -
+      only pinged, never connected to over TLS/HTTP - from its DNS answer.
+      Integration test gained a check that the server is named from the
+      client's HTTP traffic; passes.
+- [ ] **DNS answers are invisible on user-defined networks (incl. every
+      Compose network).** Containers there resolve through Docker's
+      embedded DNS server at `127.0.0.11`
+      ([Docker docs](https://docs.docker.com/engine/network/#dns-services)),
+      which they reach over `lo`. Live test 2026-11-08: a sidecar on `eth0`
+      saw no DNS packets at all, while one on `lo` saw the queries and
+      answers (127.0.0.1 <-> 127.0.0.11). On the default bridge DNS goes out
+      over `eth0` and works. SNI and HTTP Host naming work on both. The
+      same applies to `watch`, whose host-side veth only carries `eth0`
+      traffic. Possible fix: a second, filtered tcpdump on `lo` per
+      container (`host 127.0.0.11` - port filters won't work, the embedded
+      server's port is NATed from 53 to a random one) feeding only the
+      DNS columns. Avoid `-i any`: it also picks up the app's own
+      localhost traffic and sees each loopback packet twice.
 - [ ] No HTML/text escaping test for a container or hostname containing
       special characters beyond what test_report.py covers - worth a
       dedicated test if this ever takes attacker-influenced input seriously.

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import logging
 import shutil
 import subprocess
@@ -29,7 +30,13 @@ FIELDS = [
     "frame.len",
     "dns.qry.name",
     "tls.handshake.extensions_server_name",
+    "dns.a", "dns.aaaa",
+    "http.host",
 ]
+
+# tshark joins repeated values of a field with this. "|" can't appear in an
+# IP address, port, protocol name or hostname.
+_AGG = "|"
 
 
 def require_tshark() -> None:
@@ -40,11 +47,12 @@ def require_tshark() -> None:
 def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[dict]:
     """Run tshark over a pcap and return flow-row dicts ready for storage.insert_flows."""
     require_tshark()
-    # occurrence=f keeps only the first value of each field. ICMP error packets
-    # quote the original IP header, so without it ip.src comes back as
-    # "outer,inner" and would be stored as one bogus address.
+    # All occurrences of each field, joined by _AGG: a DNS response lists
+    # several answer addresses. Every other field keeps only its first value -
+    # ICMP error packets quote the original IP header, so ip.src comes back
+    # as "outer|inner" and the inner one must not be stored.
     cmd = ["tshark", "-r", pcap_path, "-T", "fields", "-E", "separator=,", "-E", "quote=d",
-           "-E", "occurrence=f"]
+           "-E", "occurrence=a", "-E", f"aggregator={_AGG}"]
     for f in FIELDS:
         cmd += ["-e", f]
 
@@ -63,8 +71,11 @@ def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[d
     for parts in reader:
         if len(parts) != len(FIELDS):
             continue
+        *firsts, dns_a, dns_aaaa, http_host = parts
         (ts, src4, dst4, src6, dst6, tcp_sport, udp_sport, tcp_dport, udp_dport,
-         proto, length, dns_qry, tls_sni) = parts
+         proto, length, dns_qry, tls_sni) = (v.split(_AGG, 1)[0] for v in firsts)
+        answers = list(dict.fromkeys(  # dedupe, keep order
+            a for a in f"{dns_a}{_AGG}{dns_aaaa}".split(_AGG) if a))
 
         src = src4 or src6
         dst = dst4 or dst6
@@ -82,6 +93,8 @@ def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[d
             "length": int(length) if length else None,
             "dns_query": dns_qry or None,
             "tls_sni": tls_sni or None,
+            "dns_answers": json.dumps(answers) if answers else None,
+            "http_host": http_host.split(_AGG, 1)[0] or None,
             "pcap_file": pcap_path,
         })
     return rows

@@ -89,12 +89,74 @@ def container_matrix(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
 
+def _strip_port(host: str) -> str:
+    """'example.com:8080' -> 'example.com', '[::1]:80' -> '::1'."""
+    if host.startswith("["):
+        return host[1:].split("]", 1)[0]
+    if host.count(":") == 1:
+        return host.split(":", 1)[0]
+    return host
+
+
+def _is_ip(text: str) -> bool:
+    try:
+        ipaddress.ip_address(text)
+        return True
+    except ValueError:
+        return False
+
+
+def hostnames(conn: sqlite3.Connection, container: str | None = None) -> dict[str, dict]:
+    """Best hostname seen in the capture for each destination IP, as
+    {ip: {"hostname": ..., "source": "tls-sni" | "http-host" | "dns"}}.
+
+    Sources, most trusted first: the TLS SNI and the HTTP Host header sent on
+    a connection to that IP (the client named the server it wanted), then
+    DNS answers listing that IP (the name the client looked up; a shared CDN
+    address can be the answer for several names). Within a source the most
+    frequently seen name wins. `container` limits this to one container's
+    traffic."""
+    where, params = "", ()
+    if container:
+        where, params = " AND container_name = ?", (container,)
+    by_source = {
+        "tls-sni": conn.execute(
+            "SELECT dst_ip AS ip, tls_sni AS name, COUNT(*) AS n FROM flows "
+            f"WHERE tls_sni IS NOT NULL AND dst_ip IS NOT NULL{where} "
+            "GROUP BY ip, name", params),
+        "http-host": conn.execute(
+            "SELECT dst_ip AS ip, http_host AS name, COUNT(*) AS n FROM flows "
+            f"WHERE http_host IS NOT NULL AND dst_ip IS NOT NULL{where} "
+            "GROUP BY ip, name", params),
+        "dns": conn.execute(
+            "SELECT je.value AS ip, dns_query AS name, COUNT(*) AS n "
+            "FROM flows, json_each(flows.dns_answers) je "
+            f"WHERE dns_answers IS NOT NULL AND dns_query IS NOT NULL{where} "
+            "GROUP BY ip, name", params),
+    }
+    out: dict[str, dict] = {}
+    for source, cur in by_source.items():  # dicts keep insertion order: priority
+        best: dict[str, tuple[int, str]] = {}
+        for r in cur:
+            name = r["name"].strip().rstrip(".")
+            if source == "http-host":
+                name = _strip_port(name)
+            if not name or _is_ip(name):
+                continue
+            if (r["n"], name) > best.get(r["ip"], (0, "")):
+                best[r["ip"]] = (r["n"], name)
+        for ip, (_, name) in best.items():
+            out.setdefault(ip, {"hostname": name, "source": source})
+    return out
+
+
 def external_destinations(conn: sqlite3.Connection, limit: int = 20,
                           scope: str | None = None) -> list[dict]:
     """dst_ips that don't belong to any known container. Each row gets a
     `scope`: 'internet' (docker-internet traffic) or 'local' (private,
     link-local, multicast etc. - e.g. Docker Desktop's DNS resolver; see
-    ip_scope). Local rows also get a `hint` (may be None). Pass
+    ip_scope), and a `hostname` / `hostname_source` from hostnames() (None
+    if no name was seen). Local rows also get a `hint` (may be None). Pass
     scope='internet' or 'local' to keep only one kind; `limit` applies
     before that filter."""
     cur = conn.execute(
@@ -112,9 +174,13 @@ def external_destinations(conn: sqlite3.Connection, limit: int = 20,
         """,
         (limit,),
     )
+    names = hostnames(conn)
     rows = []
     for r in cur.fetchall():
         row = dict(r)
+        name = names.get(row["dst_ip"], {})
+        row["hostname"] = name.get("hostname")
+        row["hostname_source"] = name.get("source")
         row["scope"] = ip_scope(row["dst_ip"])
         if row["scope"] == "local":
             row["hint"] = local_hint(row["dst_ip"])

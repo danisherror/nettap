@@ -119,17 +119,11 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
     # resolver) aren't the internet - list them separately
     external = [r for r in non_container if r["scope"] == "internet"]
     local = [r for r in non_container if r["scope"] == "local"]
-    # attach a human-readable hostname where we saw one via TLS SNI for that IP
-    sni_by_ip = {
-        r["dst_ip"]: r["tls_sni"]
-        for r in conn.execute(
-            "SELECT DISTINCT dst_ip, tls_sni FROM flows "
-            "WHERE container_name = ? AND tls_sni IS NOT NULL AND dst_ip IS NOT NULL",
-            (container,),
-        )
-    }
+    # name each destination from this container's own traffic (TLS SNI, HTTP
+    # Host, DNS answers), not names other containers happened to use
+    names = analyze.hostnames(conn, container)
     for row in external:
-        row["hostname"] = sni_by_ip.get(row["dst_ip"])
+        row["hostname"] = names.get(row["dst_ip"], {}).get("hostname")
 
     return {
         "container": container,

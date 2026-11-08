@@ -135,6 +135,9 @@ check((cli, srv) in pairs and (srv, cli) in pairs, f"container matrix links both
 check(count("SELECT COUNT(*) FROM flows WHERE src_ip LIKE '%,%' OR dst_ip LIKE '%,%'") == 0,
       "no comma-joined addresses")
 
+check(any(analyze.hostnames(conn, cli).get(ip, {}).get("hostname") == srv for ip in srv_ips),
+      "server named from the client's HTTP Host header / DNS lookup")
+
 if internet:
     internet_rows = analyze.external_destinations(conn, scope="internet")
     check(any(cli in (r["containers"] or "").split(",") for r in internet_rows),
@@ -143,6 +146,8 @@ if internet:
           "no container's own IP listed as an internet destination")
     check(count("SELECT COUNT(*) FROM flows WHERE container_name = ? AND tls_sni = 'example.com'",
                 cli) > 0, "TLS SNI example.com recorded")
+    # No DNS check: on this user-defined network lookups go to Docker's
+    # embedded DNS at 127.0.0.11 over lo, never eth0 (see TODO.md).
 
 data = report.build_report(conn, cli)
 check(set(data["self_ips"]) == cli_ips, f"report identifies the client by its own IPs ({data['self_ips']})")
