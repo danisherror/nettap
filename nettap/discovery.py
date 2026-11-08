@@ -34,10 +34,13 @@ macvlan, overlay networks) where this trick doesn't apply.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from dataclasses import dataclass, field
 
 from .utils import run
+
+logger = logging.getLogger(__name__)
 
 NET_CLASS_DIR = "/sys/class/net"
 
@@ -130,7 +133,11 @@ def _link_info(sandbox_key: str, iface: str = "eth0") -> dict | None:
     try:
         out = run(["nsenter", f"--net={sandbox_key}", "ip", "-j", "-d", "link", "show", "dev", iface])
         links = json.loads(out)
-    except (RuntimeError, OSError, ValueError):
+    except RuntimeError as exc:
+        if "Invalid argument" in str(exc):
+            _warn_stale_netns(sandbox_key)
+        return None
+    except (OSError, ValueError):
         return None
     if not isinstance(links, list) or not links or not isinstance(links[0], dict):
         return None
@@ -140,6 +147,25 @@ def _link_info(sandbox_key: str, iface: str = "eth0") -> dict | None:
         "link_index": link.get("link_index"),
         "kind": (link.get("linkinfo") or {}).get("info_kind"),
     }
+
+
+_stale_warned: set[str] = set()
+
+
+def _warn_stale_netns(sandbox_key: str) -> None:
+    """nsenter gets EINVAL when the netns file is a plain empty file, not a
+    namespace: what nettap's container sees for containers started after it
+    when /var/run/docker/netns is bind-mounted without propagation (Docker's
+    default is rprivate). Seen live 2026-11-08. Needs ':rslave' on that mount,
+    which Docker Desktop doesn't support
+    (https://docs.docker.com/engine/storage/bind-mounts/#configure-bind-propagation)."""
+    if sandbox_key in _stale_warned:
+        return
+    _stale_warned.add(sandbox_key)
+    logger.warning(
+        "cannot enter netns %s (nsenter: Invalid argument): the container probably "
+        "started after nettap and /var/run/docker/netns is mounted without "
+        "propagation - mount it with ':ro,rslave' (see docker-compose.yml)", sandbox_key)
 
 
 def _read_int(path: str) -> int | None:

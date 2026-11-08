@@ -15,7 +15,11 @@ services:
       - SYS_ADMIN
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /var/run/docker/netns:/var/run/docker/netns:ro
+      # rslave: without it, netns files of containers started after nettap
+      # show up as empty files and nsenter fails with "Invalid argument".
+      # Linux hosts only - Docker Desktop doesn't support mount propagation.
+      # https://docs.docker.com/engine/storage/bind-mounts/#configure-bind-propagation
+      - /var/run/docker/netns:/var/run/docker/netns:ro,rslave
       - ./data:/data
     command: ["watch", "--label", "monitor=true"]
     # Swap for ["watch", "--all"] to capture every running container by

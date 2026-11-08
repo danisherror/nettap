@@ -248,6 +248,13 @@ container needs `network_mode: host`. It does **not** need `--privileged` or
 `--pid=host`: `NET_ADMIN` + `NET_RAW` (for tcpdump) and `SYS_ADMIN` (to enter
 another container's netns via `nsenter --net=<sandbox-key>`) are enough.
 
+`/var/run/docker/netns` is mounted with `rslave` propagation. With Docker's
+default (`rprivate`), nettap only sees the namespaces of containers that
+were already running when it started; for later ones `nsenter` fails with
+"Invalid argument" (seen 2026-11-08). Docker Desktop doesn't support mount
+propagation ([docs](https://docs.docker.com/engine/storage/bind-mounts/#configure-bind-propagation))
+and refuses to start the compose file - use `sidecar` there.
+
 This is real privilege - only run it in environments you trust.
 
 ## Development

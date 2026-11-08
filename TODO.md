@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 158 unit tests pass.
+attach/detach/status/analyze/report. All 159 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -52,6 +52,16 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       link_index) and only accepts a host interface whose iflink points back
       at the container's eth0. Live test after: the bridge container
       resolved to its real veth (`vethb56415c`, on its `br-*`).
+- [x] **Fixed 2026-11-08: `watch` couldn't enter containers started after
+      it.** With `/var/run/docker/netns` bind-mounted `:ro` (Docker's
+      default propagation is `rprivate`), their netns files show up as
+      empty files and `nsenter` fails with "Invalid argument" - seen live,
+      only pre-existing containers attached. `docker-compose.yml` now
+      mounts it `:ro,rslave`, and nettap logs a hint naming the fix when
+      it hits that error. Docker Desktop refuses `rslave` ("not a shared or
+      slave mount"; "Mount propagation doesn't work with Docker Desktop",
+      [docs](https://docs.docker.com/engine/storage/bind-mounts/#configure-bind-propagation)),
+      so `rslave` itself is **untested** - needs the Linux host above.
 - [x] **Done 2026-11-08 for `sidecar` mode:** `scripts/integration_test.sh`
       starts a throwaway nginx server + alpine client on their own network,
       a sidecar on each sharing one data dir, sends HTTP client->server and

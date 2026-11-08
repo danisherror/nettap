@@ -169,3 +169,13 @@ def test_inspect_container_reads_start_time():
     client.containers.get.return_value = c
     assert discovery.inspect_container(client, c.id, resolve=False).started_at == 1794123632.5
 
+
+def test_link_info_warns_once_about_unpropagated_netns_mount(caplog):
+    discovery._stale_warned.clear()
+    err = RuntimeError("command failed (1): nsenter ...\nstderr: nsenter: reassociate "
+                       "to namespace 'ns/net' failed: Invalid argument")
+    with patch("nettap.discovery.run", side_effect=err):
+        assert discovery._link_info("/var/run/docker/netns/late") is None
+        assert discovery._link_info("/var/run/docker/netns/late") is None
+    hints = [r for r in caplog.records if "rslave" in r.getMessage()]
+    assert len(hints) == 1
