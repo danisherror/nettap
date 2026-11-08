@@ -310,7 +310,8 @@ class CaptureManager:
             # and the container's own traffic doesn't need it
             cmd[cmd.index("tcpdump") + 1:cmd.index("tcpdump") + 1] = ["-p"]
             cmd += NOT_LO  # lo has the app's own localhost traffic; DNS has its own capture
-            where = f"every interface but lo inside its netns ({info.link_kind} peer not on the host)"
+            # several networks, or a veth whose peer isn't on the host (overlay)
+            where = f"every interface but lo inside its netns (eth0: {info.link_kind})"
         logger.info("attaching to %s on %s -> %s", info.name, where, pattern)
         proc = self._spawn(info.name, cmd)
         session = CaptureSession(info=info, process=proc, pcap_pattern=pattern,

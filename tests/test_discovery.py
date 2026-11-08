@@ -17,10 +17,19 @@ def test_ifindex_to_name(tmp_path, monkeypatch):
     assert discovery._ifindex_to_name(999) is None
 
 
-def _ip_link_json(kind, ifindex=11, link_index=247):
-    """`ip -j -d link show dev eth0` output (trimmed), as seen live 2026-11-08."""
-    return json.dumps([{"ifindex": ifindex, "ifname": "eth0", "link_index": link_index,
-                        "link_netnsid": 0, "linkinfo": {"info_kind": kind}}])
+def _ip_link_json(kind, ifindex=11, link_index=247, extra=()):
+    """`ip -j -d link show` output inside a container's netns (trimmed), as
+    seen live 2026-11-08: lo, the kernel's DOWN tunnel devices, eth0, and
+    `extra` (name, kind) interfaces after it."""
+    links = [{"ifindex": 1, "ifname": "lo"},
+             {"ifindex": 2, "ifname": "tunl0", "linkinfo": {"info_kind": "ipip"}},
+             {"ifindex": 8, "ifname": "sit0", "linkinfo": {"info_kind": "sit"}},
+             {"ifindex": ifindex, "ifname": "eth0", "link_index": link_index,
+              "link_netnsid": 0, "linkinfo": {"info_kind": kind}}]
+    for n, (name, k) in enumerate(extra, 1):
+        links.append({"ifindex": ifindex + n, "ifname": name, "link_index": link_index + n,
+                      "link_netnsid": 0, "linkinfo": {"info_kind": k}})
+    return json.dumps(links)
 
 
 def _host_net(tmp_path, monkeypatch, ifaces):
@@ -39,15 +48,22 @@ HOST = {"eth0": (4, 4), "vethb56415c": (247, 11), "eth0.98": (248, 4)}
 def test_link_info_asks_netlink_inside_the_netns(mock_run):
     mock_run.return_value = _ip_link_json("veth")
     assert discovery._link_info("/var/run/docker/netns/abc") == {
-        "ifindex": 11, "link_index": 247, "kind": "veth"}
+        "ifindex": 11, "link_index": 247, "kind": "veth", "others": []}
     args = mock_run.call_args[0][0]
     assert args[:2] == ["nsenter", "--net=/var/run/docker/netns/abc"]
     # not sysfs: under nsenter --net, /sys/class/net still shows the host's
     # interfaces (seen live 2026-11-08)
-    assert args[2:] == ["ip", "-j", "-d", "link", "show", "dev", "eth0"]
+    assert args[2:] == ["ip", "-j", "-d", "link", "show"]
 
 
-@pytest.mark.parametrize("effect", [RuntimeError("boom"), OSError("no ip"), "not json", "[]"])
+@patch("nettap.discovery.run")
+def test_link_info_lists_other_data_interfaces_not_tunnels(mock_run):
+    mock_run.return_value = _ip_link_json("veth", extra=[("eth1", "veth"), ("ip6tnl0", "ip6tnl")])
+    assert discovery._link_info("sb")["others"] == ["eth1"]
+
+
+@pytest.mark.parametrize("effect", [RuntimeError("boom"), OSError("no ip"), "not json", "[]",
+                                    '[{"ifindex": 1, "ifname": "lo"}]'])
 def test_link_info_failure_returns_none(effect):
     kw = {"side_effect": effect} if isinstance(effect, Exception) else {"return_value": effect}
     with patch("nettap.discovery.run", **kw):
@@ -84,6 +100,21 @@ def test_resolve_capture_macvlan_ipvlan_capture_inside_netns(tmp_path, monkeypat
     _host_net(tmp_path, monkeypatch, HOST)
     with patch("nettap.discovery.run", return_value=_ip_link_json(kind, 246, link_index)):
         assert discovery.resolve_capture("sb") == ("eth0", True, kind)
+
+
+def test_resolve_capture_several_networks_captures_every_interface_in_netns(tmp_path, monkeypatch):
+    # seen live 2026-11-08: a container on two bridge networks has eth0 and
+    # eth1, both veths with host peers - eth0's veth alone misses eth1
+    _host_net(tmp_path, monkeypatch, {**HOST, "veth2": (248, 12)})
+    with patch("nettap.discovery.run", return_value=_ip_link_json("veth", extra=[("eth1", "veth")])):
+        assert discovery.resolve_capture("sb") == ("any", True, "veth")
+
+
+@pytest.mark.parametrize("kind", ["macvlan", "ipvlan"])
+def test_resolve_capture_macvlan_plus_bridge_captures_every_interface(tmp_path, monkeypatch, kind):
+    _host_net(tmp_path, monkeypatch, HOST)
+    with patch("nettap.discovery.run", return_value=_ip_link_json(kind, 246, 4, extra=[("eth1", "veth")])):
+        assert discovery.resolve_capture("sb") == ("any", True, kind)
 
 
 def test_resolve_capture_unknown_kind(tmp_path, monkeypatch):

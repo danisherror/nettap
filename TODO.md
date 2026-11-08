@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 168 unit tests pass.
+attach/detach/status/analyze/report. All 173 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -172,10 +172,20 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       its own side, but matching flows between two hosts' nettap instances
       isn't implemented - each host is an independent island (see
       Multi-host in P3). Needs a second Docker host to test.
-- [ ] Containers on more than one bridge network: `watch` only captures
-      the host-side veth of eth0, so traffic on eth1+ is missed. The
-      in-netns `-i any` capture used for overlay containers would cover it
-      (noticed 2026-11-08, not tested).
+- [x] **Done 2026-11-08: containers on more than one network in
+      `watch`.** It only captured the host-side veth of eth0, so traffic on
+      eth1+ was missed. Live check first (Docker Desktop for Mac, alpine on
+      two user-defined bridge networks): eth0 and eth1 are both veths with
+      host peers, and the netns also holds the kernel's DOWN tunnel devices
+      (tunl0, gre0, sit0, ip6tnl0, ... - 9 of them). Now `_link_info()`
+      lists every link in the netns (`ip -j -d link show`) and counts the
+      other veth/macvlan/ipvlan ones; if there are any, the container is
+      captured inside its netns on every interface but lo, like overlay
+      containers. Live test after (`watch --label` in the nettap image, a
+      client on both networks fetching from an nginx on each every 2s): one
+      `-i any` capture; flows to both servers (172.20.0.2 via eth0,
+      172.21.0.2 via eth1, ~5.2 KB each in the report), no host traffic.
+      Tests: 5 new, 2 updated.
 - [x] **Partly fixed 2026-11-08: `container_matrix()` missed traffic
       through a published host port** (it only matched dst_ip against
       container addresses). Live test first (Docker Desktop for Mac,
@@ -645,3 +655,9 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       report does (`printable()`/`format_bytes()` moved from report.py to
       utils.py for this). Unit-tested through the CLI only; output is
       plain text with no Docker-specific behaviour to verify live.
+- [ ] The report names a peer container only if nettap inspected it: in
+      `watch --label`, an unlabelled peer shows up under "Local / private
+      network addresses" by IP, not under "Other containers" (seen
+      2026-11-08 in the multi-network live test - both nginx servers were
+      listed by IP). `watch` could record names/addresses of every running
+      container without capturing them.

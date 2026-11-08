@@ -35,6 +35,8 @@ Swarm overlay containers have a veth whose peer is in the overlay network's
 own namespace, not the host's, plus a second interface (eth1, on
 docker_gwbridge) that carries their internet traffic. Those are captured
 inside their namespace on every interface but lo (ANY_IFACE + NOT_LO).
+So is any container on more than one network (eth0, eth1, ...): the host
+veth of eth0 alone would miss the rest.
 
 This intentionally avoids requiring --privileged + --pid=host; it only needs
 CAP_SYS_ADMIN (to enter another netns) and read access to
@@ -57,6 +59,8 @@ NET_CLASS_DIR = "/sys/class/net"
 # container's netns (https://docs.docker.com/engine/network/drivers/macvlan/,
 # https://docs.docker.com/engine/network/drivers/ipvlan/)
 NETNS_CAPTURE_KINDS = ("macvlan", "ipvlan")
+# link kinds that carry a container's traffic (one per network it's on)
+DATA_KINDS = ("veth",) + NETNS_CAPTURE_KINDS
 # tcpdump's pseudo-interface for all interfaces, and a filter that leaves out
 # lo (always ifindex 1 on Linux; the "ifindex" primitive needs libpcap 1.10+
 # and -i any, see https://www.tcpdump.org/manpages/pcap-filter.7.html)
@@ -163,9 +167,13 @@ def interface_ips(iface: str | None = "eth0", sandbox_key: str | None = None,
 def _link_info(sandbox_key: str, iface: str = "eth0") -> dict | None:
     """eth0's ifindex, link kind and link_index (a veth's peer, or a
     macvlan/ipvlan's parent), read over netlink inside the container's
-    netns. Needs iproute2 with JSON output (-j, iproute2 4.13+)."""
+    netns, plus "others": the names of its other data interfaces (veth,
+    macvlan, ipvlan - e.g. eth1 of a container on a second network). The
+    kernel's tunnel devices (tunl0, gre0, sit0, ... - DOWN, in every netns
+    when their modules are loaded; seen live 2026-11-08) don't count.
+    Needs iproute2 with JSON output (-j, iproute2 4.13+)."""
     try:
-        out = run(["nsenter", f"--net={sandbox_key}", "ip", "-j", "-d", "link", "show", "dev", iface])
+        out = run(["nsenter", f"--net={sandbox_key}", "ip", "-j", "-d", "link", "show"])
         links = json.loads(out)
     except RuntimeError as exc:
         if "Invalid argument" in str(exc):
@@ -173,13 +181,22 @@ def _link_info(sandbox_key: str, iface: str = "eth0") -> dict | None:
         return None
     except (OSError, ValueError):
         return None
-    if not isinstance(links, list) or not links or not isinstance(links[0], dict):
+    if not isinstance(links, list):
         return None
-    link = links[0]
+    links = [l for l in links if isinstance(l, dict)]
+
+    def kind(l: dict) -> str | None:
+        return (l.get("linkinfo") or {}).get("info_kind")
+
+    link = next((l for l in links if l.get("ifname") == iface), None)
+    if link is None:
+        return None
     return {
         "ifindex": link.get("ifindex"),
         "link_index": link.get("link_index"),
-        "kind": (link.get("linkinfo") or {}).get("info_kind"),
+        "kind": kind(link),
+        "others": [l.get("ifname") for l in links
+                   if l is not link and kind(l) in DATA_KINDS],
     }
 
 
@@ -230,11 +247,16 @@ def resolve_capture(sandbox_key: str, iface: str = "eth0") -> tuple[str | None, 
     happens to share its ifindex; such a container is captured inside its
     netns on ANY_IFACE, which also covers its docker_gwbridge interface.
     For macvlan/ipvlan: the container's own interface, in_netns=True.
+    A container with more than one data interface (on several networks, or
+    a Swarm overlay container's eth0 + gwbridge eth1) is captured inside its
+    netns on ANY_IFACE, so traffic on eth1+ isn't missed.
     Otherwise (None, False, kind)."""
     link = _link_info(sandbox_key, iface)
     if link is None:
         return None, False, None
     kind = link["kind"]
+    if kind in DATA_KINDS and link.get("others"):
+        return ANY_IFACE, True, kind
     if kind in NETNS_CAPTURE_KINDS:
         return iface, True, kind
     if kind == "veth" and isinstance(link["link_index"], int):
