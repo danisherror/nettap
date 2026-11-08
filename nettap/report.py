@@ -69,9 +69,12 @@ def build_report(conn: sqlite3.Connection, container: str) -> dict:
         if r["src_container"] == container or r["dst_container"] == container
     ]
 
+    # Drop the container's own IP as a backstop: if its addresses were never
+    # recorded (e.g. data from an older sidecar), replies into it would
+    # otherwise show up as an "internet destination".
     external = [
         r for r in analyze.external_destinations(conn, limit=200)
-        if container in (r["containers"] or "").split(",")
+        if container in (r["containers"] or "").split(",") and r["dst_ip"] != self_ip
     ]
     # attach a human-readable hostname where we saw one via TLS SNI for that IP
     sni_by_ip = {

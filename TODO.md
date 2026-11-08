@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 29 unit tests pass.
+attach/detach/status/analyze/report. All 34 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -10,8 +10,9 @@ captures on the shared `eth0`, `enrich` parsed 118 flow rows, and `status`,
 `analyze top-talkers|dns|external`, `report` and `report --format html` all
 produce correct-looking output (DNS lookups, SNI hostnames, protocol mix).
 `watch` mode is still **untested** - it needs a real Linux host (see P0).
-Testing turned up one real bug in sidecar-mode reporting - see "report.py /
-analyze.py - bugs found in live testing" below.
+Testing turned up one real bug in sidecar-mode reporting (container counted
+its own IP as an internet destination) - fixed and live-verified the same
+day, see "report.py / analyze.py - bugs found in live testing" below.
 
 ## P0 - verify the MVP actually works
 
@@ -169,19 +170,23 @@ analyze.py - bugs found in live testing" below.
 
 ## report.py / analyze.py - bugs found in live testing (2026-11-08)
 
-- [ ] **Bug: in sidecar mode the container lists its own IP as an "internet
-      destination".** `sidecar` saves the container with
-      `ip_addresses={}` (`cli.py`, around line 259), and
-      `analyze.external_destinations()` counts any `dst_ip` not in a known
-      container's `ip_addresses` as internet traffic. So every reply packet
-      *into* the container (dst = its own IP, e.g. `172.17.0.2`) is counted
-      as external - in the live test the container was its own #1 "internet
-      destination" (25.8 KB of 35.6 KB total). This inflates both
-      `analyze external` and the internet section of `report`. Fix: have
-      `sidecar` record the container's own IP at startup (read it from
-      `eth0` inside the shared netns - no docker.sock needed), and/or
-      exclude `report._self_ip()` from the external list. Add a test that
-      fails on the current behaviour.
+- [x] **Fixed 2026-11-08: in sidecar mode the container listed its own IP
+      as an "internet destination".** `sidecar` saved the container with
+      `ip_addresses={}`, and `analyze.external_destinations()` counts any
+      `dst_ip` not in a known container's `ip_addresses` as internet
+      traffic, so every reply packet *into* the container was counted as
+      external (25.8 KB of 35.6 KB in the first live test). Fix:
+      `discovery.interface_ips()` reads the interface's addresses with
+      `ip -j addr show dev <iface>` inside the shared netns (no docker.sock
+      needed) and `sidecar` stores them; `report.build_report()` also drops
+      its detected self IP from the external list as a backstop for older
+      data. Regression tests: `tests/test_sidecar_self_ip.py` (4 of 5 failed
+      before the fix). **Live-verified 2026-11-08** on Docker Desktop for Mac
+      (nginx:alpine target, HTTP+HTTPS to example.com): `containers` row got
+      `{"eth0": "172.17.0.2"}`, `172.17.0.2` no longer appears in
+      `analyze external` or the report, and the 25.8 KB now shows correctly
+      as "received by this container". The target had no IPv6 address, so
+      the IPv6 key path is only unit-tested.
 - [ ] Docker Desktop's internal DNS resolver (`192.168.65.7`) shows up as an
       internet destination. Consider labelling private/RFC1918 and
       Docker-internal addresses separately from real internet traffic.
@@ -194,12 +199,14 @@ analyze.py - bugs found in live testing" below.
 - [ ] The "which IP is the container itself" heuristic in `report._self_ip`
       (most-frequent IP across src/dst) will misfire for a container that
       talks to one single peer overwhelmingly more than everything else
-      combined - worth cross-checking against `containers.ip_addresses` when
-      that's populated (it isn't yet in sidecar mode - see below).
-- [ ] Sidecar mode (`nettap sidecar`) doesn't call the Docker API, so
-      `containers.ip_addresses` is never populated for that container - the
-      container-to-container matrix and "self IP" heuristic both work purely
-      from observed traffic instead of known ground truth. Consider having
+      combined - worth cross-checking against `containers.ip_addresses`,
+      which is now populated in both `watch` and `sidecar` mode (sidecar
+      since 2026-11-08).
+- [ ] Sidecar mode (`nettap sidecar`) doesn't call the Docker API. Since
+      2026-11-08 it records the target's own IPs from its interface, but it
+      still knows nothing about *other* containers, so the
+      container-to-container matrix can't name the peers a sidecar-watched
+      container talks to. Consider having
       `sidecar` optionally accept `--docker-api` to still enrich this via
       docker.sock if it's mounted, for a more reliable report.
 - [ ] Hostname resolution for external destinations only uses TLS SNI seen

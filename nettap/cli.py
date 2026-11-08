@@ -252,11 +252,14 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich):
     interface (default eth0) - no nsenter, no host networking, and no
     /var/run/docker.sock or /var/run/docker/netns mounts needed. One sidecar
     watches one target container; run one per container of interest."""
-    from .discovery import ContainerNetInfo
+    from .discovery import ContainerNetInfo, interface_ips
 
+    # We share the target's netns, so iface's addresses are the target's own.
+    # Without them every reply packet into the target (dst = its own IP) gets
+    # counted as "internet" traffic by analyze.external_destinations().
     info = ContainerNetInfo(
         container_id=target_label, name=target_label, image="",
-        veth=iface, ip_addresses={}, networks=[], labels={},
+        veth=iface, ip_addresses=interface_ips(iface), networks=[], labels={},
         sandbox_key=None, uses_host_network=False,
     )
     mgr = CaptureManager(ctx.obj["data_dir"], rotate_seconds=rotate_seconds)

@@ -48,6 +48,36 @@ class ContainerNetInfo:
     uses_host_network: bool
 
 
+def interface_ips(iface: str = "eth0") -> dict[str, str]:
+    """Addresses assigned to `iface` in *this* process's network namespace,
+    shaped like ContainerNetInfo.ip_addresses. Used by `sidecar`, which shares
+    the target container's netns, so these are the target's own addresses -
+    no docker.sock needed. The first IPv4 address is keyed by the bare
+    interface name; any others get "<iface>/<family>#<n>" keys. Returns {} if
+    `ip` fails (e.g. no such interface)."""
+    import json
+    import logging
+
+    try:
+        data = json.loads(run(["ip", "-j", "addr", "show", "dev", iface]) or "[]")
+    except Exception as exc:  # noqa: BLE001 - best effort; report falls back to heuristics
+        logging.getLogger(__name__).warning("could not read addresses of %s: %s", iface, exc)
+        return {}
+    out: dict[str, str] = {}
+    counts: dict[str, int] = {}
+    for link in data:
+        for addr in link.get("addr_info", []):
+            ip, family = addr.get("local"), addr.get("family", "")
+            if not ip:
+                continue
+            if family == "inet" and iface not in out:
+                out[iface] = ip
+            else:
+                counts[family] = counts.get(family, 0) + 1
+                out[f"{iface}/{family}#{counts[family]}"] = ip
+    return out
+
+
 def _peer_ifindex(sandbox_key: str, iface: str = "eth0") -> int | None:
     try:
         out = run(["nsenter", f"--net={sandbox_key}", "cat", f"/sys/class/net/{iface}/iflink"])
