@@ -39,12 +39,19 @@ def local_hint(ip: str | None) -> str | None:
     return None
 
 
+NON_IP_NOTE = "non-IP frames (e.g. ARP), which have no IP addresses"
+
+
 def top_talkers(conn: sqlite3.Connection, container: str | None = None, limit: int = 10) -> list[dict]:
+    """Biggest src/dst pairs by bytes. Each row lists the `protocols` seen.
+    Frames with no IP layer (ARP etc.) group into one row with null IPs and
+    a `note` saying so."""
     where = "WHERE container_name = ?" if container else ""
     params = (container,) if container else ()
     cur = conn.execute(
         f"""
-        SELECT src_ip, dst_ip, SUM(length) AS bytes, COUNT(*) AS packets
+        SELECT src_ip, dst_ip, SUM(length) AS bytes, COUNT(*) AS packets,
+               GROUP_CONCAT(DISTINCT protocol) AS protocols
         FROM flows
         {where}
         GROUP BY src_ip, dst_ip
@@ -53,7 +60,11 @@ def top_talkers(conn: sqlite3.Connection, container: str | None = None, limit: i
         """,
         (*params, limit),
     )
-    return [dict(r) for r in cur.fetchall()]
+    rows = [dict(r) for r in cur.fetchall()]
+    for row in rows:
+        if row["src_ip"] is None and row["dst_ip"] is None:
+            row["note"] = NON_IP_NOTE
+    return rows
 
 
 def container_matrix(conn: sqlite3.Connection) -> list[dict]:

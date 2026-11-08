@@ -17,9 +17,12 @@ import subprocess
 
 logger = logging.getLogger("nettap.enrich")
 
+# ipv6.src/ipv6.dst are separate fields from ip.src/ip.dst in tshark; without
+# them every IPv6 packet would be stored with null addresses.
 FIELDS = [
     "frame.time_epoch",
     "ip.src", "ip.dst",
+    "ipv6.src", "ipv6.dst",
     "tcp.srcport", "udp.srcport",
     "tcp.dstport", "udp.dstport",
     "_ws.col.Protocol",
@@ -37,7 +40,11 @@ def require_tshark() -> None:
 def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[dict]:
     """Run tshark over a pcap and return flow-row dicts ready for storage.insert_flows."""
     require_tshark()
-    cmd = ["tshark", "-r", pcap_path, "-T", "fields", "-E", "separator=,", "-E", "quote=d"]
+    # occurrence=f keeps only the first value of each field. ICMP error packets
+    # quote the original IP header, so without it ip.src comes back as
+    # "outer,inner" and would be stored as one bogus address.
+    cmd = ["tshark", "-r", pcap_path, "-T", "fields", "-E", "separator=,", "-E", "quote=d",
+           "-E", "occurrence=f"]
     for f in FIELDS:
         cmd += ["-e", f]
 
@@ -56,9 +63,11 @@ def parse_pcap(pcap_path: str, container_id: str, container_name: str) -> list[d
     for parts in reader:
         if len(parts) != len(FIELDS):
             continue
-        (ts, src, dst, tcp_sport, udp_sport, tcp_dport, udp_dport,
+        (ts, src4, dst4, src6, dst6, tcp_sport, udp_sport, tcp_dport, udp_dport,
          proto, length, dns_qry, tls_sni) = parts
 
+        src = src4 or src6
+        dst = dst4 or dst6
         sport = tcp_sport or udp_sport or None
         dport = tcp_dport or udp_dport or None
         rows.append({

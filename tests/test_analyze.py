@@ -54,3 +54,19 @@ def test_protocol_breakdown(tmp_path):
     _seed(conn)
     protos = {row["protocol"] for row in analyze.protocol_breakdown(conn)}
     assert protos == {"TCP", "TLS", "DNS"}
+
+
+def test_top_talkers_labels_non_ip_rows(tmp_path):
+    conn = storage.connect(str(tmp_path / "n.db"))
+    _seed(conn)
+    storage.insert_flows(conn, [
+        {"ts": 4, "container_id": "c1", "container_name": "web", "src_ip": None,
+         "dst_ip": None, "src_port": None, "dst_port": None, "protocol": "ARP",
+         "length": 42, "dns_query": None, "tls_sni": None, "pcap_file": "a.pcap"},
+    ])
+    rows = {(r["src_ip"], r["dst_ip"]): r for r in analyze.top_talkers(conn)}
+
+    assert rows[(None, None)]["note"] == analyze.NON_IP_NOTE
+    assert rows[(None, None)]["protocols"] == "ARP"
+    assert "note" not in rows[("172.17.0.2", "93.184.216.34")]
+    assert rows[("172.17.0.2", "93.184.216.34")]["protocols"] == "TLS"
