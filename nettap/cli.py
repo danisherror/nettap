@@ -281,7 +281,12 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
     interface (default eth0) - no nsenter, no host networking, and no
     /var/run/docker.sock or /var/run/docker/netns mounts needed. One sidecar
     watches one target container; run one per container of interest."""
-    from .discovery import ContainerNetInfo, interface_ips
+    from .discovery import ContainerNetInfo, interface_exists, interface_ips
+
+    if not interface_exists(iface):
+        raise click.ClickException(
+            f"no interface {iface!r} here - start this container with "
+            f"--network container:<target> and make sure the target is running")
 
     # We share the target's netns, so iface's addresses are the target's own.
     # Without them every reply packet into the target (dst = its own IP) gets
@@ -318,6 +323,18 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich,
     click.echo(f"nettap sidecar capturing '{target_label}' on {iface} (Ctrl+C to stop)...")
     try:
         while not stop["flag"]:
+            if not interface_exists(iface):
+                # Docker removes the shared interface when the target stops or
+                # is removed, and a restarted target gets a fresh netns that
+                # this process can't follow - tcpdump then just fails forever
+                # (seen live 2026-11-08). Exit so it shows in `docker ps`.
+                # `docker start` on this container rejoins a restarted target;
+                # a removed target needs a new sidecar.
+                logger.error(
+                    "%s disappeared: the target container stopped or was removed. "
+                    "Exiting - once the target is running again, `docker start` this "
+                    "container (or recreate it if the target was recreated)", iface)
+                raise SystemExit(3)
             for restarted in mgr.restart_dead():
                 storage.set_live_session(conn, restarted.info, restarted.pcap_pattern, restarted.process.pid)
             try:

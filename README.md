@@ -159,16 +159,20 @@ one. `report`/`analyze top-talkers`/`dns`/`protocols` now print the list of
 container names that actually have data when the one you asked for doesn't
 match, e.g. `containers with captured data so far: relaxed_panini`.
 
-**A `sidecar` doesn't follow its target if the target container gets
-recreated.** `--network container:<target>` resolves `<target>` to a network
-namespace *once*, at `docker run` time. If that container is later removed
-and replaced (even under the same name), the sidecar keeps capturing the
-old, now-orphaned namespace - traffic in the new container won't show up,
-and no error is raised anywhere (the tcpdump process itself doesn't crash,
-it just stops seeing new packets). If you recreate a target container,
-recreate its sidecar too:
+**A `sidecar` exits when its target container stops or is removed.**
+`--network container:<target>` joins the target's network namespace once, at
+start. When the target stops, Docker removes that shared `eth0`, and the
+sidecar exits (code 3) with an `eth0 disappeared` error in `docker logs`.
+A restart policy doesn't help: Docker tries once while the target is still
+down, fails with "cannot join network namespace of a non running container",
+and gives up. Once the target is running again:
 ```
-docker stop nettap-<old> && docker rm nettap-<old>
+docker start nettap-<target>
+```
+If the target was removed and recreated (even under the same name), the old
+sidecar points at a container that no longer exists - recreate it too:
+```
+docker rm nettap-<target>
 docker run -d --name nettap-<target> --network container:<target> \
   --cap-add NET_ADMIN --cap-add NET_RAW -v "$(pwd)/data:/data" \
   nettap sidecar --target <target>
@@ -248,7 +252,7 @@ nettap/
 - Single Docker host only; Swarm/overlay cross-host correlation isn't done.
 - Pcaps are kept forever unless `watch`/`sidecar` is given
   `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
-- A `sidecar` doesn't follow its target container across a recreate (see
-  Troubleshooting above) - recreate the sidecar alongside it.
+- A `sidecar` exits when its target stops; start it again afterwards, or
+  recreate it if the target was recreated (see Troubleshooting above).
 
 See `TODO.md` for the full list, what's already been fixed, and what's next.

@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 70 unit tests pass.
+attach/detach/status/analyze/report. All 73 unit tests pass.
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -140,16 +140,25 @@ day, see "report.py / analyze.py - bugs found in live testing" below.
       `docker logs <nettap container>` showed nothing useful for diagnosing
       a dead or misbehaving capture. It's now relayed into nettap's own
       logger (`tcpdump[<container>]: ...` lines) as it's produced.
-- [ ] **Open gap surfaced by the above:** `nettap sidecar --target X
-      --network container:X` binds to whatever container `X` resolves to
-      *at `docker run` time*. If that container is later removed and a new
-      one takes its place (even with the same name), the sidecar keeps
-      capturing the old, now-orphaned network namespace - `restart_dead()`
-      won't catch this because the tcpdump process itself doesn't crash, it
-      just stops seeing new packets. Needs either: periodically re-checking
-      that the target container ID hasn't changed (would need docker.sock
-      after all, undoing sidecar mode's main simplification), or clearly
-      documenting "recreate the sidecar whenever you recreate its target."
+- [x] **Fixed 2026-11-08: a sidecar got stuck when its target stopped or
+      was recreated.** The old note here guessed tcpdump would keep running
+      on an orphaned namespace. A live test showed something different:
+      when the target stops (plain `docker stop` is enough) or is removed,
+      Docker deletes `eth0` from the shared namespace. tcpdump then exited
+      with "eth0: No such device exists", and `restart_dead()` restarted it
+      every second forever, spamming the log while the sidecar still
+      showed as running. Starting the target again gives it a new namespace
+      without `eth0` in the sidecar's. Now the sidecar checks
+      `/sys/class/net/<iface>` each second and exits with code 3 and a clear
+      error when it's gone, and refuses to start without it. Live-tested:
+      after `docker stop` of the target the sidecar exited 3 within a
+      second; after `docker start` of the target, `docker start` of the
+      sidecar resumed capture (new pcaps written). `--restart
+      unless-stopped` does not recover it: Docker retried once while the
+      target was down ("cannot join network namespace of a non running
+      container") and gave up. A removed target still needs a new sidecar.
+      Following the target automatically would need docker.sock (see the
+      `--docker-api` idea below).
 
 ## P2 - richer visibility
 

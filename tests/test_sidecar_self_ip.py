@@ -70,6 +70,7 @@ def test_interface_ips_failure_returns_empty(monkeypatch):
 
 def test_sidecar_records_own_ips(tmp_path, monkeypatch):
     monkeypatch.setattr(discovery, "run", lambda cmd, **kw: IP_JSON)
+    monkeypatch.setattr(discovery, "interface_exists", lambda iface: True)
     saved = {}
 
     class FakeMgr:
@@ -78,6 +79,7 @@ def test_sidecar_records_own_ips(tmp_path, monkeypatch):
             saved["info"] = info
             return None
         def restart_dead(self): return []
+        def enforce_retention(self): return []
         def detach_all(self): pass
 
     monkeypatch.setattr(cli, "CaptureManager", FakeMgr)

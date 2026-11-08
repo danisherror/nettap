@@ -48,6 +48,16 @@ class ContainerNetInfo:
     uses_host_network: bool
 
 
+def interface_exists(iface: str, sys_net: str = "/sys/class/net") -> bool:
+    """Whether `iface` exists in this process's network namespace. Assumes
+    it does where /sys/class/net isn't available (not Linux)."""
+    import os
+
+    if not os.path.isdir(sys_net):
+        return True
+    return os.path.exists(os.path.join(sys_net, iface))
+
+
 def interface_ips(iface: str = "eth0") -> dict[str, str]:
     """Addresses assigned to `iface` in *this* process's network namespace,
     shaped like ContainerNetInfo.ip_addresses. Used by `sidecar`, which shares
