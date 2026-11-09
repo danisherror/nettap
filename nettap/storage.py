@@ -65,6 +65,14 @@ CREATE INDEX IF NOT EXISTS idx_flows_ts ON flows(ts);
 CREATE INDEX IF NOT EXISTS idx_flows_dst ON flows(dst_ip);
 CREATE INDEX IF NOT EXISTS idx_flows_pcap ON flows(pcap_file);
 
+-- how far each pcap has been parsed into flows (ingest.py): byte offset just
+-- past the last stored packet record, and whether tcpdump is done with it
+CREATE TABLE IF NOT EXISTS pcap_progress (
+    path            TEXT PRIMARY KEY,
+    offset          INTEGER NOT NULL,
+    done            INTEGER NOT NULL DEFAULT 0
+);
+
 -- "desired state": what nettap attach/detach requests, honored by the poller
 -- in controller.py within one poll cycle of a running `nettap watch`.
 CREATE TABLE IF NOT EXISTS desired_refs (
@@ -173,11 +181,48 @@ def pcap_enriched(conn: sqlite3.Connection, path: str) -> bool:
     return conn.execute("SELECT 1 FROM flows WHERE pcap_file = ? LIMIT 1", (path,)).fetchone() is not None
 
 
+def pcap_progress(conn: sqlite3.Connection, path: str) -> tuple[int, bool] | None:
+    """(offset, done) for a pcap ingest.py has started on, else None."""
+    r = conn.execute("SELECT offset, done FROM pcap_progress WHERE path = ?", (path,)).fetchone()
+    return (r["offset"], bool(r["done"])) if r else None
+
+
+def store_pcap_chunk(conn: sqlite3.Connection, path: str, start: int, end: int,
+                     done: bool, rows: list[dict]) -> bool:
+    """Insert the flow rows parsed from path[start:end] and move its offset
+    to `end`, in one transaction - unless the stored offset is no longer
+    `start` (another process stored this part first), in which case nothing
+    is written and False is returned."""
+    conn.commit()  # BEGIN IMMEDIATE fails inside an open transaction
+    conn.execute("BEGIN IMMEDIATE")  # take the write lock before checking
+    try:
+        r = conn.execute("SELECT offset, done FROM pcap_progress WHERE path = ?",
+                         (path,)).fetchone()
+        if (r["offset"] if r else 0) != start or (r and r["done"]):
+            conn.rollback()
+            return False
+        _insert_rows(conn, rows)
+        conn.execute("INSERT INTO pcap_progress (path, offset, done) VALUES (?, ?, ?) "
+                     "ON CONFLICT(path) DO UPDATE SET offset = excluded.offset, "
+                     "done = excluded.done", (path, end, int(done)))
+        conn.commit()
+        return True
+    except BaseException:
+        conn.rollback()
+        raise
+
+
 def insert_flows(conn: sqlite3.Connection, rows: list[dict]) -> int:
     if not rows:
         return 0
-    with cursor(conn) as cur:
-        cur.executemany(
+    with cursor(conn):
+        _insert_rows(conn, rows)
+    return len(rows)
+
+
+def _insert_rows(conn: sqlite3.Connection, rows: list[dict]) -> None:
+    if rows:
+        conn.executemany(
             """
             INSERT INTO flows (ts, container_id, container_name, src_ip, dst_ip,
                                 src_port, dst_port, protocol, length, dns_query, tls_sni,
@@ -188,7 +233,6 @@ def insert_flows(conn: sqlite3.Connection, rows: list[dict]) -> int:
             """,
             [{"dns_answers": None, "http_host": None, "transport": None, **r} for r in rows],
         )
-    return len(rows)
 
 
 # ---- desired state (what `attach`/`detach` mutate) -------------------------

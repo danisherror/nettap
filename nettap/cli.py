@@ -32,7 +32,8 @@ from . import storage
 from .analyze import container_matrix, dns_queries, external_destinations, protocol_breakdown, top_talkers
 from .capture import CaptureManager, capture_name, finished_pcaps, pcap_files, reap_orphans
 from .controller import Selector, run as run_controller
-from .enrich import parse_pcap
+from .ingest import enrich_pcap
+from . import events as docker_events
 from . import hostports
 from .report import build_report, render_html, render_text
 from .utils import format_table, parse_label_selector, setup_logging
@@ -99,17 +100,17 @@ def detach(ctx, containers, label, all_):
     click.echo(f"detach requested: {list(containers)} label={label or ''}")
 
 
-def _store_pcap(conn, path: str, container_id: str, container_name: str) -> int:
-    """Parse one pcap into `flows`. A --attribute-by-port capture holds the
-    whole host's traffic; only the target's own ports are kept."""
-    rows = parse_pcap(path, container_id=container_id, container_name=container_name)
-    if rows and storage.port_scoped(conn, container_name):
-        rows = hostports.keep_owned(conn, container_name, rows)
-    return storage.insert_flows(conn, rows)
+# how often the enrich loop parses what tcpdump has written since its last pass
+ENRICH_INTERVAL_SECONDS = 5.0
 
 
-def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
-    """Runs on its own background thread - so it needs its OWN sqlite3
+def _enrich_loop(mgr: CaptureManager, db_path: str, stop, interval: float = ENRICH_INTERVAL_SECONDS):
+    """Every `interval` seconds, store the packets each capture has written
+    since the last pass - including the file tcpdump still has open (see
+    ingest.py), so traffic shows up within seconds instead of after a pcap
+    rotation.
+
+    Runs on its own background thread - so it needs its OWN sqlite3
     connection. sqlite3.Connection objects are only usable from the thread
     that created them (check_same_thread defaults to True); sharing the main
     thread's connection here used to make this loop die on its first real
@@ -120,24 +121,28 @@ def _enrich_loop(mgr: CaptureManager, db_path: str, poll_interval, stop):
     future bug here degrades to "logged and retried" instead of "silently
     dead thread" again."""
     conn = storage.connect(db_path)
-    seen: set[str] = set()
+    done: set[str] = set()
     while not stop["flag"]:
         try:
+            now = time.time()
             for session in mgr.status():
                 for pattern in (session["pcap_pattern"], session.get("dns_pcap_pattern")):
                     if not pattern:
                         continue
-                    for path in finished_pcaps(pattern, session["rotate_seconds"]):
-                        if path in seen:
+                    finished = set(finished_pcaps(pattern, session["rotate_seconds"], now))
+                    for path in pcap_files(pattern):
+                        if path in done:
                             continue
-                        seen.add(path)
-                        if storage.pcap_enriched(conn, path):  # e.g. before a restart
-                            continue
-                        n = _store_pcap(conn, path, session["container_id"], session["container"])
-                        logger.info("enriched %s -> %d flow rows", path, n)
+                        final = path in finished
+                        n = enrich_pcap(conn, path, session["container_id"], session["container"],
+                                        final=final, now=now)
+                        if n:
+                            logger.info("enriched %s -> %d flow rows", path, n)
+                        if final:
+                            done.add(path)
         except Exception:
             logger.exception("enrich loop iteration failed, continuing")
-        time.sleep(max(poll_interval, 5))
+        time.sleep(interval)
 
 
 def _sample_ports(db_path: str, container: str, stop) -> None:
@@ -218,16 +223,21 @@ def watch_cmd(ctx, label, all_, rotate_seconds, poll_interval, auto_enrich,
 
     if auto_enrich:
         threading.Thread(
-            target=_enrich_loop, args=(mgr, ctx.obj["db_path"], poll_interval, stop), daemon=True
+            target=_enrich_loop, args=(mgr, ctx.obj["db_path"], stop), daemon=True
         ).start()
     threading.Thread(
         target=_sample_host_network_ports, args=(mgr, ctx.obj["db_path"], stop), daemon=True
     ).start()
 
+    events_stop = threading.Event()
+    wake = docker_events.start(client, events_stop)
+
     click.echo("nettap watching (Ctrl+C to stop)...")
     try:
-        run_controller(client, conn, mgr, selector, poll_interval=poll_interval, stop_flag=lambda: stop["flag"])
+        run_controller(client, conn, mgr, selector, poll_interval=poll_interval,
+                       stop_flag=lambda: stop["flag"], wake=wake)
     finally:
+        events_stop.set()
         for s in mgr.status():
             storage.clear_live_session(conn, s["container_id"])
         mgr.detach_all()
@@ -474,7 +484,7 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
 
     if auto_enrich:
         threading.Thread(
-            target=_enrich_loop, args=(mgr, ctx.obj["db_path"], rotate_seconds, stop), daemon=True
+            target=_enrich_loop, args=(mgr, ctx.obj["db_path"], stop), daemon=True
         ).start()
     if attribute_by_port:
         threading.Thread(
@@ -573,6 +583,7 @@ def sidecars_cmd(ctx, label, poll_interval, image, data_volume, rotate_seconds, 
     stop = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_a: stop.set())
     signal.signal(signal.SIGINT, lambda *_a: stop.set())
+    wake = docker_events.start(client, stop)
 
     click.echo(f"nettap supervising sidecars for containers with {label} "
                f"(image {image}, data {data_volume}; Ctrl+C to stop)...")
@@ -582,7 +593,8 @@ def sidecars_cmd(ctx, label, poll_interval, image, data_volume, rotate_seconds, 
                 sup.reconcile()
             except Exception:
                 logger.exception("sidecar supervision pass failed, continuing")
-            stop.wait(poll_interval)
+            wake.wait(poll_interval)
+            wake.clear()
     finally:
         if not keep_sidecars:
             click.echo("removing sidecars...")
@@ -641,9 +653,8 @@ def enrich(ctx, pcap_dir):
     import glob
     conn = storage.connect(ctx.obj["db_path"])
     pcap_dir = pcap_dir or f"{ctx.obj['data_dir']}/pcap"
-    already = {r["pcap_file"] for r in conn.execute("SELECT DISTINCT pcap_file FROM flows")}
-    # A file a running daemon is still writing would be stored half-parsed,
-    # and the rest never read (the enrich loop skips files already in the DB).
+    # Files a running daemon is still writing are left to its enrich loop;
+    # everything else is parsed from wherever the last pass stopped.
     now = time.time()
     writing = set()
     for row in storage.list_live_sessions(conn):
@@ -655,10 +666,10 @@ def enrich(ctx, pcap_dir):
                     finished_pcaps(pattern, row.get("rotate_seconds") or 60, now))
     total = 0
     for path in sorted(glob.glob(f"{pcap_dir}/*.pcap")):
-        if path in already or path in writing:
+        if path in writing:
             continue
         name = capture_name(path) or path.split("/")[-1].rsplit("_", 1)[0]
-        total += _store_pcap(conn, path, "", name)
+        total += enrich_pcap(conn, path, "", name, final=True)
     click.echo(f"inserted {total} flow rows")
 
 

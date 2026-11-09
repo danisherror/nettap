@@ -145,6 +145,16 @@ if [ "$MODE" = watch ]; then
     done
     # show which interface each container was resolved to
     docker logs "$NETTAP" 2>&1 | grep "attaching to" | sed 's/^/    /'
+    # the server is picked up from Docker's start event, not the next poll
+    docker run --rm --entrypoint python "$IMAGE" -c '
+import sys, time
+from datetime import datetime
+from nettap.discovery import docker_time
+started = docker_time(sys.argv[1])
+line = next(l for l in sys.argv[2].splitlines() if "attaching to " + sys.argv[3] + " " in l)
+attached = time.mktime(time.strptime(line[:19], "%Y-%m-%d %H:%M:%S")) + int(line[20:23]) / 1000
+print(f"    {sys.argv[3]} attached {attached - started:.1f}s after it started")
+' "$(docker inspect -f '{{.State.StartedAt}}' "$SRV")" "$(docker logs "$NETTAP" 2>&1)" "$SRV"
     CAPTURERS=("$NETTAP")
 elif [ "$MODE" = sidecars ]; then
     for target in "$SRV" "$CLI"; do
@@ -174,13 +184,39 @@ else
 fi
 
 step "generating traffic"
+T0=$(date +%s)
 for _ in 1 2 3; do
     docker exec "$CLI" wget -q -O /dev/null "http://$SRV/"
 done
 if [ "$INTERNET" = 1 ]; then
     docker exec "$CLI" wget -q -O /dev/null https://example.com/
 fi
-sleep 2
+
+# The running captures must store the traffic on their own, within about 15s
+# (the files tcpdump still has open are parsed every 5s, see ingest.py).
+step "waiting for the HTTP traffic to reach the flow store (no 'nettap enrich')"
+http_stored() {
+    docker run --rm -v "$DATA:/data" -e SRV="$SRV" -e CLI="$CLI" --entrypoint python "$IMAGE" -c '
+import os, sqlite3, sys
+c = sqlite3.connect("/data/nettap.db")
+q = "SELECT COUNT(*) FROM flows WHERE container_name = ? AND {} = 80"
+ok = all(c.execute(q.format(col), (os.environ[name],)).fetchone()[0]
+         for name, col in (("CLI", "dst_port"), ("SRV", "src_port")))
+sys.exit(0 if ok else 1)' 2>/dev/null
+}
+until http_stored; do
+    if [ $(( $(date +%s) - T0 )) -ge 20 ]; then
+        echo "  FAIL  HTTP traffic not in the flow store $(( $(date +%s) - T0 ))s after it was sent"
+        exit 1
+    fi
+    sleep 1
+done
+LATENCY=$(( $(date +%s) - T0 ))
+if [ "$LATENCY" -gt 15 ]; then
+    echo "  FAIL  HTTP traffic took ${LATENCY}s to reach the flow store (limit 15s)"
+    exit 1
+fi
+echo "  ok    HTTP traffic in the flow store ${LATENCY}s after it was sent, for both containers"
 
 step "stopping capture (flushes the pcaps) and enriching"
 docker stop -t 30 "${CAPTURERS[@]}" >/dev/null

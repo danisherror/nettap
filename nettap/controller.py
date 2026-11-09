@@ -10,13 +10,14 @@ This is a polling controller rather than a pure Docker-events subscriber, on
 purpose: `nettap attach` run from a second terminal takes effect without any
 extra plumbing (the daemon just picks it up next cycle), and a missed 'die'
 event doesn't leave a zombie capture running forever. The tradeoff is attach
-latency bounded by poll_interval (default 5s) instead of instant - noted in
-TODO.md as swappable for a Docker-events fast path later.
+latency bounded by poll_interval (default 5s) - so `watch` also listens to
+Docker's events stream (events.py) and runs a pass as soon as a container
+starts or dies, keeping the poll as the safety net.
 """
 from __future__ import annotations
 
 import logging
-import time
+import threading
 from dataclasses import dataclass, field
 
 from . import storage
@@ -52,7 +53,11 @@ class Selector:
 
 
 def run(docker_client, conn, mgr: CaptureManager, selector: Selector,
-        poll_interval: float = 5.0, stop_flag=lambda: False) -> None:
+        poll_interval: float = 5.0, stop_flag=lambda: False,
+        wake: threading.Event | None = None) -> None:
+    """Reconcile every poll_interval seconds, or as soon as `wake` is set
+    (by events.wake_on_events on a container start/die)."""
+    wake = wake or threading.Event()
     while not stop_flag():
         # before the main try: a failing Docker API doesn't mean the
         # captures are gone, and `status` should keep showing them as live
@@ -84,4 +89,5 @@ def run(docker_client, conn, mgr: CaptureManager, selector: Selector,
         except Exception:
             logger.exception("controller loop iteration failed, continuing")
 
-        time.sleep(poll_interval)
+        wake.wait(poll_interval)
+        wake.clear()

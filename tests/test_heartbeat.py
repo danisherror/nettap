@@ -80,8 +80,8 @@ def test_controller_heartbeats_even_when_the_iteration_fails(tmp_path, monkeypat
     conn.execute("UPDATE live_sessions SET updated_at = 0")
     conn.commit()
     passes = iter([False, True])
-    monkeypatch.setattr(controller.time, "sleep", lambda s: None)
+    no_wait = type("NoWait", (), {"wait": lambda self, t: None, "clear": lambda self: None})()
     controller.run(None, conn, _Mgr(), controller.Selector(), poll_interval=7.0,
-                   stop_flag=lambda: next(passes))
+                   stop_flag=lambda: next(passes), wake=no_wait)
     row = storage.list_live_sessions(conn)[0]
     assert row["updated_at"] > 0 and row["heartbeat_interval"] == 7.0

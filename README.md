@@ -34,18 +34,20 @@ Details and caveats are in `nettap/discovery.py`'s docstring.
 ## Architecture
 
 ```
- docker events / desired-state table          per-container tcpdump          tshark        SQLite
- (controller.py, poll every 5s)         --->   (capture.py)             --->  (enrich.py) -> (storage.py)
-        |                                              |                                         |
-        v                                              v                                         v
-  attach/detach requests from             raw pcaps, rotated every 60s              analyze.py (JSON) /
-  `nettap attach/detach` CLI calls        in data/pcap/, kept as-is                report.py (plain English)
+ docker events / desired-state table          per-container tcpdump        tshark, every 5s    SQLite
+ (controller.py + events.py, 5s poll)   --->   (capture.py)             --->  (ingest.py,     -> (storage.py)
+        |                                              |                      enrich.py)               |
+        v                                              v                                               v
+  attach/detach requests from             raw pcaps, rotated every 60s                  analyze.py (JSON) /
+  `nettap attach/detach` CLI calls        in data/pcap/, kept as-is                    report.py (plain English)
 ```
 
 - **controller.py** - a small reconciliation loop: figure out which
   containers *should* be captured (label selector + ad-hoc attach requests),
   diff against what's currently captured, attach/detach the difference; also
-  restarts any capture whose tcpdump process died on its own.
+  restarts any capture whose tcpdump process died on its own. Runs every
+  5s, and right away when Docker reports a container start or death
+  (events.py), so a new container is captured within a second or so.
 - **capture.py** - runs one `tcpdump` per attached container against its
   resolved veth, rotating pcap files, plus a second one on the container's
   `lo` that only records lookups to Docker's embedded DNS server
@@ -57,10 +59,15 @@ Details and caveats are in `nettap/discovery.py`'s docstring.
   nettap's logging (so `docker logs <nettap container>` is actually useful
   for diagnosing a dead/misbehaving capture), and detects + restarts a
   tcpdump that exited unexpectedly (`restart_dead()`).
-- **enrich.py** - parses each rotated pcap with `tshark` into flow-level rows
-  (5-tuple, byte length, DNS query and answers, TLS SNI, HTTP Host). Runs on a background thread
-  with its own SQLite connection (a shared connection across threads is a
-  real bug we hit and fixed - see TODO.md).
+- **enrich.py** - parses a pcap with `tshark` into flow-level rows
+  (5-tuple, byte length, DNS query and answers, TLS SNI, HTTP Host).
+- **ingest.py** - every 5s, feeds enrich.py the packets each capture has
+  written since the last pass, including the file tcpdump still has open
+  (it flushes every packet), so traffic shows up in `analyze` within a few
+  seconds instead of after a 60s rotation. How far each file has been read
+  is stored with its rows, so nothing is counted twice. Runs on a
+  background thread with its own SQLite connection (a shared connection
+  across threads is a real bug we hit and fixed - see TODO.md).
 - **storage.py** - SQLite: container metadata, flow rows, and the shared
   "desired state" / "live sessions" tables that let `nettap attach` from one
   terminal steer the `nettap watch` daemon running in another.
@@ -93,7 +100,7 @@ docker run -d --name nettap-web \
   -v "$(pwd)/data:/data" \
   nettap sidecar --target web
 
-# wait about 2 minutes (pcaps rotate every 60s, then get parsed), then:
+# traffic shows up within about 10 seconds:
 docker exec nettap-web nettap --data-dir /data report --container web
 ```
 
@@ -185,7 +192,8 @@ docker run -d --name web --label monitor=true nginx:alpine
 Each sidecar is named `nettap-sidecar-<target>` and uses the supervisor's
 own image and data mount, so reports work as above (`docker exec
 nettap-sidecars nettap --data-dir /data report --container web`). Every 5s
-(`--poll-interval`) the supervisor:
+(`--poll-interval`), and right away when Docker reports a container start
+or death, the supervisor:
 
 - starts a sidecar for each new labelled container,
 - starts a sidecar again once its target is running again after a `docker
@@ -214,7 +222,8 @@ docker run -d --name web --label monitor=true nginx
 ```
 
 By default the daemon watches for containers labeled `monitor=true` and
-attaches within one poll cycle (5s). To add or remove specific containers
+attaches as soon as Docker reports the container's start (the 5s poll is a
+fallback). `nettap attach`/`detach` take effect within one poll cycle. To add or remove specific containers
 instead of using a label:
 
 ```
@@ -310,10 +319,10 @@ As of this build this should self-heal (a background thread used to die
 silently on its first real write due to a cross-thread SQLite bug, and a
 crashed tcpdump was never restarted - both fixed, see TODO.md). If you're
 running an image built before that fix, `docker build -t nettap .` again and
-recreate the container. Otherwise: allow ~2 minutes after traffic occurs (one
-pcap rotation to close, one more cycle for the enrich loop to notice it) -
-`nettap enrich` still exists to force an immediate parse if you don't want to
-wait; check `docker exec <nettap container> ls -la /data/pcap/` to confirm
+recreate the container. Otherwise: new traffic should show up within about
+10 seconds (packets are parsed every 5s, the newest 2s held back);
+`nettap enrich` parses whatever is left in files no capture is writing any
+more. Check `docker exec <nettap container> ls -la /data/pcap/` to confirm
 new files are actually appearing and growing; check `docker logs <nettap
 container>` for `tcpdump[...]:` lines, which now surface tcpdump's own
 errors instead of going nowhere.
@@ -345,9 +354,9 @@ pytest
 Tests use mocked Docker/tcpdump/tshark calls (no real Docker daemon
 required) and cover the veth-resolution logic, storage layer, capture
 lifecycle (including the dead-process restart path), the `analyze`/`report`
-queries, and a real-threading regression test for the background enrich
-loop's SQLite usage. One enrich test runs the real `tshark` and is skipped
-if it isn't installed.
+queries, parsing a pcap in pieces while it grows, and a real-threading
+regression test for the background enrich loop's SQLite usage. Two tests
+run the real `tshark` and are skipped if it isn't installed.
 
 `tests/live/` checks `discovery.resolve_capture()` against real containers
 (user-defined and default bridge, macvlan, ipvlan, a container on two
@@ -372,7 +381,9 @@ sidecar on each container; `--mode watch` runs one host-networked `nettap
 watch` set up like `docker-compose.yml`, which picks up the server by label
 and the client via `nettap attach`; `--mode sidecars` runs `nettap sidecars`
 and, before the traffic checks, restarts the server and then recreates it,
-checking each time that a sidecar is capturing it again with no manual step. Pass `--no-internet` to skip the
+checking each time that a sidecar is capturing it again with no manual step.
+Every mode also checks that the HTTP traffic reaches the flow store within
+15 seconds of being sent, before `nettap enrich` is run. Pass `--no-internet` to skip the
 internet part, `--keep` to keep the data dir. Everything it creates is named
 `nettap-it-*` and removed on exit.
 
@@ -406,6 +417,8 @@ nettap/
     capture.py     tcpdump process lifecycle per container
     controller.py  reconciliation loop (desired state -> attach/detach)
     enrich.py      pcap -> structured flow rows via tshark
+    ingest.py      parse each pcap in pieces while tcpdump writes it
+    events.py      Docker events stream -> wake the polling loops
     storage.py     SQLite schema + accessors
     analyze.py     read-side queries (JSON, or a table via --format table)
     report.py      read-side queries, rendered as plain language (text/HTML)

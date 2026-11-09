@@ -182,6 +182,30 @@ Fix and prove what exists first.
       net (already in P3, move it here), and enrich each pcap as soon as
       tcpdump rotates it instead of on a timer. Done when: traffic appears
       in `analyze` within about 15 seconds without running `nettap enrich`.
+      **Written 2026-11-09:** rather than enriching on rotation, every 5s
+      `ingest.py` parses the packets written since the last pass, including
+      the file tcpdump still has open (`-U` flushes each packet): it scans
+      the pcap record headers for the last complete packet, copies the new
+      records behind the file's header into a temp pcap and runs tshark on
+      that. The byte offset reached is stored in a new `pcap_progress`
+      table in the same transaction as the rows, with a compare-and-set,
+      so a restart or `nettap enrich` beside a daemon never counts a packet
+      twice (old databases: files with flows but no progress row count as
+      done). Packets newer than 2s are left for the next pass so a
+      port-scoped capture's socket sampling has caught up. `watch` and
+      `sidecars` also listen to Docker's events stream (`events.py`,
+      container start/die/destroy) and run a pass right away; the 5s poll
+      stays as the safety net. `integration_test.sh` now fails if the HTTP
+      traffic isn't in the flow store within 15s of being sent (before any
+      `nettap enrich`), and in watch mode prints how long after its start
+      the labelled server was attached. Results 2026-11-09: sidecar and
+      sidecars mode on Docker Desktop for Mac (Docker 29.7.2) 6s (including
+      the HTTPS fetch); watch mode inside `docker:dind` 2-4s, server attached
+      0.1s after it started. The final `enrich` only added the last few
+      rows, and all checks passed. Leave unticked until it passes in CI.
+      Known cost: one tshark run per capture file with new packets every
+      5s. A ClientHello or HTTP request split across a 5s chunk boundary can
+      lose its SNI/Host (tshark can't reassemble across chunks).
 - [ ] **Safe defaults for disk use.** Pcaps are kept forever unless
       `--pcap-max-age-hours`/`--pcap-max-size-mb` are given. Set a default
       (e.g. 24h / 1 GB) and log when files are deleted. Done when: a
@@ -636,7 +660,7 @@ Fix and prove what exists first.
 - [ ] Alerting: flag flows to destinations not on an allowlist, or
       byte-volume spikes per container, and ship them somewhere
       (webhook/Slack/email).
-- [ ] (Moved to "Road to 9/10", stage 2.) Replace the polling controller (default 5s) with a Docker-events
+- [x] (Moved to "Road to 9/10", stage 2, done there 2026-11-09.) Replace the polling controller (default 5s) with a Docker-events
       stream as the primary trigger and polling as just the safety-net
       reconciliation pass, to cut attach latency close to zero.
 - [ ] Package as a proper CLI release (PyPI) and/or provide a systemd unit
