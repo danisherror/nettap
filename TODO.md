@@ -40,7 +40,15 @@ Fix and prove what exists first.
       their own veths, and all 20 flow-store checks passed, including
       `analyze` and `report` queries. Still to do on a real Linux host:
       `docker compose up --build` itself, and a kernel that isn't LinuxKit.
-- [ ] **Add a `watch` variant to `scripts/integration_test.sh`** (e.g.
+      **Real Linux, 2026-11-09:** `integration_test.sh --mode watch
+      --no-internet` passed in GitHub Actions on `ubuntu-24.04` (runner
+      image 20261101.360.1, Docker 28.0.4): nettap started before the
+      containers, resolved the server to `veth1689e5e` and the client to
+      `veth5a8cbb0`, and all 16 no-internet checks passed - so the `rslave`
+      netns mount works on a stock Ubuntu kernel. Still to do: `docker
+      compose up --build` itself (the test uses the same settings via
+      `docker run`).
+- [x] **Add a `watch` variant to `scripts/integration_test.sh`** (e.g.
       `--mode watch`): start nettap with host networking, label/`attach`
       the throwaway containers, and run the same flow-store checks as
       sidecar mode. Done when: both modes pass on Linux.
@@ -55,6 +63,8 @@ Fix and prove what exists first.
       29.9.3, kernel 7.0.12-linuxkit) on that Mac - each container resolved
       to its own veth. Leave unticked until watch passes on a real Linux
       host (CI will do).
+      Done 2026-11-09: both modes passed in GitHub Actions on
+      `ubuntu-24.04` (see the item above).
 - [ ] **CI on GitHub Actions.** GitHub's `ubuntu-latest` runners are real
       Linux with a Docker daemon, so they can run `watch` mode too. Jobs:
       `pytest` on the oldest and newest supported Python (3.9 and current);
@@ -71,8 +81,15 @@ Fix and prove what exists first.
       final `rm -rf` would have failed; it now deletes the files from a
       container first. pytest passed locally on 3.9 (183 tests) and the
       sidecar integration test still passes on Docker Desktop for Mac.
-      Still to do: push and see all four jobs pass, then turn on branch
-      protection for `master` requiring them (a GitHub setting).
+      First run (2026-11-09): both integration jobs passed, both pytest
+      jobs failed on `test_inspect_container_host_network_skips_veth`. The
+      test was out of date since host-network containers started being
+      captured on the default-route interface, and it ran the real `ip
+      route get`: on macOS (no Linux `ip`) that failed, so the old
+      assertion still held; on Linux it returned `eth0`. Fixed by stubbing
+      the route lookup and testing the no-default-route case instead.
+      Still to do: turn on branch protection for `master` requiring the
+      four jobs (a GitHub setting).
 - [ ] **Tests that touch real kernel behaviour.** Mocks keep agreeing with
       our own wrong assumptions (the `/sys/class/net/eth0/iflink` bug passed
       every unit test). Add a small `tests/live/` suite, marked

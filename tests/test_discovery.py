@@ -156,14 +156,18 @@ def test_inspect_container_resolves_veth(monkeypatch):
     assert not info.uses_host_network
 
 
-def test_inspect_container_host_network_skips_veth(monkeypatch):
+def test_inspect_container_host_network_without_default_route(monkeypatch):
+    # The route lookup must be stubbed: the real one finds eth0 on a Linux
+    # host (and fails on macOS, which once hid that this test didn't stub it).
     client = MagicMock()
     client.containers.get.return_value = _fake_container(host_mode=True)
     called = []
+    monkeypatch.setattr(discovery, "default_route_interface", lambda: None)
     monkeypatch.setattr(discovery, "resolve_capture", lambda sandbox_key: called.append(1) or ("shouldnt-happen", False, "veth"))
 
     info = discovery.inspect_container(client, "abc123")
     assert info.veth is None
+    assert info.capture_scope is None
     assert info.uses_host_network
     assert called == []
 
