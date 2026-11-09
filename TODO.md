@@ -93,7 +93,7 @@ Fix and prove what exists first.
       a pull request can merge; force pushes and branch deletion are off.
       Admins are not included, so the owner can still push to `master`
       directly (and bypass a failing check).
-- [ ] **Tests that touch real kernel behaviour.** Mocks keep agreeing with
+- [x] **Tests that touch real kernel behaviour.** Mocks keep agreeing with
       our own wrong assumptions (the `/sys/class/net/eth0/iflink` bug passed
       every unit test). Add a small `tests/live/` suite, marked
       `@pytest.mark.live` and skipped without Docker, that calls
@@ -116,8 +116,9 @@ Fix and prove what exists first.
       host's eth0).
       **CI, 2026-11-09:** all 7 ran and passed in GitHub Actions on
       `ubuntu-24.04` (run 42573570458, commit 126cf76), alongside the four
-      existing jobs. Still to do: add `live discovery tests` to the required
-      checks on `master`, then tick this.
+      existing jobs. Done 2026-11-09: `live discovery tests` is now a
+      required check on `master` (five in all), so a regression like the
+      old iflink approach blocks a pull request from merging.
 - [x] **Make the README Quick Start lead with what's proven.** Today it
       opens with `docker compose up` (`watch`), the untested path. Until
       stage 1 is done, open with `sidecar` (works on Mac and Linux) and
