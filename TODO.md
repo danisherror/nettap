@@ -113,8 +113,11 @@ Fix and prove what exists first.
       (Docker 29.7.2). With the old `nsenter --net cat .../iflink` approach
       patched back in, all 7 failed (there it returned None, because dind's
       own eth0 peer is outside its namespace; on a real host it would be the
-      host's eth0). Leave unticked until it passes in CI, and add the job to
-      the required checks on `master`.
+      host's eth0).
+      **CI, 2026-11-09:** all 7 ran and passed in GitHub Actions on
+      `ubuntu-24.04` (run 42573570458, commit 126cf76), alongside the four
+      existing jobs. Still to do: add `live discovery tests` to the required
+      checks on `master`, then tick this.
 - [x] **Make the README Quick Start lead with what's proven.** Today it
       opens with `docker compose up` (`watch`), the untested path. Until
       stage 1 is done, open with `sidecar` (works on Mac and Linux) and
