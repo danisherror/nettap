@@ -144,6 +144,34 @@ Fix and prove what exists first.
       same name. Done when: `docker restart web` and `docker rm -f web &&
       docker run ... --name web` both resume capture with no manual step,
       covered by the integration test.
+      **Written 2026-11-09:** `nettap sidecars --label k=v`
+      (`nettap/supervisor.py`). Polls the Docker API (default 5s) and keeps
+      one `nettap-sidecar-<target>` per running labelled container: creates
+      missing ones; starts one that exited 3 (target stopped) or stopped
+      before its target last started; restarts a running one that started
+      before its target (a `docker restart` it hasn't noticed yet);
+      replaces one whose target has a new container ID; removes one whose
+      target is gone or lost the label. Any other exit (crash, manual
+      `docker stop`) is logged once and left until the target restarts, so
+      a broken sidecar isn't restarted in a loop. Sidecars carry the
+      target name/ID and the supervisor's selector as labels, so two
+      supervisors don't touch each other's. Image and data mount default to
+      the supervisor's own (found by inspecting itself); stopping it stops
+      and removes the sidecars unless `--keep-sidecars`. 19 unit tests with
+      a fake Docker client. `integration_test.sh --mode sidecars` (also in
+      CI now) waits for both sidecars, runs `docker restart` on the server,
+      then `docker rm -f` + `docker run` under the same name, waiting each
+      time for a sidecar on the current container that started after it and
+      whose tcpdump is listening, then runs the usual 20 checks and checks
+      no sidecars are left. Passed on Docker Desktop for Mac (Docker
+      29.7.2): restart followed in about 1s, recreate in under 1s. Also
+      checked by hand there: `docker stop` of the target -> sidecar exited
+      3; `docker start` -> sidecar started again within a poll. Leave
+      unticked until it passes in CI.
+      Not handled: changing the supervisor's options doesn't update
+      sidecars kept with `--keep-sidecars` (remove them to pick up new
+      ones), and a container started without `--name` gets a new random
+      name when recreated, so it's tracked as a new target.
 - [ ] **Cut the time until traffic shows up.** Today: 5s polling plus about
       2 minutes (a 60s pcap rotation, then an enrich poll). Use the
       Docker events stream as the main trigger with polling as the safety

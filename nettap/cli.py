@@ -515,6 +515,80 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
         mgr.detach_all()
 
 
+@cli.command(name="sidecars")
+@click.option("--label", required=True,
+              help="Label selector for the containers to capture, e.g. monitor=true.")
+@click.option("--poll-interval", default=5.0, show_default=True,
+              help="How often to check the containers and their sidecars, seconds.")
+@click.option("--image", default=None,
+              help="Image for the sidecars. Default: this container's own image "
+                   "(or 'nettap' when not run in a container).")
+@click.option("--data-volume", default=None,
+              help="Host path or volume name to mount at /data in each sidecar. "
+                   "Default: whatever is mounted at --data-dir in this container "
+                   "(or its absolute path when not run in a container).")
+@click.option("--rotate-seconds", default=60, show_default=True)
+@click.option("--docker-api", is_flag=True,
+              help="Give each sidecar docker.sock and pass it --docker-api.")
+@click.option("--keep-sidecars", is_flag=True,
+              help="Leave the sidecars running when this command exits.")
+@_retention_options
+@click.pass_context
+def sidecars_cmd(ctx, label, poll_interval, image, data_volume, rotate_seconds, docker_api,
+                 keep_sidecars, pcap_max_age_hours, pcap_max_size_mb):
+    """Run one sidecar per container matching --label, and keep them
+    running: a sidecar is started again when its target comes back after a
+    stop or restart, and recreated when the target is recreated under the
+    same name. Needs /var/run/docker.sock. Sidecars are named
+    nettap-sidecar-<target> and removed when this exits (unless
+    --keep-sidecars)."""
+    from .supervisor import SidecarSpec, Supervisor, default_spec, own_container
+
+    labels = parse_label_selector(label)
+    try:
+        client = _docker_client()
+        client.ping()
+    except Exception as e:
+        raise click.ClickException(
+            f"can't reach the Docker API ({e}) - mount it with "
+            "-v /var/run/docker.sock:/var/run/docker.sock")
+    if image is None or data_volume is None:
+        try:
+            default_image, default_data = default_spec(client, ctx.obj["data_dir"])
+        except RuntimeError as e:
+            raise click.ClickException(str(e))
+        image, data_volume = image or default_image, data_volume or default_data
+
+    args = ["--rotate-seconds", str(rotate_seconds)]
+    if pcap_max_age_hours:
+        args += ["--pcap-max-age-hours", str(pcap_max_age_hours)]
+    if pcap_max_size_mb:
+        args += ["--pcap-max-size-mb", str(pcap_max_size_mb)]
+    me = own_container(client)
+    sup = Supervisor(client, labels,
+                     SidecarSpec(image=image, data_source=data_volume, sidecar_args=args,
+                                 docker_api=docker_api),
+                     exclude_ids={me.id} if me else set())
+
+    stop = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_a: stop.set())
+    signal.signal(signal.SIGINT, lambda *_a: stop.set())
+
+    click.echo(f"nettap supervising sidecars for containers with {label} "
+               f"(image {image}, data {data_volume}; Ctrl+C to stop)...")
+    try:
+        while not stop.is_set():
+            try:
+                sup.reconcile()
+            except Exception:
+                logger.exception("sidecar supervision pass failed, continuing")
+            stop.wait(poll_interval)
+    finally:
+        if not keep_sidecars:
+            click.echo("removing sidecars...")
+            sup.remove_all()
+
+
 @cli.command()
 @click.option("--container", required=True, help="Container name to summarize.")
 @click.option("--format", "fmt", type=click.Choice(["text", "html"]), default="text", show_default=True)

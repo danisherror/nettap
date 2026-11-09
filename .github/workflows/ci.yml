@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mode: [sidecar, watch]
+        mode: [sidecar, watch, sidecars]
     steps:
       - uses: actions/checkout@v7
       - run: docker version

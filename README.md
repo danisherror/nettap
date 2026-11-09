@@ -165,6 +165,42 @@ Raw pcaps land in `./data/pcap/` on the host either way (bind-mounted), so
 `wireshark ./data/pcap/web_*.pcap` works for a deep dive regardless of which
 capture mode produced them.
 
+### Sidecars that look after themselves: `nettap sidecars`
+
+A plain sidecar exits when its target stops, and has to be started again
+by hand (or recreated, if the target was recreated - see Troubleshooting).
+`nettap sidecars` does that for you: one supervisor container, given the
+Docker socket, starts a sidecar for every running container with a label,
+and keeps them going:
+
+```
+docker run -d --name nettap-sidecars \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$(pwd)/data:/data" \
+  nettap sidecars --label monitor=true
+
+docker run -d --name web --label monitor=true nginx:alpine
+```
+
+Each sidecar is named `nettap-sidecar-<target>` and uses the supervisor's
+own image and data mount, so reports work as above (`docker exec
+nettap-sidecars nettap --data-dir /data report --container web`). Every 5s
+(`--poll-interval`) the supervisor:
+
+- starts a sidecar for each new labelled container,
+- starts a sidecar again once its target is running again after a `docker
+  stop`/`start` or `docker restart`,
+- replaces the sidecar when the target is removed and recreated under the
+  same name, and removes it when the target is gone for good.
+
+A sidecar that exits for another reason (a crash, or you ran `docker stop`
+on it) is left alone until its target restarts, and logged once. Stopping
+the supervisor stops and removes its sidecars (`--keep-sidecars` leaves
+them). `--rotate-seconds`, `--pcap-max-age-hours`, `--pcap-max-size-mb` and
+`--docker-api` are passed on to every sidecar. Containers using `--network
+host` or `--network container:...` are skipped. As with `--docker-api`, the
+socket gives the supervisor full control of Docker.
+
 ### `watch` mode: every labelled container (Linux only, not yet verified)
 
 `watch` is a single daemon that captures every container with a given label
@@ -218,6 +254,7 @@ container names that actually have data when the one you asked for doesn't
 match, e.g. `containers with captured data so far: relaxed_panini`.
 
 **A `sidecar` exits when its target container stops or is removed.**
+(`nettap sidecars`, above, handles all of this automatically.)
 `--network container:<target>` joins the target's network namespace once, at
 start. When the target stops, Docker removes that shared `eth0`, and the
 sidecar exits (code 3) with an `eth0 disappeared` error in `docker logs`.
@@ -333,7 +370,9 @@ sends HTTP between them and HTTPS to example.com, then checks the flow store
 destinations and SNI, and the report). `--mode sidecar` (the default) puts a
 sidecar on each container; `--mode watch` runs one host-networked `nettap
 watch` set up like `docker-compose.yml`, which picks up the server by label
-and the client via `nettap attach`. Pass `--no-internet` to skip the
+and the client via `nettap attach`; `--mode sidecars` runs `nettap sidecars`
+and, before the traffic checks, restarts the server and then recreates it,
+checking each time that a sidecar is capturing it again with no manual step. Pass `--no-internet` to skip the
 internet part, `--keep` to keep the data dir. Everything it creates is named
 `nettap-it-*` and removed on exit.
 
@@ -356,7 +395,7 @@ CI (`.github/workflows/ci.yml`) runs on every push and pull request on
 GitHub's Ubuntu runners, which are real Linux hosts: `pytest` on Python 3.9
 and the newest release (with `tshark` installed, so the real-tshark test
 runs), the `tests/live/` suite as root, and `integration_test.sh
---no-internet` in both `sidecar` and `watch` mode.
+--no-internet` in `sidecar`, `watch` and `sidecars` mode.
 
 ## Project layout
 
@@ -370,6 +409,7 @@ nettap/
     storage.py     SQLite schema + accessors
     analyze.py     read-side queries (JSON, or a table via --format table)
     report.py      read-side queries, rendered as plain language (text/HTML)
+    supervisor.py  `nettap sidecars`: one self-healing sidecar per container
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
     live/          discovery tests against real containers (Linux, root)
@@ -397,8 +437,9 @@ nettap/
   DNS answers on user-defined networks come from the extra capture on the
   container's `lo` (tested in `sidecar` mode, and in `watch` mode on
   Docker Desktop for Mac, not yet on a Linux host).
-- A `sidecar` exits when its target stops; start it again afterwards, or
-  recreate it if the target was recreated (see Troubleshooting above).
+- A plain `sidecar` exits when its target stops; start it again afterwards,
+  or recreate it if the target was recreated (see Troubleshooting above) -
+  or let `nettap sidecars` do it.
 
 See `TODO.md` for the full list, what's already been fixed, and what's next.
 

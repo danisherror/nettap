@@ -13,6 +13,11 @@
 #                   like docker-compose.yml. Started before the containers, it
 #                   picks up the server by label and the client via
 #                   `nettap attach`. Needs a Linux Docker host.
+#   --mode sidecars one `nettap sidecars` supervisor (docker.sock only), which
+#                   starts a sidecar per labelled container. Before the
+#                   traffic checks, the server is restarted and then
+#                   recreated, and capture must resume both times with no
+#                   manual step. Works on Docker Desktop and Linux.
 #   --no-internet   skip the HTTPS-to-example.com part and its checks
 #   --keep          leave the data dir in place afterwards (for debugging)
 #
@@ -33,8 +38,8 @@ while [ $# -gt 0 ]; do
     shift
 done
 case "$MODE" in
-    sidecar|watch) ;;
-    *) echo "--mode must be sidecar or watch, got '$MODE'" >&2; exit 2 ;;
+    sidecar|watch|sidecars) ;;
+    *) echo "--mode must be sidecar, watch or sidecars, got '$MODE'" >&2; exit 2 ;;
 esac
 
 cd "$(dirname "$0")/.."
@@ -44,10 +49,11 @@ IMAGE="$P-image"
 NET="$P-net"
 SRV="$P-srv"
 CLI="$P-client"
-NETTAP="$P-nettap"   # the watch daemon (watch mode only)
+NETTAP="$P-nettap"   # the watch daemon or sidecar supervisor
 
 cleanup() {
-    docker rm -f "$NETTAP" "$SRV-sidecar" "$CLI-sidecar" "$SRV" "$CLI" >/dev/null 2>&1 || true
+    docker rm -f "$NETTAP" "$SRV-sidecar" "$CLI-sidecar" "nettap-sidecar-$SRV" \
+        "nettap-sidecar-$CLI" "$SRV" "$CLI" >/dev/null 2>&1 || true
     docker network rm "$NET" >/dev/null 2>&1 || true
     if [ "$KEEP" = 1 ]; then
         echo "data kept in $DATA"
@@ -63,6 +69,30 @@ cleanup() {
 trap cleanup EXIT
 
 step() { echo "==> $*"; }
+
+# wait_until <what> <command...>: run the command each second, fail after 30s
+wait_until() {
+    local what="$1"; shift
+    for _ in $(seq 30); do
+        "$@" >/dev/null 2>&1 && return 0
+        sleep 1
+    done
+    echo "$what never happened"
+    docker ps -a --filter "name=$P" --filter "name=nettap-sidecar-$P"
+    [ "$MODE" = sidecars ] && docker logs "$NETTAP"
+    exit 1
+}
+
+# sidecar_up <target>: the supervisor's sidecar for target runs, belongs to
+# the target's current container, started after it, and tcpdump is listening
+sidecar_up() {
+    local sc="nettap-sidecar-$1" tid tstart
+    tid=$(docker inspect -f '{{.Id}}' "$1") || return 1
+    tstart=$(docker inspect -f '{{.State.StartedAt}}' "$1") || return 1
+    [ "$(docker inspect -f '{{.State.Running}} {{index .Config.Labels "nettap.sidecar.target-id"}}' "$sc")" = "true $tid" ] || return 1
+    [[ "$(docker inspect -f '{{.State.StartedAt}}' "$sc")" > "$tstart" ]] || return 1
+    docker logs --since "$tstart" "$sc" 2>&1 | grep -q "listening on eth0"
+}
 
 # wait_for_log <container> <grep -E pattern> <what>: fail after 30s
 wait_for_log() {
@@ -92,10 +122,19 @@ if [ "$MODE" = watch ]; then
         "$IMAGE" watch --label "$P=1" --poll-interval 1 >/dev/null
     wait_for_log "$NETTAP" "nettap watching" "nettap watch starting"
 fi
+if [ "$MODE" = sidecars ]; then
+    step "starting nettap sidecars (label $P=1)"
+    docker run -d --name "$NETTAP" \
+        -v /var/run/docker.sock:/var/run/docker.sock -v "$DATA:/data" \
+        "$IMAGE" sidecars --label "$P=1" --poll-interval 1 >/dev/null
+    wait_for_log "$NETTAP" "nettap supervising" "nettap sidecars starting"
+fi
 
 step "starting $SRV (nginx) and $CLI (alpine) on $NET"
 docker run -d --name "$SRV" --network "$NET" --label "$P=1" nginx:alpine >/dev/null
-docker run -d --name "$CLI" --network "$NET" alpine sleep 600 >/dev/null
+CLI_LABEL=()
+[ "$MODE" = sidecars ] && CLI_LABEL=(--label "$P=1")
+docker run -d --name "$CLI" --network "$NET" ${CLI_LABEL[@]+"${CLI_LABEL[@]}"} alpine sleep 600 >/dev/null
 
 if [ "$MODE" = watch ]; then
     step "attaching $CLI with 'nettap attach' ($SRV is picked up by its label)"
@@ -106,6 +145,20 @@ if [ "$MODE" = watch ]; then
     done
     # show which interface each container was resolved to
     docker logs "$NETTAP" 2>&1 | grep "attaching to" | sed 's/^/    /'
+    CAPTURERS=("$NETTAP")
+elif [ "$MODE" = sidecars ]; then
+    for target in "$SRV" "$CLI"; do
+        wait_until "sidecar for $target starting" sidecar_up "$target"
+    done
+    step "restarting $SRV: its sidecar must follow"
+    docker restart "$SRV" >/dev/null
+    wait_until "sidecar following the restarted $SRV" sidecar_up "$SRV"
+    step "recreating $SRV under the same name: it must get a new sidecar"
+    docker rm -f "$SRV" >/dev/null
+    docker run -d --name "$SRV" --network "$NET" --label "$P=1" nginx:alpine >/dev/null
+    wait_until "sidecar for the recreated $SRV" sidecar_up "$SRV"
+    docker logs "$NETTAP" 2>&1 | grep -E "sidecar for|restart|recreated" | sed 's/^/    /'
+    # stopping the supervisor stops (flushes) and removes the sidecars
     CAPTURERS=("$NETTAP")
 else
     step "starting a sidecar on each"
@@ -130,7 +183,11 @@ fi
 sleep 2
 
 step "stopping capture (flushes the pcaps) and enriching"
-docker stop "${CAPTURERS[@]}" >/dev/null
+docker stop -t 30 "${CAPTURERS[@]}" >/dev/null
+if [ "$MODE" = sidecars ]; then
+    left=$(docker ps -aq --filter "label=nettap.sidecar.selector=$P=1")
+    [ -z "$left" ] || { echo "sidecars left after the supervisor stopped: $left"; exit 1; }
+fi
 docker run --rm -v "$DATA:/data" "$IMAGE" enrich
 
 step "checking the flow store"
