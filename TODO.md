@@ -34,10 +34,27 @@ Fix and prove what exists first.
       nettap, its traffic shows up in `analyze` and `report`, and the
       `rslave` mount is confirmed working. Record what was observed here
       with the date.
+      **Partial, 2026-11-09:** `integration_test.sh --mode watch` passed
+      inside `docker:dind` on Docker Desktop for Mac: nettap started before
+      the containers, attached to both (one by label, one by `attach`) on
+      their own veths, and all 20 flow-store checks passed, including
+      `analyze` and `report` queries. Still to do on a real Linux host:
+      `docker compose up --build` itself, and a kernel that isn't LinuxKit.
 - [ ] **Add a `watch` variant to `scripts/integration_test.sh`** (e.g.
       `--mode watch`): start nettap with host networking, label/`attach`
       the throwaway containers, and run the same flow-store checks as
       sidecar mode. Done when: both modes pass on Linux.
+      **Written 2026-11-09:** `--mode watch` starts nettap like
+      `docker-compose.yml` (host network, `--cgroupns host`, the three caps,
+      docker.sock, netns mount `:ro,rslave`) *before* the containers, then
+      picks up the server by label and the client via `nettap attach`. Also
+      added a check that the server's capture has none of the client's
+      example.com traffic (catches captures on a shared interface; 20
+      checks now). Passed in both modes on 2026-11-09: sidecar on Docker
+      Desktop for Mac (Docker 29.7.2), watch inside `docker:dind` (dockerd
+      29.9.3, kernel 7.0.12-linuxkit) on that Mac - each container resolved
+      to its own veth. Leave unticked until watch passes on a real Linux
+      host (CI will do).
 - [ ] **CI on GitHub Actions.** GitHub's `ubuntu-latest` runners are real
       Linux with a Docker daemon, so they can run `watch` mode too. Jobs:
       `pytest` on the oldest and newest supported Python (3.9 and current);
@@ -184,6 +201,11 @@ Fix and prove what exists first.
       slave mount"; "Mount propagation doesn't work with Docker Desktop",
       [docs](https://docs.docker.com/engine/storage/bind-mounts/#configure-bind-propagation)),
       so `rslave` itself is **untested** - needs the Linux host above.
+      **2026-11-09:** inside `docker:dind` (a Linux dockerd on Docker
+      Desktop's VM) the `:ro,rslave` mount was accepted, and `watch` entered
+      containers started after it (both resolved to their veths, see
+      `integration_test.sh --mode watch`). Still to confirm on a real Linux
+      host.
 - [x] **Done 2026-11-08 for `sidecar` mode:** `scripts/integration_test.sh`
       starts a throwaway nginx server + alpine client on their own network,
       a sidecar on each sharing one data dir, sends HTTP client->server and
@@ -196,8 +218,7 @@ Fix and prove what exists first.
       `--no-internet` skips the internet checks (14 left; 11 before the DNS checks). Passed on Docker
       Desktop for Mac 2026-11-08 in both modes, cleans up after itself, and
       exits 1 when a check fails (confirmed with a deliberately broken
-      check). Open: add a `watch` mode variant (`attach` + host-network
-      nettap container) once there's a Linux host to run it on.
+      check). **2026-11-09:** `--mode watch` added (see Stage 1).
 - [x] Verify tshark's default dissectors are available in the slim Docker
       image. **Done 2026-11-08:** the `python:3.11-slim` image correctly
       dissected TLSv1.2/1.3 (including SNI), HTTP, DNS, TCP, ICMPv6 and ARP

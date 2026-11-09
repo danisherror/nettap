@@ -1,40 +1,53 @@
 #!/usr/bin/env bash
-# End-to-end check of sidecar mode against a real Docker daemon.
+# End-to-end check of nettap against a real Docker daemon.
 #
 # Starts a throwaway nginx server and an alpine client on their own network,
-# puts a nettap sidecar on each (both writing to one data dir), sends HTTP
-# from client to server and HTTPS to the internet, then enriches the pcaps
-# and checks the SQLite flow store with nettap's own query functions.
+# captures both, sends HTTP from client to server and HTTPS to the internet,
+# then enriches the pcaps and checks the SQLite flow store with nettap's own
+# query functions.
 #
-# Usage: scripts/integration_test.sh [--no-internet] [--keep]
-#   --no-internet  skip the HTTPS-to-example.com part and its checks
-#   --keep         leave the data dir in place afterwards (for debugging)
+# Usage: scripts/integration_test.sh [--mode sidecar|watch] [--no-internet] [--keep]
+#   --mode sidecar  (default) one nettap sidecar per container, sharing its
+#                   network namespace. Works on Docker Desktop and Linux.
+#   --mode watch    one `nettap watch` daemon with host networking, set up
+#                   like docker-compose.yml. Started before the containers, it
+#                   picks up the server by label and the client via
+#                   `nettap attach`. Needs a Linux Docker host.
+#   --no-internet   skip the HTTPS-to-example.com part and its checks
+#   --keep          leave the data dir in place afterwards (for debugging)
 #
-# Uses sidecar mode, which works on Docker Desktop for Mac/Windows as well as
-# Linux. `watch` mode needs a Linux host and isn't covered here (see TODO.md).
 # Everything it creates is named nettap-it-<random> and removed on exit.
 set -euo pipefail
 
+MODE=sidecar
 INTERNET=1
 KEEP=0
-for arg in "$@"; do
-    case "$arg" in
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --mode) MODE="${2:-}"; shift ;;
+        --mode=*) MODE="${1#--mode=}" ;;
         --no-internet) INTERNET=0 ;;
         --keep) KEEP=1 ;;
-        *) echo "unknown option: $arg" >&2; exit 2 ;;
+        *) echo "unknown option: $1" >&2; exit 2 ;;
     esac
+    shift
 done
+case "$MODE" in
+    sidecar|watch) ;;
+    *) echo "--mode must be sidecar or watch, got '$MODE'" >&2; exit 2 ;;
+esac
 
 cd "$(dirname "$0")/.."
 P="nettap-it-$(printf "%04x%04x" $RANDOM $RANDOM)"
-DATA="$(mktemp -d "${TMPDIR:-/tmp}/$P.XXXX")"
+DATA="$(mktemp -d "${TMPDIR:-/tmp}/$P.XXXXXX")"
 IMAGE="$P-image"
 NET="$P-net"
 SRV="$P-srv"
 CLI="$P-client"
+NETTAP="$P-nettap"   # the watch daemon (watch mode only)
 
 cleanup() {
-    docker rm -f "$SRV-sidecar" "$CLI-sidecar" "$SRV" "$CLI" >/dev/null 2>&1 || true
+    docker rm -f "$NETTAP" "$SRV-sidecar" "$CLI-sidecar" "$SRV" "$CLI" >/dev/null 2>&1 || true
     docker network rm "$NET" >/dev/null 2>&1 || true
     docker rmi "$IMAGE" >/dev/null 2>&1 || true
     if [ "$KEEP" = 1 ]; then
@@ -47,29 +60,61 @@ trap cleanup EXIT
 
 step() { echo "==> $*"; }
 
+# wait_for_log <container> <grep -E pattern> <what>: fail after 30s
+wait_for_log() {
+    for _ in $(seq 30); do
+        docker logs "$1" 2>&1 | grep -Eq "$2" && return 0
+        sleep 1
+    done
+    echo "$3 never happened. docker logs $1:"
+    docker logs "$1"
+    exit 1
+}
+
 step "building nettap image"
 docker build -q -t "$IMAGE" . >/dev/null
 
-step "starting $SRV (nginx) and $CLI (alpine) on $NET"
 docker network create "$NET" >/dev/null
-docker run -d --name "$SRV" --network "$NET" nginx:alpine >/dev/null
+
+if [ "$MODE" = watch ]; then
+    # Same settings as docker-compose.yml. Started before the containers it
+    # captures, so their netns files only reach it through the rslave mount.
+    step "starting nettap watch (label $P=1)"
+    docker run -d --name "$NETTAP" --network host --cgroupns host \
+        --cap-add NET_ADMIN --cap-add NET_RAW --cap-add SYS_ADMIN \
+        -v /var/run/docker.sock:/var/run/docker.sock:ro \
+        -v /var/run/docker/netns:/var/run/docker/netns:ro,rslave \
+        -v "$DATA:/data" \
+        "$IMAGE" watch --label "$P=1" --poll-interval 1 >/dev/null
+    wait_for_log "$NETTAP" "nettap watching" "nettap watch starting"
+fi
+
+step "starting $SRV (nginx) and $CLI (alpine) on $NET"
+docker run -d --name "$SRV" --network "$NET" --label "$P=1" nginx:alpine >/dev/null
 docker run -d --name "$CLI" --network "$NET" alpine sleep 600 >/dev/null
 
-step "starting a sidecar on each"
-for target in "$SRV" "$CLI"; do
-    docker run -d --name "$target-sidecar" --network "container:$target" \
-        --cap-add NET_ADMIN --cap-add NET_RAW -v "$DATA:/data" \
-        "$IMAGE" sidecar --target "$target" >/dev/null
-done
-# wait until both tcpdumps report they're listening
-for target in "$SRV" "$CLI"; do
-    for _ in $(seq 30); do
-        docker logs "$target-sidecar" 2>&1 | grep -q "listening on" && break
-        sleep 1
+if [ "$MODE" = watch ]; then
+    step "attaching $CLI with 'nettap attach' ($SRV is picked up by its label)"
+    docker exec "$NETTAP" nettap --data-dir /data attach "$CLI" >/dev/null
+    for target in "$SRV" "$CLI"; do
+        wait_for_log "$NETTAP" "tcpdump\[$target\]: .*listening on" "capture of $target"
+        wait_for_log "$NETTAP" "tcpdump\[$target/lo\]: .*listening on" "DNS capture of $target"
     done
-    docker logs "$target-sidecar" 2>&1 | grep -q "listening on" \
-        || { echo "sidecar for $target never started:"; docker logs "$target-sidecar"; exit 1; }
-done
+    # show which interface each container was resolved to
+    docker logs "$NETTAP" 2>&1 | grep "attaching to" | sed 's/^/    /'
+    CAPTURERS=("$NETTAP")
+else
+    step "starting a sidecar on each"
+    for target in "$SRV" "$CLI"; do
+        docker run -d --name "$target-sidecar" --network "container:$target" \
+            --cap-add NET_ADMIN --cap-add NET_RAW -v "$DATA:/data" \
+            "$IMAGE" sidecar --target "$target" >/dev/null
+    done
+    for target in "$SRV" "$CLI"; do
+        wait_for_log "$target-sidecar" "listening on" "sidecar for $target starting"
+    done
+    CAPTURERS=("$SRV-sidecar" "$CLI-sidecar")
+fi
 
 step "generating traffic"
 for _ in 1 2 3; do
@@ -80,8 +125,8 @@ if [ "$INTERNET" = 1 ]; then
 fi
 sleep 2
 
-step "stopping sidecars (flushes the pcaps) and enriching"
-docker stop "$SRV-sidecar" "$CLI-sidecar" >/dev/null
+step "stopping capture (flushes the pcaps) and enriching"
+docker stop "${CAPTURERS[@]}" >/dev/null
 docker run --rm -v "$DATA:/data" "$IMAGE" enrich
 
 step "checking the flow store"
@@ -155,6 +200,9 @@ if internet:
           "no container's own IP listed as an internet destination")
     check(count("SELECT COUNT(*) FROM flows WHERE container_name = ? AND tls_sni = 'example.com'",
                 cli) > 0, "TLS SNI example.com recorded")
+    # catches captures landing on a shared interface (e.g. the host's eth0)
+    check(count("SELECT COUNT(*) FROM flows WHERE container_name = ? AND tls_sni = 'example.com'",
+                srv) == 0, "server capture has none of the client's internet traffic")
     check(any(r["hostname"] == "example.com" for r in analyze.hostnames(conn, cli).values()),
           "an IP named example.com")
     check(count("SELECT COUNT(*) FROM flows WHERE container_name = ? AND dns_query = 'example.com' "

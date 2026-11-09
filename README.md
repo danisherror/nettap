@@ -311,13 +311,30 @@ loop's SQLite usage. One enrich test runs the real `tshark` and is skipped
 if it isn't installed.
 
 `scripts/integration_test.sh` is an end-to-end check against a real Docker
-daemon: it starts a throwaway nginx server and alpine client, a `sidecar` on
-each, sends HTTP between them and HTTPS to example.com, then checks the flow
-store (container IPs, HTTP in both captures, the container matrix, internet
-destinations and SNI, and the report). Pass `--no-internet` to skip the
+daemon: it starts a throwaway nginx server and alpine client, captures both,
+sends HTTP between them and HTTPS to example.com, then checks the flow store
+(container IPs, HTTP in both captures, the container matrix, internet
+destinations and SNI, and the report). `--mode sidecar` (the default) puts a
+sidecar on each container; `--mode watch` runs one host-networked `nettap
+watch` set up like `docker-compose.yml`, which picks up the server by label
+and the client via `nettap attach`. Pass `--no-internet` to skip the
 internet part, `--keep` to keep the data dir. Everything it creates is named
-`nettap-it-*` and removed on exit. It covers `sidecar` mode only; `watch`
-mode still needs testing on a Linux host (see TODO.md).
+`nettap-it-*` and removed on exit.
+
+`--mode watch` needs a Linux Docker daemon. On Docker Desktop you can get one
+with Docker-in-Docker:
+
+```
+docker run -d --privileged --name nettap-it-dind docker:dind
+docker exec nettap-it-dind apk add bash
+docker exec nettap-it-dind mkdir /src
+tar --exclude .git --exclude data -cf - . | docker exec -i nettap-it-dind tar -xf - -C /src
+docker exec nettap-it-dind bash /src/scripts/integration_test.sh --mode watch
+docker rm -f -v nettap-it-dind
+```
+
+That runs a normal Linux `dockerd`, but on Docker Desktop's VM kernel, so it
+doesn't replace a test on a real Linux host (see TODO.md).
 
 ## Project layout
 
