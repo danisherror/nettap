@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="-140 -400 3040 1560" width="3040" height="1560">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-140 -400 3040 14571.625" width="3040" height="14571.625">
   <defs>
     <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
       <polygon points="0 0, 10 3.5, 0 7" fill="#1e1e1e" />
     </marker>
   </defs>
-  <rect x="-140" y="-400" width="3040" height="1560" fill="#ffffff" />
+  <rect x="-140" y="-400" width="3040" height="14571.625" fill="#ffffff" />
   <rect x="420" y="-200" width="260" height="120" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
   <rect x="420" y="0" width="260" height="120" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
   <rect x="840" y="200" width="260" height="120" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
@@ -19,6 +19,266 @@
   <rect x="2180" y="300" width="260" height="120" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
   <rect x="2180" y="560" width="260" height="120" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
   <rect x="2600" y="430" width="260" height="120" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="-100" y="1390" width="1830.4" height="1272.625" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="1462" width="1770.4" height="250" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1030.4" y="1762" width="660" height="403" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1030.4" y="2195" width="660" height="215.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="2173.625" width="240" height="65.5" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="290" y="1780.75" width="265.20000000000005" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="1972.5" width="265.20000000000005" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="2164.25" width="265.20000000000005" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="2365.375" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="2557.125" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="665.2" y="1780.75" width="265.20000000000005" height="84.25" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="665.2" y="1953.75" width="265.20000000000005" height="121.75" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="665.2" y="2154.875" width="265.20000000000005" height="103" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="665.2" y="2365.375" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="665.2" y="2557.125" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="-74" y="2159.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="1766.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="651.2" y="1766.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="1958.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="651.2" y="1939.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="2150.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="651.2" y="2140.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="2351.375" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="2543.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="2722.625" width="2130" height="701.75" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="2794.625" width="2070" height="210" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1330" y="3054.625" width="660" height="178" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1330" y="3262.625" width="660" height="121.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="3064" width="240" height="65.5" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="290" y="3054.625" width="240" height="84.25" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="640" y="3064" width="240" height="65.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="990" y="3054.625" width="240" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="3208.875" width="240" height="84.25" rx="8" ry="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2" opacity="1" />
+  <rect x="-74" y="3050" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="3040.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="3050" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="976" y="3040.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="3194.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="3484.375" width="2513.6" height="871.75" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="3556.375" width="2453.6" height="230" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1713.6" y="3836.375" width="660" height="271.75" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1713.6" y="4138.125" width="660" height="178" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="3845.75" width="240" height="65.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="290" y="3845.75" width="256.8" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="656.8" y="3845.75" width="240" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="3836.375" width="256.8" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1373.6" y="3855.125" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1373.6" y="3990.625" width="240" height="84.25" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="4000" width="256.8" height="65.5" rx="8" ry="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2" opacity="1" />
+  <rect x="656.8" y="4000" width="240" height="65.5" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="-74" y="3831.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="3831.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="642.8" y="3831.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="3822.375" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1359.6" y="3841.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1359.6" y="3976.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="3986" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="642.8" y="3986" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="4416.125" width="2846.8" height="986.75" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="4488.125" width="2786.8" height="270" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="2046.8000000000002" y="4808.125" width="660" height="309.25" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="2046.8000000000002" y="5147.375" width="660" height="215.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="4981.125" width="240" height="103" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="5009.25" width="240" height="46.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="640" y="4817.5" width="248.4" height="84.25" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="640" y="4990.5" width="248.4" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="998.4" y="5009.25" width="240" height="46.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="1348.4" y="4826.875" width="248.4" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1348.4" y="5009.25" width="248.4" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1348.4" y="5163.5" width="248.4" height="84.25" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1706.8000000000002" y="4990.5" width="240" height="84.25" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="-74" y="4967.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="4995.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="4803.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="4976.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="984.4" y="4995.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1334.4" y="4812.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1334.4" y="4995.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1334.4" y="5149.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1692.8000000000002" y="4976.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="5462.875" width="2897.2" height="984.25" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="5534.875" width="2837.2" height="230" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="2097.2" y="5814.875" width="660" height="365.5" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="2097.2" y="6210.375" width="660" height="196.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="5843" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="5824.25" width="240" height="84.25" rx="8" ry="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2" opacity="1" />
+  <rect x="640" y="5833.625" width="290.40000000000003" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1040.4" y="5814.875" width="256.8" height="103" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1407.2" y="5824.25" width="240" height="84.25" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1757.2" y="5824.25" width="240" height="84.25" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="1407.2" y="5997.25" width="240" height="84.25" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="-60" y="6170.25" width="240" height="84.25" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="290" y="6170.25" width="240" height="84.25" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="640" y="6170.25" width="290.40000000000003" height="84.25" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="1040.4" y="6179.625" width="256.8" height="65.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-74" y="5829" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="5810.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="5819.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1026.4" y="5800.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1393.2" y="5810.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1393.2" y="5983.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1743.2" y="5810.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-74" y="6156.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="6156.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="6156.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1026.4" y="6165.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="6507.125" width="2538.8" height="871.75" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="6579.125" width="2478.8" height="230" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1738.8000000000002" y="6859.125" width="660" height="253" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1738.8000000000002" y="7142.125" width="660" height="196.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="6868.5" width="240" height="84.25" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="290" y="6877.875" width="240" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="640" y="6859.125" width="273.6" height="103" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1023.6" y="6868.5" width="265.20000000000005" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1398.8000000000002" y="6877.875" width="240" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1398.8000000000002" y="7050.875" width="240" height="65.5" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="1023.6" y="7032.125" width="265.20000000000005" height="103" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="-74" y="6854.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="6863.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="6845.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1009.6" y="6854.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1384.8000000000002" y="6863.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1384.8000000000002" y="7036.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1009.6" y="7018.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="7438.875" width="2572.4" height="758" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="7510.875" width="2512.4" height="210" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1772.4" y="7770.875" width="660" height="234.25" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1772.4" y="8035.125" width="660" height="121.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="7799" width="240" height="46.75" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="7780.25" width="256.8" height="84.25" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="656.8" y="7780.25" width="273.6" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1040.4" y="7780.25" width="256.8" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="656.8" y="7962.625" width="273.6" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="1407.2" y="7770.875" width="265.20000000000005" height="103" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="-74" y="7785" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="7766.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="642.8" y="7766.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1026.4" y="7766.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="642.8" y="7948.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1393.2" y="7756.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="8256.875" width="2522" height="815.5" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="8328.875" width="2462" height="230" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1722" y="8608.875" width="660" height="215.5" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1722" y="8854.375" width="660" height="178" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="8627.625" width="256.8" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="306.8" y="8608.875" width="256.8" height="103" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="-60" y="8800.625" width="256.8" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="306.8" y="8791.25" width="256.8" height="84.25" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="8704.75" width="240" height="84.25" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="1023.6" y="8695.375" width="248.4" height="103" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1382" y="8714.125" width="240" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="-74" y="8613.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="292.8" y="8594.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-74" y="8786.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="292.8" y="8777.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="659.6" y="8690.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1009.6" y="8681.375" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1368" y="8700.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="9132.375" width="1813.6" height="1198.125" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="9204.375" width="1753.6" height="190" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1013.6" y="9444.375" width="660" height="215.5" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1013.6" y="9689.875" width="660" height="215.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="9463.125" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="-60" y="9617.375" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="-60" y="9762.25" width="240" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="-60" y="9925.875" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="-60" y="10080.125" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="-60" y="10234.375" width="240" height="46.75" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="9453.75" width="273.6" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="9598.625" width="273.6" height="84.25" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="9752.875" width="273.6" height="84.25" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="9916.5" width="273.6" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="10070.75" width="273.6" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="10225" width="273.6" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="9463.125" width="240" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="9608" width="240" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="9762.25" width="240" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="9925.875" width="240" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="10080.125" width="240" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="10234.375" width="240" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="276" y="9439.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="9584.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="9738.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="9902.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="10056.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="10211" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="10390.5" width="2180.4" height="1341.25" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="10462.5" width="2120.4" height="230" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1380.4" y="10742.5" width="660" height="253" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1380.4" y="11025.5" width="660" height="196.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="11193.75" width="240" height="65.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="290" y="11175" width="256.8" height="103" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="656.8" y="11203.125" width="240" height="46.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="10751.875" width="273.6" height="84.25" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="10934.25" width="273.6" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="11107.25" width="273.6" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="11280.25" width="273.6" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="11453.25" width="273.6" height="65.5" rx="8" ry="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2" opacity="1" />
+  <rect x="1006.8" y="11626.25" width="273.6" height="65.5" rx="8" ry="8" fill="#ffc9c9" stroke="#e03131" stroke-width="2" opacity="1" />
+  <rect x="-74" y="11179.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="11161" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="642.8" y="11189.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="10737.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="10920.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="11093.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="11266.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="11439.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="992.8" y="11612.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="11791.75" width="2188.8" height="990.125" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="11863.75" width="2128.8" height="230" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1388.8000000000002" y="12143.75" width="660" height="234.25" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1388.8000000000002" y="12408" width="660" height="196.75" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="12414.75" width="240" height="65.5" rx="8" ry="8" fill="#ffd8a8" stroke="#e8590c" stroke-width="2" opacity="1" />
+  <rect x="290" y="12279.25" width="273.6" height="65.5" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="290" y="12414.75" width="273.6" height="65.5" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="290" y="12550.25" width="273.6" height="65.5" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="12143.75" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="12279.25" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="12414.75" width="265.20000000000005" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="12559.625" width="265.20000000000005" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="673.6" y="12695.125" width="265.20000000000005" height="46.75" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="1048.8000000000002" y="12414.75" width="240" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="-74" y="12400.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="12265.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="12400.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="12536.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="659.6" y="12129.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="659.6" y="12265.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="659.6" y="12400.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="659.6" y="12545.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="659.6" y="12681.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="1034.8000000000002" y="12400.75" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="12841.875" width="2130" height="701.75" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="12913.875" width="2070" height="210" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1330" y="13173.875" width="660" height="196.75" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1330" y="13400.625" width="660" height="103" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="13183.25" width="240" height="65.5" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="290" y="13173.875" width="240" height="84.25" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="290" y="13337.5" width="240" height="65.5" rx="8" ry="8" fill="#b2f2bb" stroke="#2f9e44" stroke-width="2" opacity="1" />
+  <rect x="640" y="13183.25" width="240" height="65.5" rx="8" ry="8" fill="#a5d8ff" stroke="#1971c2" stroke-width="2" opacity="1" />
+  <rect x="990" y="13183.25" width="240" height="65.5" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="990" y="13328.125" width="240" height="84.25" rx="8" ry="8" fill="#d0bfff" stroke="#7048e8" stroke-width="2" opacity="1" />
+  <rect x="-74" y="13169.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="13159.875" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="13323.5" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="13169.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="976" y="13169.25" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="976" y="13314.125" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="-100" y="13603.625" width="2130" height="528" rx="8" ry="8" fill="transparent" stroke="#868e96" stroke-width="1" opacity="1" stroke-dasharray="8 4" />
+  <rect x="-70" y="13675.625" width="2070" height="130" rx="8" ry="8" fill="#f8f9fa" stroke="#343a40" stroke-width="2" opacity="1" />
+  <rect x="1330" y="13855.625" width="660" height="140.5" rx="8" ry="8" fill="#e7f5ff" stroke="#1864ab" stroke-width="2" opacity="1" />
+  <rect x="1330" y="14026.125" width="660" height="65.5" rx="8" ry="8" fill="#ffec99" stroke="#f08c00" stroke-width="2" opacity="1" />
+  <rect x="-60" y="13855.625" width="240" height="84.25" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="290" y="13855.625" width="240" height="84.25" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="640" y="13855.625" width="240" height="84.25" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="990" y="13855.625" width="240" height="84.25" rx="8" ry="8" fill="#dee2e6" stroke="#495057" stroke-width="2" opacity="1" />
+  <rect x="-74" y="13841.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="276" y="13841.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="626" y="13841.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
+  <rect x="976" y="13841.625" width="28" height="28" rx="8" ry="8" fill="#343a40" stroke="#ffffff" stroke-width="2" opacity="1" />
   <polyline points="550,-80 550,0" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
   <polyline points="680,40 1720,40" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
   <polyline points="680,90 970,90 970,200" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
@@ -37,6 +297,99 @@
   <polyline points="2020,620 2180,620" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
   <polyline points="2440,360 2730,360 2730,430" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
   <polyline points="2440,620 2730,620 2730,550" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,2206.375 290,1822.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,2206.375 290,2014.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,2206.375 290,2206.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,2206.375 290,2398.125" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,2206.375 290,2589.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="555.2,1822.875 665.2,1822.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="555.2,2014.625 665.2,2014.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="555.2,2206.375 665.2,2206.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="555.2,2398.125 665.2,2398.125" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="555.2,2589.875 665.2,2589.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,3096.75 290,3096.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="530,3096.75 640,3096.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="880,3096.75 990,3096.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="410,3138.875 410,3208.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,3878.5 290,3878.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="546.8,3878.5 656.8,3878.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,3878.5 1006.8,3878.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1263.6,3878.5 1373.6,3878.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1493.6,3901.875 1493.6,3990.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1373.6,3878.5 1263.6,4032.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1006.8,4032.75 896.8,4032.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="656.8,4032.75 180,3878.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,5032.625 290,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="530,5032.625 640,4859.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="530,5032.625 640,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="888.4,5032.625 998.4,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1238.4,5032.625 1348.4,4859.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1238.4,5032.625 1348.4,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1238.4,5032.625 1348.4,5205.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1596.8000000000002,4859.625 1706.8000000000002,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1596.8000000000002,5032.625 1706.8000000000002,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1596.8000000000002,5205.625 1706.8000000000002,5032.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,5866.375 290,5866.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="530,5866.375 640,5866.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="930.4000000000001,5866.375 1040.4,5866.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1297.2,5866.375 1407.2,5866.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1647.2,5866.375 1757.2,5866.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1527.2,5908.5 1527.2,5997.25" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1647.2,6039.375 1757.2,5866.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,6910.625 290,6910.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="530,6910.625 640,6910.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="913.6,6910.625 1023.6,6910.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1288.8000000000002,6910.625 1398.8000000000002,6910.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1518.8000000000002,6943.375 1518.8000000000002,7050.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1398.8000000000002,7083.625 1288.8000000000002,7083.625" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,7822.375 290,7822.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="546.8,7822.375 656.8,7822.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="930.4,7822.375 1040.4,7822.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1297.2,7822.375 1407.2,7822.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="546.8,7822.375 656.8,7995.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="930.4,7995.375 1407.2,7822.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="196.8,8660.375 306.8,8660.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="196.8,8833.375 306.8,8833.375" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,8660.375 673.6,8746.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,8833.375 673.6,8746.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="913.6,8746.875 1023.6,8746.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="1272,8746.875 1382,8746.875" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,9486.5 290,9486.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,9640.75 290,9640.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,9795 290,9795" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,9949.25 290,9949.25" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,10103.5 290,10103.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,10257.75 290,10257.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,9486.5 673.6,9486.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,9640.75 673.6,9640.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,9795 673.6,9795" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,9949.25 673.6,9949.25" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,10103.5 673.6,10103.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,10257.75 673.6,10257.75" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,11226.5 290,11226.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="546.8,11226.5 656.8,11226.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,11226.5 1006.8,10794" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,11226.5 1006.8,10967" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,11226.5 1006.8,11140" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,11226.5 1006.8,11313" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,11226.5 1006.8,11486" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="896.8,11226.5 1006.8,11659" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,12447.5 290,12312" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,12447.5 290,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,12447.5 290,12583" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,12312 673.6,12312" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,12447.5 673.6,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="563.6,12583 673.6,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="938.8000000000001,12176.5 1048.8000000000002,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="938.8000000000001,12312 1048.8000000000002,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="938.8000000000001,12447.5 1048.8000000000002,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="938.8000000000001,12583 1048.8000000000002,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="938.8000000000001,12718.5 1048.8000000000002,12447.5" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="180,13216 290,13216" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="410,13337.5 410,13258.125" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="530,13216 640,13216" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="880,13216 990,13216" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
+  <polyline points="880,13216 990,13370.25" fill="none" stroke="#343a40" stroke-width="2" marker-end="url(#arrowhead)" />
   <text x="-100" y="-332" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="28" fill="#1e1e1e" text-anchor="start">
     <tspan x="-100" dy="0">nettap — high-level architecture</tspan>
   </text>
@@ -180,5 +533,1468 @@
   </text>
   <text x="2460" y="642" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#495057" text-anchor="start">
     <tspan x="2460" dy="0">text / HTML</tspan>
+  </text>
+  <text x="-100" y="1308" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="28" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-100" dy="0">Component HLDs - one panel per module, in pipeline order</tspan>
+  </text>
+  <text x="-100" y="1338" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#495057" text-anchor="start">
+    <tspan x="-100" dy="0">read a panel before opening its file in nettap/  ·  colours: blue = steps/logic, green = does the work, orange = data/SQLite, yellow = loop/trigger/decision, purple = threads/helpers, red = skip/remove/error</tspan>
+  </text>
+  <text x="-70" y="1438" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">1. cli.py</tspan>
+  </text>
+  <text x="95.60000000000002" y="1438" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="95.60000000000002" dy="0">entry point: parses the command, wires the parts together, starts the threads</tspan>
+  </text>
+  <text x="-62" y="1493" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">This is the front door. When you type `nettap &lt;something&gt;`, the click library routes it to one function in this file. Some commands start a long-</tspan>
+    <tspan x="-62" dy="20">running process: `watch` (one daemon on the host that captures many containers), `sidecar` (captures one container from inside that container's</tspan>
+    <tspan x="-62" dy="20">network) and `sidecars` (a manager that starts and repairs sidecars for you). The others are quick one-shots: `attach` / `detach` only write a request</tspan>
+    <tspan x="-62" dy="20">into the database for the running `watch` daemon to pick up, and `status` / `analyze` / `report` / `enrich` read the database, print, and exit. cli.py</tspan>
+    <tspan x="-62" dy="20">does little work itself - it builds the pieces from the other modules, starts the background threads, and makes sure every tcpdump is stopped cleanly</tspan>
+    <tspan x="-62" dy="20">on Ctrl+C or `docker stop`.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: command-line arguments, SIGTERM / SIGINT</tspan>
+    <tspan x="-62" dy="20">OUT: running threads and tcpdump processes, rows in SQLite, printed text or an HTML file</tspan>
+    <tspan x="-62" dy="20">TALKS TO: every other module - this is where they are wired together</tspan>
+  </text>
+  <text x="1038.4" y="1791" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1038.4" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1038.4" dy="18.75">1. You run a command; click calls the matching function.</tspan>
+    <tspan x="1038.4" dy="18.75">2. attach / detach capture nothing themselves: they store the request (a</tspan>
+    <tspan x="1038.4" dy="18.75">    container name or a label) in SQLite.</tspan>
+    <tspan x="1038.4" dy="18.75">3. A running `watch` daemon reads those requests on its next pass (within 5s) -</tspan>
+    <tspan x="1038.4" dy="18.75">    that's how one terminal steers a daemon running in another.</tspan>
+    <tspan x="1038.4" dy="18.75">4. watch builds a CaptureManager (owns the tcpdumps) and a Selector (decides what</tspan>
+    <tspan x="1038.4" dy="18.75">    to capture), and first kills any tcpdump a crashed earlier run left behind.</tspan>
+    <tspan x="1038.4" dy="18.75">5. It then runs 4 things side by side: the controller loop, the enrich loop that</tspan>
+    <tspan x="1038.4" dy="18.75">    turns pcaps into rows, a port sampler for host-network containers, and a</tspan>
+    <tspan x="1038.4" dy="18.75">    Docker-events listener.</tspan>
+    <tspan x="1038.4" dy="18.75">6. sidecar runs inside the target's network namespace. It checks eth0 exists and</tspan>
+    <tspan x="1038.4" dy="18.75">    refuses to start if the namespace is really the host's (a --network host</tspan>
+    <tspan x="1038.4" dy="18.75">    target).</tspan>
+    <tspan x="1038.4" dy="18.75">7. Its own 1-second loop keeps the capture healthy, and exits with code 3 when</tspan>
+    <tspan x="1038.4" dy="18.75">    the target stops, so the problem shows up in `docker ps`.</tspan>
+    <tspan x="1038.4" dy="18.75">8. sidecars starts a Supervisor that manages sidecar containers through the</tspan>
+    <tspan x="1038.4" dy="18.75">    Docker API.</tspan>
+    <tspan x="1038.4" dy="18.75">9. Read commands open the database, run a query from analyze.py / report.py,</tspan>
+    <tspan x="1038.4" dy="18.75">    print, and exit.</tspan>
+  </text>
+  <text x="1038.4" y="2224" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1038.4" dy="0">WHAT IT OWNS</tspan>
+    <tspan x="1038.4" dy="18.75">• Turning a command line into a running mode (watch / sidecar / sidecars) or a</tspan>
+    <tspan x="1038.4" dy="18.75">  one-shot read (status / analyze / report / enrich).</tspan>
+    <tspan x="1038.4" dy="18.75">• Starting the background threads and shutting them down: SIGTERM/SIGINT set a</tspan>
+    <tspan x="1038.4" dy="18.75">  stop flag; `finally` clears live_sessions and stops every tcpdump.</tspan>
+    <tspan x="1038.4" dy="18.75">READ THIS FIRST</tspan>
+    <tspan x="1038.4" dy="18.75">• Every background thread opens its OWN SQLite connection - a shared connection</tspan>
+    <tspan x="1038.4" dy="18.75">  once made the enrich thread die silently (see TODO.md).</tspan>
+    <tspan x="1038.4" dy="18.75">• Each loop iteration is wrapped in try/except so a bug is logged and retried,</tspan>
+    <tspan x="1038.4" dy="18.75">  never a silently dead thread.</tspan>
+  </text>
+  <text x="60" y="2202.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="60" dy="0">Operator</tspan>
+    <tspan x="60" dy="18.75">nettap &lt;command&gt;</tspan>
+  </text>
+  <text x="422.6" y="1809.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="422.6" dy="0">attach / detach</tspan>
+    <tspan x="422.6" dy="18.75">write desired_refs /</tspan>
+    <tspan x="422.6" dy="18.75">desired_labels rows</tspan>
+  </text>
+  <text x="422.6" y="2001.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="422.6" dy="0">watch</tspan>
+    <tspan x="422.6" dy="18.75">CaptureManager + Selector</tspan>
+    <tspan x="422.6" dy="18.75">reap tcpdumps of a dead run</tspan>
+  </text>
+  <text x="422.6" y="2193.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="422.6" dy="0">sidecar --target X</tspan>
+    <tspan x="422.6" dy="18.75">eth0 must exist here</tspan>
+    <tspan x="422.6" dy="18.75">refuse a host-network target</tspan>
+  </text>
+  <text x="422.6" y="2394.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="422.6" dy="0">sidecars --label k=v</tspan>
+    <tspan x="422.6" dy="18.75">needs docker.sock</tspan>
+  </text>
+  <text x="422.6" y="2586.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="422.6" dy="0">status · analyze · report</tspan>
+    <tspan x="422.6" dy="18.75">enrich (one-off parse)</tspan>
+  </text>
+  <text x="797.8000000000001" y="1809.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="797.8000000000001" dy="0">SQLite desired state</tspan>
+    <tspan x="797.8000000000001" dy="18.75">(picked up by watch</tspan>
+    <tspan x="797.8000000000001" dy="18.75">within one poll)</tspan>
+  </text>
+  <text x="797.8000000000001" y="1982.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="797.8000000000001" dy="0">4 threads:</tspan>
+    <tspan x="797.8000000000001" dy="18.75">main: controller.run (5s)</tspan>
+    <tspan x="797.8000000000001" dy="18.75">_enrich_loop (5s)</tspan>
+    <tspan x="797.8000000000001" dy="18.75">port sampler (0.25s)</tspan>
+    <tspan x="797.8000000000001" dy="18.75">docker-events listener</tspan>
+  </text>
+  <text x="797.8000000000001" y="2183.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="797.8000000000001" dy="0">sidecar main loop (1s):</tspan>
+    <tspan x="797.8000000000001" dy="18.75">heartbeat · sync peers (30s)</tspan>
+    <tspan x="797.8000000000001" dy="18.75">restart dead tcpdump</tspan>
+    <tspan x="797.8000000000001" dy="18.75">exit 3 if eth0 vanishes</tspan>
+  </text>
+  <text x="797.8000000000001" y="2394.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="797.8000000000001" dy="0">Supervisor.reconcile()</tspan>
+    <tspan x="797.8000000000001" dy="18.75">every 5s / on docker event</tspan>
+  </text>
+  <text x="797.8000000000001" y="2586.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="797.8000000000001" dy="0">storage / analyze / report</tspan>
+    <tspan x="797.8000000000001" dy="18.75">(read-only)</tspan>
+  </text>
+  <text x="-60" y="2178.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="1786" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="665.2" y="1786" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="665.2" dy="0">3</tspan>
+  </text>
+  <text x="290" y="1977.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">4</tspan>
+  </text>
+  <text x="665.2" y="1959" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="665.2" dy="0">5</tspan>
+  </text>
+  <text x="290" y="2169.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">6</tspan>
+  </text>
+  <text x="665.2" y="2160.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="665.2" dy="0">7</tspan>
+  </text>
+  <text x="290" y="2370.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">8</tspan>
+  </text>
+  <text x="290" y="2562.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">9</tspan>
+  </text>
+  <text x="588.36" y="1815.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="588.36" dy="0">writes</tspan>
+  </text>
+  <text x="588.36" y="2007.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="588.36" dy="0">starts</tspan>
+  </text>
+  <text x="595.6400000000001" y="2199.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="595.6400000000001" dy="0">runs</tspan>
+  </text>
+  <text x="595.6400000000001" y="2390.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="595.6400000000001" dy="0">runs</tspan>
+  </text>
+  <text x="584.72" y="2582.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="584.72" dy="0">queries</tspan>
+  </text>
+  <text x="-70" y="2770.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">2. events.py</tspan>
+  </text>
+  <text x="139.28000000000003" y="2770.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="139.28000000000003" dy="0">wakes a polling loop the moment Docker starts or stops a container</tspan>
+  </text>
+  <text x="-62" y="2825.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">A small helper that makes the system react quickly. The controller and the supervisor normally check Docker every 5 seconds. This module opens</tspan>
+    <tspan x="-62" dy="20">Docker's live event stream on a background thread and, whenever a container starts, dies or is removed, pokes the loop so it runs right away. It</tspan>
+    <tspan x="-62" dy="20">decides nothing and passes no data along - it only says 'something changed, look now'. If the stream breaks it reconnects after 5s, and in the</tspan>
+    <tspan x="-62" dy="20">meantime the normal 5-second polling keeps working, so nothing is missed.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: Docker's events API (through docker.sock)</tspan>
+    <tspan x="-62" dy="20">OUT: a threading.Event that gets set</tspan>
+    <tspan x="-62" dy="20">USED BY: watch (controller.run) and sidecars (the supervisor loop)</tspan>
+  </text>
+  <text x="1338" y="3083.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1338" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1338" dy="18.75">1. Docker publishes an event for every container change.</tspan>
+    <tspan x="1338" dy="18.75">2. A background thread listens only for container start / die / destroy.</tspan>
+    <tspan x="1338" dy="18.75">3. On each event it sets a shared flag (a threading.Event).</tspan>
+    <tspan x="1338" dy="18.75">4. The loop waiting on that flag wakes early and reconciles now instead of</tspan>
+    <tspan x="1338" dy="18.75">    sleeping out its 5s.</tspan>
+    <tspan x="1338" dy="18.75">5. If the stream dies (Docker restarted, socket gone) it waits 5s and reconnects;</tspan>
+    <tspan x="1338" dy="18.75">    polling covers the gap.</tspan>
+  </text>
+  <text x="1338" y="3291.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1338" dy="0">WHY</tspan>
+    <tspan x="1338" dy="18.75">• Polling stays the source of truth. Events only cut the delay: a new container</tspan>
+    <tspan x="1338" dy="18.75">  is captured in about a second instead of up to 5s.</tspan>
+    <tspan x="1338" dy="18.75">• A missed or dropped event costs at most one poll interval, so errors are only</tspan>
+    <tspan x="1338" dy="18.75">  logged at debug level.</tspan>
+  </text>
+  <text x="60" y="3093" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="60" dy="0">Docker daemon</tspan>
+    <tspan x="60" dy="18.75">events API</tspan>
+  </text>
+  <text x="410" y="3083.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="410" dy="0">wake_on_events (thread)</tspan>
+    <tspan x="410" dy="18.75">filter type=container:</tspan>
+    <tspan x="410" dy="18.75">start · die · destroy</tspan>
+  </text>
+  <text x="760" y="3093" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="760" dy="0">wake.set()</tspan>
+    <tspan x="760" dy="18.75">(threading.Event)</tspan>
+  </text>
+  <text x="1110" y="3083.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="1110" dy="0">controller.run /</tspan>
+    <tspan x="1110" dy="18.75">supervisor loop</tspan>
+    <tspan x="1110" dy="18.75">reconcile right now</tspan>
+  </text>
+  <text x="410" y="3237.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e03131" text-anchor="middle">
+    <tspan x="410" dy="0">stream broke (daemon</tspan>
+    <tspan x="410" dy="18.75">restart, socket gone)</tspan>
+    <tspan x="410" dy="18.75">wait 5s, reconnect</tspan>
+  </text>
+  <text x="-60" y="3069.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="3059.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="640" y="3069.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">3</tspan>
+  </text>
+  <text x="990" y="3059.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="990" dy="0">4</tspan>
+  </text>
+  <text x="290" y="3214.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">5</tspan>
+  </text>
+  <text x="213.16" y="3089.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="213.16" dy="0">stream</tspan>
+  </text>
+  <text x="548.6" y="3089.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="548.6" dy="0">each event</tspan>
+  </text>
+  <text x="894.96" y="3089.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="894.96" dy="0">wakes early</tspan>
+  </text>
+  <text x="418" y="3178.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="418" dy="0">on error</tspan>
+  </text>
+  <text x="-70" y="3532.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">3. controller.py</tspan>
+  </text>
+  <text x="197.52000000000004" y="3532.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="197.52000000000004" dy="0">reconciliation loop: makes running captures match the desired state (watch mode)</tspan>
+  </text>
+  <text x="-62" y="3587.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">The brain of `watch` mode. It uses the 'reconcile' pattern (the same idea Kubernetes uses): keep a picture of what SHOULD be captured (desired state),</tspan>
+    <tspan x="-62" dy="20">look at what IS being captured (actual state), and fix the difference. Desired state = containers matching the --label given at start-up, plus labels</tspan>
+    <tspan x="-62" dy="20">and names added later with `nettap attach`. Each pass also restarts any tcpdump that crashed and applies the pcap disk limits. A pass runs every 5</tspan>
+    <tspan x="-62" dy="20">seconds, or at once when events.py reports a container change. A failing pass is logged and the next one tries again, so a hiccup in the Docker API</tspan>
+    <tspan x="-62" dy="20">never kills the daemon.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: Docker's container list, the desired_refs / desired_labels tables</tspan>
+    <tspan x="-62" dy="20">OUT: tcpdumps started / stopped (through capture.py), rows in containers and live_sessions</tspan>
+    <tspan x="-62" dy="20">CALLED BY: `nettap watch` (cli.py), on the main thread</tspan>
+  </text>
+  <text x="1721.6" y="3865.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1721.6" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1721.6" dy="18.75">1. Wait for the next tick (5s) or an early wake-up from events.py.</tspan>
+    <tspan x="1721.6" dy="18.75">2. Refresh the heartbeat in live_sessions so `nettap status` knows the daemon is</tspan>
+    <tspan x="1721.6" dy="18.75">    alive.</tspan>
+    <tspan x="1721.6" dy="18.75">3. Ask the CaptureManager to restart any tcpdump that exited on its own.</tspan>
+    <tspan x="1721.6" dy="18.75">4. Work out which containers should be captured: label match (CLI + database) or</tspan>
+    <tspan x="1721.6" dy="18.75">    named by `nettap attach`.</tspan>
+    <tspan x="1721.6" dy="18.75">5. Compare that with the containers being captured right now.</tspan>
+    <tspan x="1721.6" dy="18.75">6. Missing one? Inspect it (discovery.py), save its details, start its tcpdump</tspan>
+    <tspan x="1721.6" dy="18.75">    (capture.py).</tspan>
+    <tspan x="1721.6" dy="18.75">7. Captured but not wanted any more (stopped, detached)? Stop its tcpdump and</tspan>
+    <tspan x="1721.6" dy="18.75">    delete its live_sessions row.</tspan>
+    <tspan x="1721.6" dy="18.75">8. Delete old pcaps if age / size limits are set, then go back to waiting.</tspan>
+  </text>
+  <text x="1721.6" y="4167.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1721.6" dy="0">WHY POLLING, NOT JUST EVENTS</tspan>
+    <tspan x="1721.6" dy="18.75">• `nettap attach web` from another terminal only writes a DB row; the daemon</tspan>
+    <tspan x="1721.6" dy="18.75">  picks it up next cycle with no extra plumbing.</tspan>
+    <tspan x="1721.6" dy="18.75">• A missed 'die' event can't leave a zombie capture running forever.</tspan>
+    <tspan x="1721.6" dy="18.75">FAILURE HANDLING</tspan>
+    <tspan x="1721.6" dy="18.75">• Heartbeat runs before the main try: a failing Docker API doesn't mean captures</tspan>
+    <tspan x="1721.6" dy="18.75">  are gone.</tspan>
+    <tspan x="1721.6" dy="18.75">• Any exception in a pass is logged and the loop continues.</tspan>
+  </text>
+  <text x="60" y="3874.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="60" dy="0">tick: every poll_interval</tspan>
+    <tspan x="60" dy="18.75">or woken by events.py</tspan>
+  </text>
+  <text x="418.4" y="3874.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="418.4" dy="0">heartbeat live_sessions</tspan>
+    <tspan x="418.4" dy="18.75">(so `status` sees us alive)</tspan>
+  </text>
+  <text x="776.8" y="3874.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="776.8" dy="0">mgr.restart_dead()</tspan>
+    <tspan x="776.8" dy="18.75">restart crashed tcpdumps</tspan>
+  </text>
+  <text x="1135.2" y="3865.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="1135.2" dy="0">Selector.desired_containers</tspan>
+    <tspan x="1135.2" dy="18.75">labels (CLI --label + DB)</tspan>
+    <tspan x="1135.2" dy="18.75">+ attach refs (name / id)</tspan>
+  </text>
+  <text x="1493.6" y="3884.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="1493.6" dy="0">diff desired vs attached</tspan>
+  </text>
+  <text x="1493.6" y="4019.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1493.6" dy="0">new: inspect_container</tspan>
+    <tspan x="1493.6" dy="18.75">→ upsert_container</tspan>
+    <tspan x="1493.6" dy="18.75">→ mgr.attach</tspan>
+  </text>
+  <text x="1135.2" y="4029" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e03131" text-anchor="middle">
+    <tspan x="1135.2" dy="0">gone: mgr.detach</tspan>
+    <tspan x="1135.2" dy="18.75">→ clear_live_session</tspan>
+  </text>
+  <text x="776.8" y="4029" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="776.8" dy="0">mgr.enforce_retention()</tspan>
+    <tspan x="776.8" dy="18.75">(pcap age / size caps)</tspan>
+  </text>
+  <text x="-60" y="3851" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="3851" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="656.8" y="3851" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="656.8" dy="0">3</tspan>
+  </text>
+  <text x="1006.8" y="3841.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">4</tspan>
+  </text>
+  <text x="1373.6" y="3860.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1373.6" dy="0">5</tspan>
+  </text>
+  <text x="1373.6" y="3995.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1373.6" dy="0">6</tspan>
+  </text>
+  <text x="1006.8" y="4005.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">7</tspan>
+  </text>
+  <text x="656.8" y="4005.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="656.8" dy="0">8</tspan>
+  </text>
+  <text x="220.44" y="3871.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="220.44" dy="0">tick</tspan>
+  </text>
+  <text x="1278.56" y="3871.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1278.56" dy="0">desired set</tspan>
+  </text>
+  <text x="1501.6" y="3951.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1501.6" dy="0">missing</tspan>
+  </text>
+  <text x="1326.6" y="3960.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1326.6" dy="0">extra</tspan>
+  </text>
+  <text x="360.15999999999997" y="3936.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="360.15999999999997" dy="0">wait → next tick</tspan>
+  </text>
+  <text x="-70" y="4464.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">4. discovery.py</tspan>
+  </text>
+  <text x="182.96000000000004" y="4464.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="182.96000000000004" dy="0">answers: which interface carries this container's traffic, and how do I reach it?</tspan>
+  </text>
+  <text x="-62" y="4519.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Before tcpdump can record a container, nettap must know WHERE that container's packets flow. Every container has its own network namespace (a private</tspan>
+    <tspan x="-62" dy="20">network stack) connected to the host by a virtual cable called a veth pair: one end is eth0 inside the container, the other is an interface on the</tspan>
+    <tspan x="-62" dy="20">host such as veth3a1f9c2. Capturing on that host end sees everything the container sends and receives - to the host, to other containers and to the</tspan>
+    <tspan x="-62" dy="20">internet. This module reads the container from the Docker API, enters its namespace with nsenter to ask the kernel what kind of interface eth0 is, and</tspan>
+    <tspan x="-62" dy="20">picks the best place to capture: the host-side veth (normal case), the container's own eth0 from inside (macvlan / ipvlan), every interface from</tspan>
+    <tspan x="-62" dy="20">inside (several networks or a Swarm overlay), or the host's main interface filtered by port (--network host). The answer comes back as a</tspan>
+    <tspan x="-62" dy="20">ContainerNetInfo object that capture.py uses.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: a container ID, the Docker API, /var/run/docker/netns, /sys/class/net</tspan>
+    <tspan x="-62" dy="20">OUT: ContainerNetInfo: where to capture, plus the container's IPs, ports, labels, start time</tspan>
+    <tspan x="-62" dy="20">USED BY: controller.py (watch), and sidecar --docker-api to learn other containers' names</tspan>
+  </text>
+  <text x="2054.8" y="4837.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="2054.8" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="2054.8" dy="18.75">1. Read the container from the Docker API: name, IPs, ports, labels, and the</tspan>
+    <tspan x="2054.8" dy="18.75">    SandboxKey (the path to its network-namespace file).</tspan>
+    <tspan x="2054.8" dy="18.75">2. Does it use --network host? Then it has no namespace of its own.</tspan>
+    <tspan x="2054.8" dy="18.75">3. Yes: capture on the host's main interface, and later keep only its ports</tspan>
+    <tspan x="2054.8" dy="18.75">    (hostports.py).</tspan>
+    <tspan x="2054.8" dy="18.75">4. No: enter its namespace and run `ip -j -d link` to learn eth0's type and the</tspan>
+    <tspan x="2054.8" dy="18.75">    index of the other end of its cable.</tspan>
+    <tspan x="2054.8" dy="18.75">5. Decide by the type of link.</tspan>
+    <tspan x="2054.8" dy="18.75">6. Several data interfaces (more than one network, Swarm overlay): capture all of</tspan>
+    <tspan x="2054.8" dy="18.75">    them but lo, inside the namespace.</tspan>
+    <tspan x="2054.8" dy="18.75">7. macvlan / ipvlan have no veth: capture eth0 from inside the namespace.</tspan>
+    <tspan x="2054.8" dy="18.75">8. veth: find the host interface with that index, check it points back at eth0,</tspan>
+    <tspan x="2054.8" dy="18.75">    capture there.</tspan>
+    <tspan x="2054.8" dy="18.75">9. Pack the answer and all metadata into a ContainerNetInfo.</tspan>
+  </text>
+  <text x="2054.8" y="5176.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="2054.8" dy="0">KEY IDEA</tspan>
+    <tspan x="2054.8" dy="18.75">• The host-side veth is the only door in or out of a container, so tcpdump on it</tspan>
+    <tspan x="2054.8" dy="18.75">  sees host, container-to-container and internet traffic.</tspan>
+    <tspan x="2054.8" dy="18.75">• Nothing is installed in the target image: nettap enters its netns with the</tspan>
+    <tspan x="2054.8" dy="18.75">  host's nsenter.</tspan>
+    <tspan x="2054.8" dy="18.75">GOTCHAS</tspan>
+    <tspan x="2054.8" dy="18.75">• Not /sys/class/net/eth0/iflink: under nsenter --net sysfs still shows the</tspan>
+    <tspan x="2054.8" dy="18.75">  host's interfaces.</tspan>
+    <tspan x="2054.8" dy="18.75">• sidecar calls this with resolve=False - it already sits in the target's netns.</tspan>
+    <tspan x="2054.8" dy="18.75">  split_by_netns() finds its target and peers by IP.</tspan>
+  </text>
+  <text x="60" y="5010.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">inspect_container(id)</tspan>
+    <tspan x="60" dy="18.75">Docker API: SandboxKey,</tspan>
+    <tspan x="60" dy="18.75">networks, IPs, ports,</tspan>
+    <tspan x="60" dy="18.75">NetworkMode, StartedAt</tspan>
+  </text>
+  <text x="410" y="5038.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="410" dy="0">NetworkMode == host?</tspan>
+  </text>
+  <text x="764.2" y="4846.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="764.2" dy="0">host's default-route iface</tspan>
+    <tspan x="764.2" dy="18.75">scope='ports' (hostports)</tspan>
+    <tspan x="764.2" dy="18.75">needs ss --cgroup</tspan>
+  </text>
+  <text x="764.2" y="5019.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="764.2" dy="0">nsenter --net=SandboxKey</tspan>
+    <tspan x="764.2" dy="18.75">ip -j -d link show eth0</tspan>
+    <tspan x="764.2" dy="18.75">→ kind, ifindex, peer</tspan>
+  </text>
+  <text x="1118.4" y="5038.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="1118.4" dy="0">what kind of link?</tspan>
+  </text>
+  <text x="1472.6000000000001" y="4855.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1472.6000000000001" dy="0">capture 'any' but lo</tspan>
+    <tspan x="1472.6000000000001" dy="18.75">inside the netns</tspan>
+  </text>
+  <text x="1472.6000000000001" y="5038.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1472.6000000000001" dy="0">eth0 inside the netns</tspan>
+  </text>
+  <text x="1472.6000000000001" y="5192.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1472.6000000000001" dy="0">host iface whose ifindex =</tspan>
+    <tspan x="1472.6000000000001" dy="18.75">peer index &amp; iflink points</tspan>
+    <tspan x="1472.6000000000001" dy="18.75">back (else 'any' in netns)</tspan>
+  </text>
+  <text x="1826.8000000000002" y="5019.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="1826.8000000000002" dy="0">ContainerNetInfo</tspan>
+    <tspan x="1826.8000000000002" dy="18.75">iface · capture_in_netns</tspan>
+    <tspan x="1826.8000000000002" dy="18.75">IPs · link_kind · scope</tspan>
+  </text>
+  <text x="-60" y="4986.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="5014.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="640" y="4822.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">3</tspan>
+  </text>
+  <text x="640" y="4995.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">4</tspan>
+  </text>
+  <text x="998.4" y="5014.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="998.4" dy="0">5</tspan>
+  </text>
+  <text x="1348.4" y="4832.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1348.4" dy="0">6</tspan>
+  </text>
+  <text x="1348.4" y="5014.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1348.4" dy="0">7</tspan>
+  </text>
+  <text x="1348.4" y="5168.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1348.4" dy="0">8</tspan>
+  </text>
+  <text x="1706.8000000000002" y="4995.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1706.8000000000002" dy="0">9</tspan>
+  </text>
+  <text x="593" y="4951" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="593" dy="0">yes</tspan>
+  </text>
+  <text x="577.72" y="5025.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="577.72" dy="0">no</tspan>
+  </text>
+  <text x="1301.4" y="4942.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1301.4" dy="0">2+ data ifaces</tspan>
+    <tspan x="1301.4" dy="16.25">(networks/overlay)</tspan>
+  </text>
+  <text x="1242.44" y="5025.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1242.44" dy="0">macvlan/ipvlan</tspan>
+  </text>
+  <text x="1301.4" y="5124" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1301.4" dy="0">veth</tspan>
+  </text>
+  <text x="-70" y="5510.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">5. capture.py</tspan>
+  </text>
+  <text x="153.84000000000003" y="5510.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="153.84000000000003" dy="0">CaptureManager: owns one tcpdump per container (+ one for DNS) and its pcap files</tspan>
+  </text>
+  <text x="-62" y="5565.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Runs and looks after the tcpdump processes. For each container it starts one tcpdump on the interface discovery.py chose, writing raw packets to</tspan>
+    <tspan x="-62" dy="20">data/pcap/&lt;name&gt;_&lt;timestamp&gt;.pcap and starting a new file every 60 seconds. It also starts a second, small tcpdump on the container's loopback (lo)</tspan>
+    <tspan x="-62" dy="20">that records only lookups to Docker's built-in DNS server 127.0.0.11, because those never cross eth0. tcpdump flushes each packet straight to disk, so</tspan>
+    <tspan x="-62" dy="20">the files can be read while they are still being written. The CaptureManager keeps a table of these processes so it can restart ones that crash, stop</tspan>
+    <tspan x="-62" dy="20">them on detach, delete old files, and kill leftovers from an earlier crash.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: a ContainerNetInfo from discovery.py</tspan>
+    <tspan x="-62" dy="20">OUT: tcpdump processes; .pcap and .dns.pcap files in data/pcap/ (open them in Wireshark)</tspan>
+    <tspan x="-62" dy="20">CALLED BY: controller.py (watch) and the sidecar loop in cli.py</tspan>
+  </text>
+  <text x="2105.2" y="5843.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="2105.2" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="2105.2" dy="18.75">1. The controller or sidecar asks to capture a container.</tspan>
+    <tspan x="2105.2" dy="18.75">2. Give up, with a log line, if there is no interface, or it's a host-network</tspan>
+    <tspan x="2105.2" dy="18.75">    container whose ports can't be attributed to it.</tspan>
+    <tspan x="2105.2" dy="18.75">3. If the capture must run inside the container's namespace (watch mode), put</tspan>
+    <tspan x="2105.2" dy="18.75">    nsenter in front of the command.</tspan>
+    <tspan x="2105.2" dy="18.75">4. Build the tcpdump command: interface, file-name pattern, new file every 60s</tspan>
+    <tspan x="2105.2" dy="18.75">    (-G), flush every packet (-U).</tspan>
+    <tspan x="2105.2" dy="18.75">5. Start it. The kernel kills it if nettap dies (PDEATHSIG), and its error output</tspan>
+    <tspan x="2105.2" dy="18.75">    is copied into nettap's log.</tspan>
+    <tspan x="2105.2" dy="18.75">6. Start the second tcpdump on lo for DNS lookups to 127.0.0.11.</tspan>
+    <tspan x="2105.2" dy="18.75">7. Both write rotating pcap files - the raw evidence everything else is built</tspan>
+    <tspan x="2105.2" dy="18.75">    from.</tspan>
+    <tspan x="2105.2" dy="18.75">8. Every pass: restart any tcpdump that exited.</tspan>
+    <tspan x="2105.2" dy="18.75">9. Delete the oldest pcaps beyond the age / size limits.</tspan>
+    <tspan x="2105.2" dy="18.75">10. At start-up: kill tcpdumps left running by a crashed earlier run (pids from</tspan>
+    <tspan x="2105.2" dy="18.75">    live_sessions).</tspan>
+    <tspan x="2105.2" dy="18.75">11. Stopping: SIGTERM, wait up to 5s, then SIGKILL.</tspan>
+  </text>
+  <text x="2105.2" y="6239.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="2105.2" dy="0">HOUSEKEEPING (BOTTOM ROW)</tspan>
+    <tspan x="2105.2" dy="18.75">• Called by controller / sidecar loop each pass. A tcpdump that dies quietly</tspan>
+    <tspan x="2105.2" dy="18.75">  would otherwise mean 'the report stopped updating' with no error.</tspan>
+    <tspan x="2105.2" dy="18.75">WHY A SECOND CAPTURE ON LO</tspan>
+    <tspan x="2105.2" dy="18.75">• Containers on user-defined networks ask 127.0.0.11 for DNS over lo, never eth0.</tspan>
+    <tspan x="2105.2" dy="18.75">  Filtered by host, not port: Docker NATs port 53 to a random port.</tspan>
+    <tspan x="2105.2" dy="18.75">WHY -U</tspan>
+    <tspan x="2105.2" dy="18.75">• Each packet is flushed to disk, so ingest.py can read a file while tcpdump is</tspan>
+    <tspan x="2105.2" dy="18.75">  still writing it.</tspan>
+  </text>
+  <text x="60" y="5872" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">attach(ContainerNetInfo)</tspan>
+  </text>
+  <text x="410" y="5853.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e03131" text-anchor="middle">
+    <tspan x="410" dy="0">skip: no interface, or</tspan>
+    <tspan x="410" dy="18.75">host-network without</tspan>
+    <tspan x="410" dy="18.75">port attribution</tspan>
+  </text>
+  <text x="785.2" y="5862.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="785.2" dy="0">in its netns and not a sidecar?</tspan>
+    <tspan x="785.2" dy="18.75">prefix: nsenter --net=…</tspan>
+  </text>
+  <text x="1168.8000000000002" y="5843.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1168.8000000000002" dy="0">tcpdump -i &lt;iface&gt;</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">-w &lt;name&gt;_%ts.pcap</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">-G 60 rotate · -U flush</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">-n · -Z root</tspan>
+  </text>
+  <text x="1527.2" y="5853.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1527.2" dy="0">Popen + PDEATHSIG</tspan>
+    <tspan x="1527.2" dy="18.75">(dies with nettap)</tspan>
+    <tspan x="1527.2" dy="18.75">stderr → logger thread</tspan>
+  </text>
+  <text x="1877.2" y="5853.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="1877.2" dy="0">data/pcap/</tspan>
+    <tspan x="1877.2" dy="18.75">&lt;name&gt;_&lt;ts&gt;.pcap</tspan>
+    <tspan x="1877.2" dy="18.75">&lt;name&gt;_&lt;ts&gt;.dns.pcap</tspan>
+  </text>
+  <text x="1527.2" y="6026.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1527.2" dy="0">2nd tcpdump on lo</tspan>
+    <tspan x="1527.2" dy="18.75">filter: host 127.0.0.11</tspan>
+    <tspan x="1527.2" dy="18.75">(Docker's embedded DNS)</tspan>
+  </text>
+  <text x="60" y="6199.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="60" dy="0">restart_dead()</tspan>
+    <tspan x="60" dy="18.75">poll() each process,</tspan>
+    <tspan x="60" dy="18.75">re-attach if it exited</tspan>
+  </text>
+  <text x="410" y="6199.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="410" dy="0">enforce_retention()</tspan>
+    <tspan x="410" dy="18.75">delete oldest pcaps by</tspan>
+    <tspan x="410" dy="18.75">age / size (≤ 1× per 30s)</tspan>
+  </text>
+  <text x="785.2" y="6199.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="785.2" dy="0">reap_orphans()</tspan>
+    <tspan x="785.2" dy="18.75">kill tcpdumps a crashed</tspan>
+    <tspan x="785.2" dy="18.75">earlier run left behind</tspan>
+  </text>
+  <text x="1168.8000000000002" y="6208.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="1168.8000000000002" dy="0">detach() / detach_all()</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">SIGTERM, then kill after 5s</tspan>
+  </text>
+  <text x="-60" y="5848.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="5829.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="640" y="5838.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">3</tspan>
+  </text>
+  <text x="1040.4" y="5820.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1040.4" dy="0">4</tspan>
+  </text>
+  <text x="1407.2" y="5829.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1407.2" dy="0">5</tspan>
+  </text>
+  <text x="1407.2" y="6002.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1407.2" dy="0">6</tspan>
+  </text>
+  <text x="1757.2" y="5829.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1757.2" dy="0">7</tspan>
+  </text>
+  <text x="-60" y="6175.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">8</tspan>
+  </text>
+  <text x="290" y="6175.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">9</tspan>
+  </text>
+  <text x="640" y="6175.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">10</tspan>
+  </text>
+  <text x="1040.4" y="6184.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1040.4" dy="0">11</tspan>
+  </text>
+  <text x="577.72" y="5859.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="577.72" dy="0">ok</tspan>
+  </text>
+  <text x="1680.3600000000001" y="5859.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1680.3600000000001" dy="0">writes</tspan>
+  </text>
+  <text x="1535.2" y="5957.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1535.2" dy="0">also starts</tspan>
+  </text>
+  <text x="-70" y="6555.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">6. ingest.py</tspan>
+  </text>
+  <text x="139.28000000000003" y="6555.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="139.28000000000003" dy="0">feeds new packets to tshark every 5s, without waiting for a pcap to rotate</tspan>
+  </text>
+  <text x="-62" y="6610.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Turns growing pcap files into database rows within seconds. Waiting for a 60-second file to finish would make reports lag, so every 5 seconds this</tspan>
+    <tspan x="-62" dy="20">module reads only the NEW part of each file. A pcap file is a 24-byte header followed by packets, each with its own 16-byte header that gives its</tspan>
+    <tspan x="-62" dy="20">length. ingest walks those headers from where it stopped last time, stops before any packet tcpdump is still writing, copies the new packets (plus the</tspan>
+    <tspan x="-62" dy="20">file header) into a small temporary pcap, and has enrich.py / tshark parse it. The rows and the new 'read up to here' position are saved in one</tspan>
+    <tspan x="-62" dy="20">database transaction, so a crash, or two processes reading the same file, can never count a packet twice.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: pcap files, the pcap_progress table</tspan>
+    <tspan x="-62" dy="20">OUT: rows in flows, updated offsets in pcap_progress</tspan>
+    <tspan x="-62" dy="20">CALLED BY: the enrich loop in cli.py (every 5s) and the one-off `nettap enrich`</tspan>
+  </text>
+  <text x="1746.8000000000002" y="6888.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1746.8000000000002" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">1. Every 5s, list every pcap file of every running capture.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">2. Look up how far this file has been read (a byte offset) and whether it's</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">    finished.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">3. Walk the packet headers from that offset; stop at a half-written packet or one</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">    newer than 2s.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">4. Copy the file header + the new packets into a temporary pcap tshark can read.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">5. Parse it into flow rows (enrich.py).</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">6. Host-network container? Drop the packets that weren't on its ports</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">    (hostports.py).</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">7. Save the rows and the new offset together; if another process already saved</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">    this part, do nothing.</tspan>
+  </text>
+  <text x="1746.8000000000002" y="7171.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1746.8000000000002" dy="0">KEY IDEA</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">• Rows and the new offset are saved in one transaction, so a packet is never</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">  counted twice - after a restart, or when `nettap enrich` and the daemon look at</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">  the same file.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">• final=True once a file has rotated: take every complete record and mark it</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">  done.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">TRADE-OFFS</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">• The 2s hold-back gives the port sampler time to record a packet's port.</tspan>
+    <tspan x="1746.8000000000002" dy="18.75">• A TLS ClientHello split across two chunks can lose its SNI.</tspan>
+  </text>
+  <text x="60" y="6897.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="60" dy="0">_enrich_loop (cli.py)</tspan>
+    <tspan x="60" dy="18.75">every 5s, each capture's</tspan>
+    <tspan x="60" dy="18.75">pcap + dns.pcap files</tspan>
+  </text>
+  <text x="410" y="6906.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="410" dy="0">pcap_progress(path)</tspan>
+    <tspan x="410" dy="18.75">→ (byte offset, done)</tspan>
+  </text>
+  <text x="776.8" y="6888.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="776.8" dy="0">complete_records()</tspan>
+    <tspan x="776.8" dy="18.75">walk 16-byte record headers</tspan>
+    <tspan x="776.8" dy="18.75">stop at a half-written record</tspan>
+    <tspan x="776.8" dy="18.75">or packet newer than now−2s</tspan>
+  </text>
+  <text x="1156.1999999999998" y="6897.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="1156.1999999999998" dy="0">copy 24-byte global header</tspan>
+    <tspan x="1156.1999999999998" dy="18.75">+ bytes[offset:end]</tspan>
+    <tspan x="1156.1999999999998" dy="18.75">→ temp .pcap</tspan>
+  </text>
+  <text x="1518.8000000000002" y="6906.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1518.8000000000002" dy="0">enrich.parse_pcap(temp)</tspan>
+    <tspan x="1518.8000000000002" dy="18.75">→ flow rows</tspan>
+  </text>
+  <text x="1518.8000000000002" y="7079.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="1518.8000000000002" dy="0">port-scoped container?</tspan>
+    <tspan x="1518.8000000000002" dy="18.75">hostports.keep_owned()</tspan>
+  </text>
+  <text x="1156.1999999999998" y="7061.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="1156.1999999999998" dy="0">store_pcap_chunk()</tspan>
+    <tspan x="1156.1999999999998" dy="18.75">BEGIN IMMEDIATE: insert rows</tspan>
+    <tspan x="1156.1999999999998" dy="18.75">+ move offset to end</tspan>
+    <tspan x="1156.1999999999998" dy="18.75">(skip if offset moved)</tspan>
+  </text>
+  <text x="-60" y="6873.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="6883.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="640" y="6864.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">3</tspan>
+  </text>
+  <text x="1023.6" y="6873.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1023.6" dy="0">4</tspan>
+  </text>
+  <text x="1398.8000000000002" y="6883.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1398.8000000000002" dy="0">5</tspan>
+  </text>
+  <text x="1398.8000000000002" y="7056.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1398.8000000000002" dy="0">6</tspan>
+  </text>
+  <text x="1023.6" y="7037.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1023.6" dy="0">7</tspan>
+  </text>
+  <text x="202.24" y="6903.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="202.24" dy="0">each file</tspan>
+  </text>
+  <text x="544.96" y="6903.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="544.96" dy="0">from offset</tspan>
+  </text>
+  <text x="957.6800000000001" y="6903.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="957.6800000000001" dy="0">end</tspan>
+  </text>
+  <text x="1311.0400000000002" y="6903.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1311.0400000000002" dy="0">temp pcap</tspan>
+  </text>
+  <text x="1526.8000000000002" y="7002" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1526.8000000000002" dy="0">rows</tspan>
+  </text>
+  <text x="1329.2400000000002" y="7076.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1329.2400000000002" dy="0">rows</tspan>
+  </text>
+  <text x="-70" y="7486.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">7. enrich.py</tspan>
+  </text>
+  <text x="139.28000000000003" y="7486.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="139.28000000000003" dy="0">thin tshark wrapper: one pcap in, one flow-row dict per packet out</tspan>
+  </text>
+  <text x="-62" y="7541.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">The translator from raw packets to readable facts. It runs tshark (Wireshark's command-line tool) over a pcap and asks for 17 fields per packet: time,</tspan>
+    <tspan x="-62" dy="20">source and destination IP (v4 or v6), ports, protocol name, size, the DNS question and answers, the TLS server name (SNI - the website name in an</tspan>
+    <tspan x="-62" dy="20">HTTPS connection) and the HTTP Host header. It cleans each line into a Python dict - one row per packet - ready to insert into the flows table. It is</tspan>
+    <tspan x="-62" dy="20">deliberately thin, so it could later be swapped for a richer tool such as Zeek.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: a pcap path, plus the container ID and name to tag rows with</tspan>
+    <tspan x="-62" dy="20">OUT: a list of flow-row dicts</tspan>
+    <tspan x="-62" dy="20">CALLED BY: ingest.py</tspan>
+  </text>
+  <text x="1780.4" y="7799.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1780.4" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1780.4" dy="18.75">1. Receive a pcap (usually ingest's temporary chunk).</tspan>
+    <tspan x="1780.4" dy="18.75">2. Run tshark with the field list; the output is CSV, with repeated values joined</tspan>
+    <tspan x="1780.4" dy="18.75">    by |.</tspan>
+    <tspan x="1780.4" dy="18.75">3. Keep the first value of each field - an ICMP error packet carries a copy of</tspan>
+    <tspan x="1780.4" dy="18.75">    another packet's header that must be ignored.</tspan>
+    <tspan x="1780.4" dy="18.75">4. Merge the IPv4/IPv6 and TCP/UDP columns into single src / dst / port fields,</tspan>
+    <tspan x="1780.4" dy="18.75">    and find the transport layer.</tspan>
+    <tspan x="1780.4" dy="18.75">5. Collect every DNS answer address into a JSON list (used later to put names on</tspan>
+    <tspan x="1780.4" dy="18.75">    IPs).</tspan>
+    <tspan x="1780.4" dy="18.75">6. Return one dict per packet.</tspan>
+  </text>
+  <text x="1780.4" y="8064.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1780.4" dy="0">WHY TSHARK</tspan>
+    <tspan x="1780.4" dy="18.75">• Its dissectors already get DNS, TLS SNI and HTTP Host right. Swapping to</tspan>
+    <tspan x="1780.4" dy="18.75">  Zeek/Suricata would only touch this file and FIELDS.</tspan>
+    <tspan x="1780.4" dy="18.75">FAILURE</tspan>
+    <tspan x="1780.4" dy="18.75">• tshark timeout (120s) or non-zero exit → logged, returns no rows.</tspan>
+  </text>
+  <text x="60" y="7828" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="60" dy="0">pcap (or temp chunk)</tspan>
+  </text>
+  <text x="418.4" y="7809.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="418.4" dy="0">tshark -r … -T fields</tspan>
+    <tspan x="418.4" dy="18.75">17 fields as CSV</tspan>
+    <tspan x="418.4" dy="18.75">occurrence=all, joined by |</tspan>
+  </text>
+  <text x="793.5999999999999" y="7809.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="793.5999999999999" dy="0">keep the first value of each</tspan>
+    <tspan x="793.5999999999999" dy="18.75">field (ICMP errors quote</tspan>
+    <tspan x="793.5999999999999" dy="18.75">an inner IP header)</tspan>
+  </text>
+  <text x="1168.8000000000002" y="7809.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="1168.8000000000002" dy="0">src = ip.src or ipv6.src</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">port = tcp or udp</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">transport ← frame.protocols</tspan>
+  </text>
+  <text x="793.5999999999999" y="7991.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="793.5999999999999" dy="0">DNS answers: dns.a + dns.aaaa</tspan>
+    <tspan x="793.5999999999999" dy="18.75">deduped → JSON list</tspan>
+  </text>
+  <text x="1539.8000000000002" y="7799.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="1539.8000000000002" dy="0">flow row</tspan>
+    <tspan x="1539.8000000000002" dy="18.75">ts · IPs · ports · protocol</tspan>
+    <tspan x="1539.8000000000002" dy="18.75">length · dns_query · tls_sni</tspan>
+    <tspan x="1539.8000000000002" dy="18.75">http_host · pcap_file</tspan>
+  </text>
+  <text x="-60" y="7804.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="7785.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="656.8" y="7785.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="656.8" dy="0">3</tspan>
+  </text>
+  <text x="1040.4" y="7785.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1040.4" dy="0">4</tspan>
+  </text>
+  <text x="656.8" y="7967.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="656.8" dy="0">5</tspan>
+  </text>
+  <text x="1407.2" y="7776.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1407.2" dy="0">6</tspan>
+  </text>
+  <text x="220.44" y="7815.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="220.44" dy="0">path</tspan>
+  </text>
+  <text x="569.04" y="7815.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="569.04" dy="0">CSV lines</tspan>
+  </text>
+  <text x="1341.28" y="7815.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="1341.28" dy="0">row</tspan>
+  </text>
+  <text x="-70" y="8304.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">8. hostports.py</tspan>
+  </text>
+  <text x="182.96000000000004" y="8304.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="182.96000000000004" dy="0">port attribution for --network host targets, which have no netns of their own</tspan>
+  </text>
+  <text x="-62" y="8359.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Handles a special case. A container started with --network host shares the host's network, so a capture there sees traffic from the whole machine. To</tspan>
+    <tspan x="-62" dy="20">keep only that container's traffic, nettap checks which TCP/UDP ports the container's processes hold, 4 times a second, and stores time ranges such as</tspan>
+    <tspan x="-62" dy="20">'port 8080 belonged to web from 10:01 to 10:05'. When packets are ingested, keep_owned() keeps only those whose host-side port belonged to the</tspan>
+    <tspan x="-62" dy="20">container at that moment. Sidecar mode finds the sockets through /proc for the target's processes; watch mode asks the kernel with `ss --cgroup` which</tspan>
+    <tspan x="-62" dy="20">container created each socket.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: /proc/&lt;pid&gt;/fd (sidecar) or `ss --cgroup` output (watch)</tspan>
+    <tspan x="-62" dy="20">OUT: owned_ports rows; flow rows filtered down to the container's own</tspan>
+    <tspan x="-62" dy="20">USED BY: the port-sampler threads in cli.py, and ingest.py</tspan>
+  </text>
+  <text x="1730" y="8637.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1730" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1730" dy="18.75">1. A sidecar started with --attribute-by-port, sharing the target's process</tspan>
+    <tspan x="1730" dy="18.75">    namespace.</tspan>
+    <tspan x="1730" dy="18.75">2. Read the socket list of every target process to see which ports it holds.</tspan>
+    <tspan x="1730" dy="18.75">3. watch mode, for every host-network container it captures.</tspan>
+    <tspan x="1730" dy="18.75">4. Run ss --cgroup and match each socket to a container by its cgroup path.</tspan>
+    <tspan x="1730" dy="18.75">5. Every 0.25s, record the ports into owned_ports as time intervals.</tspan>
+    <tspan x="1730" dy="18.75">6. During ingest, keep a packet only if its host-side port was owned at that</tspan>
+    <tspan x="1730" dy="18.75">    time.</tspan>
+    <tspan x="1730" dy="18.75">7. Everything else (other containers, the host itself) is dropped.</tspan>
+  </text>
+  <text x="1730" y="8883.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1730" dy="0">PROBLEM</tspan>
+    <tspan x="1730" dy="18.75">• A host-network capture sees the whole Docker host. Without filtering, every</tspan>
+    <tspan x="1730" dy="18.75">  container's traffic would be labelled as the target.</tspan>
+    <tspan x="1730" dy="18.75">LIMITS</tspan>
+    <tspan x="1730" dy="18.75">• A connection opened and closed between two samples is missed; listening ports</tspan>
+    <tspan x="1730" dy="18.75">  are reliable, short outgoing requests may not be.</tspan>
+    <tspan x="1730" dy="18.75">• ICMP and ARP are dropped (no port). ss needs nettap in the host's cgroup</tspan>
+    <tspan x="1730" dy="18.75">  namespace.</tspan>
+  </text>
+  <text x="68.4" y="8656.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="68.4" dy="0">sidecar --attribute-by-port</tspan>
+    <tspan x="68.4" dy="18.75">(--pid container:&lt;target&gt;)</tspan>
+  </text>
+  <text x="435.20000000000005" y="8637.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="435.20000000000005" dy="0">owned_ports()</tspan>
+    <tspan x="435.20000000000005" dy="18.75">read /proc/&lt;pid&gt;/fd sockets</tspan>
+    <tspan x="435.20000000000005" dy="18.75">of the target's processes</tspan>
+    <tspan x="435.20000000000005" dy="18.75">(needs SYS_PTRACE)</tspan>
+  </text>
+  <text x="68.4" y="8829.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="68.4" dy="0">watch: host-network</tspan>
+    <tspan x="68.4" dy="18.75">containers</tspan>
+  </text>
+  <text x="435.20000000000005" y="8820.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="435.20000000000005" dy="0">ss --cgroup</tspan>
+    <tspan x="435.20000000000005" dy="18.75">match each socket's cgroup</tspan>
+    <tspan x="435.20000000000005" dy="18.75">to a container id</tspan>
+  </text>
+  <text x="793.6" y="8733.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="793.6" dy="0">record() every 0.25s</tspan>
+    <tspan x="793.6" dy="18.75">extend an interval or</tspan>
+    <tspan x="793.6" dy="18.75">add one (owned_ports)</tspan>
+  </text>
+  <text x="1147.8" y="8724.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1147.8" dy="0">keep_owned(rows)</tspan>
+    <tspan x="1147.8" dy="18.75">keep packets whose host</tspan>
+    <tspan x="1147.8" dy="18.75">addr+port was the target's</tspan>
+    <tspan x="1147.8" dy="18.75">at that moment</tspan>
+  </text>
+  <text x="1502" y="8743.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="1502" dy="0">only the target's</tspan>
+    <tspan x="1502" dy="18.75">rows reach flows</tspan>
+  </text>
+  <text x="-60" y="8632.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="306.8" y="8614.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="306.8" dy="0">2</tspan>
+  </text>
+  <text x="-60" y="8805.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">3</tspan>
+  </text>
+  <text x="306.8" y="8796.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="306.8" dy="0">4</tspan>
+  </text>
+  <text x="673.6" y="8710" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="673.6" dy="0">5</tspan>
+  </text>
+  <text x="1023.6" y="8700.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1023.6" dy="0">6</tspan>
+  </text>
+  <text x="1382" y="8719.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1382" dy="0">7</tspan>
+  </text>
+  <text x="600.4" y="8684.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="600.4" dy="0">ports</tspan>
+  </text>
+  <text x="600.4" y="8770.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="600.4" dy="0">ports</tspan>
+  </text>
+  <text x="935.84" y="8739.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="935.84" dy="0">intervals</tspan>
+  </text>
+  <text x="-70" y="9180.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">9. storage.py</tspan>
+  </text>
+  <text x="153.84000000000003" y="9180.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="153.84000000000003" dy="0">SQLite: the flow store, plus the tables separate nettap processes coordinate through</tspan>
+  </text>
+  <text x="-62" y="9235.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">All persistent state lives in one SQLite file (data/nettap.db). Besides storing packet rows, the database is how separate nettap processes talk to</tspan>
+    <tspan x="-62" dy="20">each other: `nettap attach` writes a request into desired_*, and the watch daemon reads it; the daemon writes what it's capturing into live_sessions,</tspan>
+    <tspan x="-62" dy="20">and `nettap status` reads it. This module creates the tables (and adds new columns to older databases), and offers a small function for each read and</tspan>
+    <tspan x="-62" dy="20">write so other modules don't write raw SQL for these tables. The diagram shows each table with who writes it (left) and who reads it (right).</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">FILE: data/nettap.db (SQLite)</tspan>
+    <tspan x="-62" dy="20">USED BY: almost every module - each thread opens its own connection</tspan>
+  </text>
+  <text x="1021.6" y="9473.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1021.6" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1021.6" dy="18.75">1. Requests from attach / detach: container names / IDs and labels to capture.</tspan>
+    <tspan x="1021.6" dy="18.75">2. What a daemon is capturing now: tcpdump pids, file patterns and a heartbeat</tspan>
+    <tspan x="1021.6" dy="18.75">    time (a stale row means the daemon died).</tspan>
+    <tspan x="1021.6" dy="18.75">3. Facts about each container: name, IP per network, published ports, start time</tspan>
+    <tspan x="1021.6" dy="18.75">    - used to put names on IPs.</tspan>
+    <tspan x="1021.6" dy="18.75">4. The main data: one row per packet with IPs, ports, protocol, size, DNS, SNI,</tspan>
+    <tspan x="1021.6" dy="18.75">    HTTP Host.</tspan>
+    <tspan x="1021.6" dy="18.75">5. How far each pcap has been parsed, so parsing resumes without duplicates.</tspan>
+    <tspan x="1021.6" dy="18.75">6. When each port belonged to a host-network container.</tspan>
+  </text>
+  <text x="1021.6" y="9718.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1021.6" dy="0">KEY IDEA</tspan>
+    <tspan x="1021.6" dy="18.75">• SQLite is also the message bus: `nettap attach` in one terminal steers a</tspan>
+    <tspan x="1021.6" dy="18.75">  `nettap watch` daemon in another just by writing rows.</tspan>
+    <tspan x="1021.6" dy="18.75">• connect() creates missing tables and adds columns added after a table's first</tspan>
+    <tspan x="1021.6" dy="18.75">  release (light migrations).</tspan>
+    <tspan x="1021.6" dy="18.75">RULES</tspan>
+    <tspan x="1021.6" dy="18.75">• One connection per thread.</tspan>
+    <tspan x="1021.6" dy="18.75">• store_pcap_chunk() is the only atomic multi-step write (rows + offset).</tspan>
+    <tspan x="1021.6" dy="18.75">• insert_flows / query boundary kept narrow so swapping to Postgres/ClickHouse</tspan>
+    <tspan x="1021.6" dy="18.75">  stays local to this file.</tspan>
+  </text>
+  <text x="60" y="9492.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">attach / detach CLI</tspan>
+  </text>
+  <text x="60" y="9646.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">controller / sidecar</tspan>
+  </text>
+  <text x="60" y="9791.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">controller / sidecar</tspan>
+    <tspan x="60" dy="18.75">(--docker-api peers)</tspan>
+  </text>
+  <text x="60" y="9954.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">ingest (enrich loop)</tspan>
+  </text>
+  <text x="60" y="10109.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">ingest (enrich loop)</tspan>
+  </text>
+  <text x="60" y="10263.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="60" dy="0">port sampler</tspan>
+  </text>
+  <text x="426.8" y="9482.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="426.8" dy="0">desired_refs · desired_labels</tspan>
+    <tspan x="426.8" dy="18.75">what should be captured</tspan>
+  </text>
+  <text x="426.8" y="9627.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="426.8" dy="0">live_sessions</tspan>
+    <tspan x="426.8" dy="18.75">what is captured now</tspan>
+    <tspan x="426.8" dy="18.75">(pids, heartbeat)</tspan>
+  </text>
+  <text x="426.8" y="9781.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="426.8" dy="0">containers</tspan>
+    <tspan x="426.8" dy="18.75">name, IPs, ports, labels,</tspan>
+    <tspan x="426.8" dy="18.75">started_at, capture_scope</tspan>
+  </text>
+  <text x="426.8" y="9945.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="426.8" dy="0">flows</tspan>
+    <tspan x="426.8" dy="18.75">one row per packet</tspan>
+  </text>
+  <text x="426.8" y="10099.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="426.8" dy="0">pcap_progress</tspan>
+    <tspan x="426.8" dy="18.75">byte offset per file</tspan>
+  </text>
+  <text x="426.8" y="10254" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="426.8" dy="0">owned_ports</tspan>
+    <tspan x="426.8" dy="18.75">port → [first, last seen]</tspan>
+  </text>
+  <text x="793.6" y="9492.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="793.6" dy="0">controller (Selector)</tspan>
+  </text>
+  <text x="793.6" y="9637" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="793.6" dy="0">nettap status</tspan>
+    <tspan x="793.6" dy="18.75">reap_orphans</tspan>
+  </text>
+  <text x="793.6" y="9791.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="793.6" dy="0">analyze / report</tspan>
+    <tspan x="793.6" dy="18.75">(who owns an IP)</tspan>
+  </text>
+  <text x="793.6" y="9954.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="793.6" dy="0">analyze / report</tspan>
+  </text>
+  <text x="793.6" y="10109.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="793.6" dy="0">ingest (resume point)</tspan>
+  </text>
+  <text x="793.6" y="10263.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="793.6" dy="0">hostports.keep_owned</tspan>
+  </text>
+  <text x="290" y="9459" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">1</tspan>
+  </text>
+  <text x="290" y="9603.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="290" y="9758.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">3</tspan>
+  </text>
+  <text x="290" y="9921.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">4</tspan>
+  </text>
+  <text x="290" y="10076" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">5</tspan>
+  </text>
+  <text x="290" y="10230.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">6</tspan>
+  </text>
+  <text x="216.8" y="9479.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="216.8" dy="0">write</tspan>
+  </text>
+  <text x="216.8" y="9633.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="216.8" dy="0">write</tspan>
+  </text>
+  <text x="216.8" y="9787.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="216.8" dy="0">write</tspan>
+  </text>
+  <text x="216.8" y="9942" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="216.8" dy="0">write</tspan>
+  </text>
+  <text x="216.8" y="10096.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="216.8" dy="0">write</tspan>
+  </text>
+  <text x="216.8" y="10250.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="216.8" dy="0">write</tspan>
+  </text>
+  <text x="604.04" y="9479.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="604.04" dy="0">read</tspan>
+  </text>
+  <text x="604.04" y="9633.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="604.04" dy="0">read</tspan>
+  </text>
+  <text x="604.04" y="9787.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="604.04" dy="0">read</tspan>
+  </text>
+  <text x="604.04" y="9942" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="604.04" dy="0">read</tspan>
+  </text>
+  <text x="604.04" y="10096.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="604.04" dy="0">read</tspan>
+  </text>
+  <text x="604.04" y="10250.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="604.04" dy="0">read</tspan>
+  </text>
+  <text x="-70" y="10438.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">10. supervisor.py</tspan>
+  </text>
+  <text x="197.52000000000004" y="10438.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="197.52000000000004" dy="0">nettap sidecars: keeps exactly one sidecar container per labelled target</tspan>
+  </text>
+  <text x="-62" y="10493.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Powers `nettap sidecars`, which automates sidecar mode. A sidecar must share its target's network namespace, and Docker ties that to one particular</tspan>
+    <tspan x="-62" dy="20">container instance: if the target stops, the sidecar dies; if the target is recreated, the old sidecar points at nothing. The supervisor checks Docker</tspan>
+    <tspan x="-62" dy="20">every 5s (and on events) and keeps exactly one healthy sidecar per labelled container: it creates missing ones, starts or restarts ones that fell out</tspan>
+    <tspan x="-62" dy="20">of step, replaces ones whose target was recreated, and removes ones whose target is gone. A sidecar that crashed for another reason is left alone, so</tspan>
+    <tspan x="-62" dy="20">it isn't restarted in a loop.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: the Docker API: all containers with their labels and state</tspan>
+    <tspan x="-62" dy="20">OUT: sidecar containers created / started / restarted / removed</tspan>
+    <tspan x="-62" dy="20">CALLED BY: `nettap sidecars` (cli.py)</tspan>
+  </text>
+  <text x="1388.4" y="10771.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1388.4" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1388.4" dy="18.75">1. Run a pass on every tick or Docker event.</tspan>
+    <tspan x="1388.4" dy="18.75">2. List the containers and split them into targets (label match) and our sidecars</tspan>
+    <tspan x="1388.4" dy="18.75">    (found by their nettap.sidecar.* labels).</tspan>
+    <tspan x="1388.4" dy="18.75">3. Compare each target with its sidecar.</tspan>
+    <tspan x="1388.4" dy="18.75">4. No sidecar yet: create nettap-sidecar-&lt;name&gt; sharing the target's network.</tspan>
+    <tspan x="1388.4" dy="18.75">5. The sidecar was made for an older container with that name: replace it.</tspan>
+    <tspan x="1388.4" dy="18.75">6. The target restarted after its sidecar started: restart the sidecar so it</tspan>
+    <tspan x="1388.4" dy="18.75">    rejoins.</tspan>
+    <tspan x="1388.4" dy="18.75">7. The sidecar exited because its target stopped (code 3): start it again.</tspan>
+    <tspan x="1388.4" dy="18.75">8. The sidecar crashed for another reason: warn once and leave it alone.</tspan>
+    <tspan x="1388.4" dy="18.75">9. Finally, remove sidecars whose target no longer exists or no longer matches.</tspan>
+  </text>
+  <text x="1388.4" y="11054.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1388.4" dy="0">WHY IT EXISTS</tspan>
+    <tspan x="1388.4" dy="18.75">• A sidecar joins its target's netns once. When the target stops, Docker removes</tspan>
+    <tspan x="1388.4" dy="18.75">  the shared eth0 and the sidecar exits (code 3); Docker restart policies give up</tspan>
+    <tspan x="1388.4" dy="18.75">  too early.</tspan>
+    <tspan x="1388.4" dy="18.75">BOOKKEEPING</tspan>
+    <tspan x="1388.4" dy="18.75">• Sidecars carry labels nettap.sidecar.target / target-id / selector, so two</tspan>
+    <tspan x="1388.4" dy="18.75">  supervisors with different selectors leave each other alone.</tspan>
+    <tspan x="1388.4" dy="18.75">• A crashing sidecar isn't restarted in a loop. On shutdown, sidecars are stopped</tspan>
+    <tspan x="1388.4" dy="18.75">  (pcaps flushed) and removed in parallel, unless --keep-sidecars.</tspan>
+  </text>
+  <text x="60" y="11222.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="60" dy="0">every 5s or</tspan>
+    <tspan x="60" dy="18.75">on a docker event</tspan>
+  </text>
+  <text x="418.4" y="11204" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="418.4" dy="0">list all containers</tspan>
+    <tspan x="418.4" dy="18.75">→ targets: label match,</tspan>
+    <tspan x="418.4" dy="18.75">not host / container net</tspan>
+    <tspan x="418.4" dy="18.75">→ sidecars: by their labels</tspan>
+  </text>
+  <text x="776.8" y="11232.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="middle">
+    <tspan x="776.8" dy="0">for each target</tspan>
+  </text>
+  <text x="1143.6" y="10780.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1143.6" dy="0">no sidecar → create</tspan>
+    <tspan x="1143.6" dy="18.75">nettap-sidecar-&lt;name&gt;</tspan>
+    <tspan x="1143.6" dy="18.75">--network container:&lt;target&gt;</tspan>
+  </text>
+  <text x="1143.6" y="10963.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1143.6" dy="0">target-id label differs</tspan>
+    <tspan x="1143.6" dy="18.75">(recreated) → remove + create</tspan>
+  </text>
+  <text x="1143.6" y="11136.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1143.6" dy="0">running sidecar started</tspan>
+    <tspan x="1143.6" dy="18.75">before target → restart</tspan>
+  </text>
+  <text x="1143.6" y="11309.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="1143.6" dy="0">exited with code 3, or before</tspan>
+    <tspan x="1143.6" dy="18.75">target started → start</tspan>
+  </text>
+  <text x="1143.6" y="11482.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e03131" text-anchor="middle">
+    <tspan x="1143.6" dy="0">other exit code →</tspan>
+    <tspan x="1143.6" dy="18.75">leave alone, warn once</tspan>
+  </text>
+  <text x="1143.6" y="11655.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e03131" text-anchor="middle">
+    <tspan x="1143.6" dy="0">then per sidecar: target gone</tspan>
+    <tspan x="1143.6" dy="18.75">or unlabelled → remove</tspan>
+  </text>
+  <text x="-60" y="11199" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="11180.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="656.8" y="11208.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="656.8" dy="0">3</tspan>
+  </text>
+  <text x="1006.8" y="10757.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">4</tspan>
+  </text>
+  <text x="1006.8" y="10939.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">5</tspan>
+  </text>
+  <text x="1006.8" y="11112.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">6</tspan>
+  </text>
+  <text x="1006.8" y="11285.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">7</tspan>
+  </text>
+  <text x="1006.8" y="11458.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">8</tspan>
+  </text>
+  <text x="1006.8" y="11631.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1006.8" dy="0">9</tspan>
+  </text>
+  <text x="-70" y="11839.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">11. analyze.py</tspan>
+  </text>
+  <text x="153.84000000000003" y="11839.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="153.84000000000003" dy="0">read-side SQL over flows + containers; output is JSON or a table</tspan>
+  </text>
+  <text x="-62" y="11894.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Answers questions about the captured traffic with SQL over the flows and containers tables. Who talked the most? Which containers talk to each other?</tspan>
+    <tspan x="-62" dy="20">Which internet addresses and hostnames were contacted? What DNS lookups happened? Which protocols were used? Helper functions do the tricky parts:</tspan>
+    <tspan x="-62" dy="20">deciding which container owned an IP when a packet was sent (IPs get reused when containers are recreated), whether an IP is on the internet or local,</tspan>
+    <tspan x="-62" dy="20">and the best name for an IP (from TLS SNI, HTTP Host or DNS answers). Results are lists of dicts, printed as JSON or a table, and report.py reuses</tspan>
+    <tspan x="-62" dy="20">them.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: the flows and containers tables</tspan>
+    <tspan x="-62" dy="20">OUT: lists of dicts (JSON, or a table with --format table)</tspan>
+    <tspan x="-62" dy="20">USED BY: `nettap analyze ...` and report.py</tspan>
+  </text>
+  <text x="1396.8000000000002" y="12172.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1396.8000000000002" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">1. Start from the stored flow rows and container facts.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">2. Map an IP to the container that held it when the packet was sent.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">3. Classify an IP as internet or local, with hints such as 'Docker Desktop DNS'.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">4. Find a hostname for each IP from SNI, HTTP Host or DNS answers.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">5. Biggest source → destination pairs by bytes.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">6. Container-to-container traffic, direct or through a published port.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">7. Traffic leaving Docker: destinations that belong to no container, with names.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">8. The DNS names that were looked up.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">9. The share of each protocol.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">10. Print as JSON (for scripts) or an aligned table (for people).</tspan>
+  </text>
+  <text x="1396.8000000000002" y="12437" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1396.8000000000002" dy="0">KEY IDEA</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">• Each flow belongs to the capture it came from (container_name). The peer is</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">  found by matching dst_ip to a container's address at the packet's time - IPs</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">  get reused when containers are recreated.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">• Traffic to the host on a port another container publishes counts as container-</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">  to-container ('published port').</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">USED BY</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">• `nettap analyze ...` directly, and report.py for the plain-language summary.</tspan>
+    <tspan x="1396.8000000000002" dy="18.75">  top_talkers, dns_queries and protocol_breakdown read flows directly.</tspan>
+  </text>
+  <text x="60" y="12443.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#e8590c" text-anchor="middle">
+    <tspan x="60" dy="0">flows + containers</tspan>
+    <tspan x="60" dy="18.75">(SQLite)</tspan>
+  </text>
+  <text x="426.8" y="12308.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="426.8" dy="0">_holders(): which container</tspan>
+    <tspan x="426.8" dy="18.75">held this IP at packet time</tspan>
+  </text>
+  <text x="426.8" y="12443.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="426.8" dy="0">ip_scope(): internet vs local</tspan>
+    <tspan x="426.8" dy="18.75">local_hint(): e.g. Docker DNS</tspan>
+  </text>
+  <text x="426.8" y="12579.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="426.8" dy="0">hostnames(): IP → name</tspan>
+    <tspan x="426.8" dy="18.75">from SNI, HTTP Host, DNS</tspan>
+  </text>
+  <text x="806.2" y="12172.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="806.2" dy="0">top_talkers</tspan>
+    <tspan x="806.2" dy="18.75">biggest src/dst pairs</tspan>
+  </text>
+  <text x="806.2" y="12308.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="806.2" dy="0">container_matrix / peers</tspan>
+    <tspan x="806.2" dy="18.75">direct or via published port</tspan>
+  </text>
+  <text x="806.2" y="12443.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="806.2" dy="0">external_destinations</tspan>
+    <tspan x="806.2" dy="18.75">docker-internet traffic</tspan>
+  </text>
+  <text x="806.2" y="12588.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="806.2" dy="0">dns_queries</tspan>
+  </text>
+  <text x="806.2" y="12724.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="806.2" dy="0">protocol_breakdown</tspan>
+  </text>
+  <text x="1168.8000000000002" y="12443.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="1168.8000000000002" dy="0">JSON, or --format table</tspan>
+    <tspan x="1168.8000000000002" dy="18.75">(utils.format_table)</tspan>
+  </text>
+  <text x="-60" y="12420" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="12284.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="290" y="12420" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">3</tspan>
+  </text>
+  <text x="290" y="12555.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">4</tspan>
+  </text>
+  <text x="673.6" y="12149" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="673.6" dy="0">5</tspan>
+  </text>
+  <text x="673.6" y="12284.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="673.6" dy="0">6</tspan>
+  </text>
+  <text x="673.6" y="12420" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="673.6" dy="0">7</tspan>
+  </text>
+  <text x="673.6" y="12564.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="673.6" dy="0">8</tspan>
+  </text>
+  <text x="673.6" y="12700.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="673.6" dy="0">9</tspan>
+  </text>
+  <text x="1048.8000000000002" y="12420" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="1048.8000000000002" dy="0">10</tspan>
+  </text>
+  <text x="-70" y="12889.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">12. report.py</tspan>
+  </text>
+  <text x="139.28000000000003" y="12889.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="139.28000000000003" dy="0">turns analyze output into a summary a non-technical reader can follow</tspan>
+  </text>
+  <text x="-62" y="12944.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">Writes a summary for someone who doesn't know networking: how much the container sent and received, which other containers and internet sites it</tspan>
+    <tspan x="-62" dy="20">talked to (with names), what it looked up in DNS, and which protocols it used. It gathers the numbers with analyze.py into one dict, separates</tspan>
+    <tspan x="-62" dy="20">internet destinations from local ones, and renders either plain text for the terminal or one self-contained HTML file you can double-click (no server</tspan>
+    <tspan x="-62" dy="20">or internet connection needed).</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">IN: a container name, the SQLite database</tspan>
+    <tspan x="-62" dy="20">OUT: text on the terminal, or an .html file in the data directory</tspan>
+    <tspan x="-62" dy="20">CALLED BY: `nettap report`</tspan>
+  </text>
+  <text x="1338" y="13202.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1338" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1338" dy="18.75">1. Pick a container, and text or HTML.</tspan>
+    <tspan x="1338" dy="18.75">2. Count total packets and bytes, find its own IPs, split bytes into sent and</tspan>
+    <tspan x="1338" dy="18.75">    received.</tspan>
+    <tspan x="1338" dy="18.75">3. Get peers, external destinations, DNS lookups and the protocol mix from</tspan>
+    <tspan x="1338" dy="18.75">    analyze.py.</tspan>
+    <tspan x="1338" dy="18.75">4. Split destinations into internet and local network.</tspan>
+    <tspan x="1338" dy="18.75">5. Render readable sentences for the terminal.</tspan>
+    <tspan x="1338" dy="18.75">6. Render one HTML file with inline styles and bar charts.</tspan>
+  </text>
+  <text x="1338" y="13429.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1338" dy="0">NOTES</tspan>
+    <tspan x="1338" dy="18.75">• Hostnames come from captured traffic, so they're escaped (utils.printable /</tspan>
+    <tspan x="1338" dy="18.75">  html.escape) before printing.</tspan>
+    <tspan x="1338" dy="18.75">• Port-scoped captures get a note saying traffic was picked out by port.</tspan>
+  </text>
+  <text x="60" y="13212.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="60" dy="0">report --container X</tspan>
+    <tspan x="60" dy="18.75">[--format html]</tspan>
+  </text>
+  <text x="410" y="13202.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="410" dy="0">build_report()</tspan>
+    <tspan x="410" dy="18.75">totals · own IPs</tspan>
+    <tspan x="410" dy="18.75">sent vs received bytes</tspan>
+  </text>
+  <text x="410" y="13366.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#2f9e44" text-anchor="middle">
+    <tspan x="410" dy="0">analyze: peers, external,</tspan>
+    <tspan x="410" dy="18.75">dns, protocols</tspan>
+  </text>
+  <text x="760" y="13212.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1971c2" text-anchor="middle">
+    <tspan x="760" dy="0">split destinations:</tspan>
+    <tspan x="760" dy="18.75">internet vs local</tspan>
+  </text>
+  <text x="1110" y="13212.25" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="1110" dy="0">render_text</tspan>
+    <tspan x="1110" dy="18.75">printed to the terminal</tspan>
+  </text>
+  <text x="1110" y="13357.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#7048e8" text-anchor="middle">
+    <tspan x="1110" dy="0">render_html</tspan>
+    <tspan x="1110" dy="18.75">self-contained file:</tspan>
+    <tspan x="1110" dy="18.75">inline CSS, byte bars</tspan>
+  </text>
+  <text x="-60" y="13188.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="13179.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="290" y="13342.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">3</tspan>
+  </text>
+  <text x="640" y="13188.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">4</tspan>
+  </text>
+  <text x="990" y="13188.5" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="990" dy="0">5</tspan>
+  </text>
+  <text x="990" y="13333.375" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="990" dy="0">6</tspan>
+  </text>
+  <text x="418" y="13302.6875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="418" dy="0">data</tspan>
+  </text>
+  <text x="544.96" y="13208.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="544.96" dy="0">report dict</tspan>
+  </text>
+  <text x="920.44" y="13208.75" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="920.44" dy="0">text</tspan>
+  </text>
+  <text x="943" y="13298" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="13" fill="#495057" text-anchor="start">
+    <tspan x="943" dy="0">html</tspan>
+  </text>
+  <text x="-70" y="13651.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="26" fill="#1e1e1e" text-anchor="start">
+    <tspan x="-70" dy="0">13. utils.py</tspan>
+  </text>
+  <text x="124.72000000000003" y="13651.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="17" fill="#495057" text-anchor="start">
+    <tspan x="124.72000000000003" dy="0">small shared helpers used everywhere</tspan>
+  </text>
+  <text x="-62" y="13706.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="16" fill="#343a40" text-anchor="start">
+    <tspan x="-62" dy="0">WHAT THIS COMPONENT DOES</tspan>
+    <tspan x="-62" dy="20">A shared toolbox with no state of its own: running shell commands safely, setting up logging, parsing 'key=value,key2=value2' label selectors, making</tspan>
+    <tspan x="-62" dy="20">text taken from captured traffic safe to print, and formatting byte counts and tables for people.</tspan>
+    <tspan x="-62" dy="20"></tspan>
+    <tspan x="-62" dy="20">USED BY: discovery.py, cli.py, analyze.py, report.py</tspan>
+  </text>
+  <text x="1338" y="13884.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#1864ab" text-anchor="start">
+    <tspan x="1338" dy="0">STEP BY STEP (numbers match the badges)</tspan>
+    <tspan x="1338" dy="18.75">1. Run a command with a timeout; raise with its stderr if it fails.</tspan>
+    <tspan x="1338" dy="18.75">2. One log format for every module; parse label selectors.</tspan>
+    <tspan x="1338" dy="18.75">3. Escape control characters in traffic-derived text so they can't take over the</tspan>
+    <tspan x="1338" dy="18.75">    terminal.</tspan>
+    <tspan x="1338" dy="18.75">4. Human-readable sizes and aligned tables.</tspan>
+  </text>
+  <text x="1338" y="14055.125" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#f08c00" text-anchor="start">
+    <tspan x="1338" dy="0">NOTES</tspan>
+    <tspan x="1338" dy="18.75">• No state, no I/O beyond subprocess.</tspan>
+  </text>
+  <text x="60" y="13884.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="60" dy="0">run(cmd)</tspan>
+    <tspan x="60" dy="18.75">subprocess with timeout,</tspan>
+    <tspan x="60" dy="18.75">raises on failure</tspan>
+  </text>
+  <text x="410" y="13884.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="410" dy="0">setup_logging()</tspan>
+    <tspan x="410" dy="18.75">parse_label_selector</tspan>
+    <tspan x="410" dy="18.75">'a=b,c=d' → dict</tspan>
+  </text>
+  <text x="760" y="13884.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="760" dy="0">printable(s)</tspan>
+    <tspan x="760" dy="18.75">escape control chars</tspan>
+    <tspan x="760" dy="18.75">from untrusted traffic</tspan>
+  </text>
+  <text x="1110" y="13884.625" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="15" fill="#495057" text-anchor="middle">
+    <tspan x="1110" dy="0">format_bytes</tspan>
+    <tspan x="1110" dy="18.75">format_table</tspan>
+    <tspan x="1110" dy="18.75">(analyze --format table)</tspan>
+  </text>
+  <text x="-60" y="13860.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="-60" dy="0">1</tspan>
+  </text>
+  <text x="290" y="13860.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="290" dy="0">2</tspan>
+  </text>
+  <text x="640" y="13860.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="640" dy="0">3</tspan>
+  </text>
+  <text x="990" y="13860.875" font-family="Virgil, Segoe UI Emoji, Helvetica, Arial, sans-serif" font-size="14" fill="#ffffff" text-anchor="middle">
+    <tspan x="990" dy="0">4</tspan>
   </text>
 </svg>
