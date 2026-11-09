@@ -312,6 +312,20 @@ queries, and a real-threading regression test for the background enrich
 loop's SQLite usage. One enrich test runs the real `tshark` and is skipped
 if it isn't installed.
 
+`tests/live/` checks `discovery.resolve_capture()` against real containers
+(user-defined and default bridge, macvlan, ipvlan, a container on two
+networks), comparing its answer with what each container sees in its own
+sysfs. It creates containers named `nettap-live-*`, needs root on a Linux
+Docker host, and is left out of a plain `pytest` run:
+
+```
+sudo "$(which python)" -m pytest -m live tests/live
+```
+
+On Docker Desktop, run it inside `docker:dind` (as below, plus
+`apk add python3 py3-pip iproute2 util-linux` and
+`pip install --break-system-packages -e ".[dev]"`).
+
 `scripts/integration_test.sh` is an end-to-end check against a real Docker
 daemon: it starts a throwaway nginx server and alpine client, captures both,
 sends HTTP between them and HTTPS to example.com, then checks the flow store
@@ -341,8 +355,8 @@ doesn't replace a test on a real Linux host (see TODO.md).
 CI (`.github/workflows/ci.yml`) runs on every push and pull request on
 GitHub's Ubuntu runners, which are real Linux hosts: `pytest` on Python 3.9
 and the newest release (with `tshark` installed, so the real-tshark test
-runs), and `integration_test.sh --no-internet` in both `sidecar` and `watch`
-mode.
+runs), the `tests/live/` suite as root, and `integration_test.sh
+--no-internet` in both `sidecar` and `watch` mode.
 
 ## Project layout
 
@@ -358,6 +372,7 @@ nettap/
     report.py      read-side queries, rendered as plain language (text/HTML)
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
+    live/          discovery tests against real containers (Linux, root)
   scripts/         integration_test.sh - end-to-end check on a live Docker host
   examples/        sample CLI session
   Dockerfile, docker-compose.yml

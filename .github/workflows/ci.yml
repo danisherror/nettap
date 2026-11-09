@@ -26,6 +26,19 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -v
 
+  # tests/live: discovery.resolve_capture() against real bridge, macvlan,
+  # ipvlan and multi-network containers. nsenter needs root.
+  live:
+    name: live discovery tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: pip install -e ".[dev]"
+      - run: sudo "$(which python)" -m pytest -m live tests/live -v -rs
+
   integration:
     name: integration (${{ matrix.mode }})
     runs-on: ubuntu-24.04

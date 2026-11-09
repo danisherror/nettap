@@ -21,3 +21,9 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["nettap*"]
+
+[tool.pytest.ini_options]
+# tests/live creates real containers and needs root on a Linux Docker host;
+# run them explicitly with `pytest -m live` (see tests/live/)
+addopts = "-m 'not live'"
+markers = ["live: needs root on a Linux Docker host; creates real containers"]

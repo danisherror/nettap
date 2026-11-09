@@ -101,6 +101,20 @@ Fix and prove what exists first.
       multi-network containers and checks the interface returned. Run it in
       CI (Linux). Done when: re-introducing the old iflink approach makes
       CI fail.
+      **Written 2026-11-09:** `tests/live/test_resolve_capture_live.py`
+      (marker `live`, excluded from a plain `pytest` via `addopts`; skips
+      unless root on Linux with Docker). It creates a user-defined bridge,
+      a default-bridge, two-on-one-bridge, macvlan and ipvlan (on a dummy
+      parent, not the host's uplink) and a two-network container, and
+      checks `resolve_capture()` against ground truth from `docker exec ...
+      cat /sys/class/net/eth0/iflink` (the container's own sysfs) plus the
+      veth's bridge master. New CI job `live discovery tests` runs it with
+      `sudo`. All 7 passed inside `docker:dind` on Docker Desktop for Mac
+      (Docker 29.7.2). With the old `nsenter --net cat .../iflink` approach
+      patched back in, all 7 failed (there it returned None, because dind's
+      own eth0 peer is outside its namespace; on a real host it would be the
+      host's eth0). Leave unticked until it passes in CI, and add the job to
+      the required checks on `master`.
 - [x] **Make the README Quick Start lead with what's proven.** Today it
       opens with `docker compose up` (`watch`), the untested path. Until
       stage 1 is done, open with `sidecar` (works on Mac and Linux) and
