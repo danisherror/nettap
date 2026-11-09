@@ -256,7 +256,8 @@ def render_text(report: dict) -> str:
         for r in report["external_destinations"]:
             label = r.get("hostname") or r["dst_ip"]
             extra = f" ({r['dst_ip']})" if r.get("hostname") else ""
-            lines.append(f"  - {label}{extra}: {format_bytes(r['bytes'])} across {r['packets']} packets")
+            lines.append(f"  - {label}{extra}: {format_bytes(r['bytes'])} across "
+                         f"{r['packets']} packets{_split_text(r)}")
     else:
         lines.append("  (none - no traffic left the Docker network)")
     lines.append("")
@@ -267,7 +268,7 @@ def render_text(report: dict) -> str:
         for r in local:
             hint = f" - {r['hint']}" if r.get("hint") else ""
             lines.append(f"  - {r['dst_ip']}: {format_bytes(r['bytes'])} "
-                         f"across {r['packets']} packets{hint}")
+                         f"across {r['packets']} packets{_split_text(r)}{hint}")
         lines.append("")
 
     if report["dns_queries"]:
@@ -296,6 +297,22 @@ def render_text(report: dict) -> str:
     return "\n".join(_printable(line) for line in lines)
 
 
+def _split_text(r: dict) -> str:
+    """ (sent X, received Y) for a row that has both, else nothing."""
+    if "sent_bytes" not in r or "received_bytes" not in r:
+        return ""
+    return f" (sent {format_bytes(r['sent_bytes'])}, received {format_bytes(r['received_bytes'])})"
+
+
+def _value_html(r: dict) -> str:
+    """The row's total, with what was sent and received under it."""
+    split = ""
+    if "sent_bytes" in r and "received_bytes" in r:
+        split = (f"<span class='split' title='sent / received'>&uarr;{format_bytes(r['sent_bytes'])} "
+                 f"&darr;{format_bytes(r['received_bytes'])}</span>")
+    return f"<div class='row-value'>{format_bytes(r['bytes'])}{split}</div>"
+
+
 def _bar(bytes_: int, max_bytes: int) -> str:
     pct = 0 if not max_bytes else max(2, round(100 * (bytes_ or 0) / max_bytes))
     return f'<div class="bar-track"><div class="bar-fill" style="width:{pct}%"></div></div>'
@@ -320,8 +337,7 @@ def render_html(report: dict) -> str:
 
         peers_html = "".join(
             f"<div class='row'><div class='row-label'>{esc(r['container'])}</div>"
-            f"{_bar(r['bytes'], peer_max)}"
-            f"<div class='row-value'>{format_bytes(r['bytes'])}</div></div>"
+            f"{_bar(r['bytes'], peer_max)}{_value_html(r)}</div>"
             for r in report["container_peers"]
         ) or "<p class='empty'>No traffic to other containers on this host was observed.</p>"
 
@@ -330,8 +346,7 @@ def render_html(report: dict) -> str:
             suffix = f" <span class='muted'>({esc(r['dst_ip'])})</span>" if r.get("hostname") else ""
             return (
                 f"<div class='row'><div class='row-label'>{label}{suffix}</div>"
-                f"{_bar(r['bytes'], ext_max)}"
-                f"<div class='row-value'>{format_bytes(r['bytes'])}</div></div>"
+                f"{_bar(r['bytes'], ext_max)}{_value_html(r)}</div>"
             )
 
         ext_html = "".join(_ext_row(r) for r in report["external_destinations"]) or \
@@ -343,8 +358,7 @@ def render_html(report: dict) -> str:
             f"<div class='row'><div class='row-label' title='{esc(r.get('hint') or '')}'>"
             f"{esc(r['dst_ip'])}"
             + (f" <span class='muted'>({esc(r['hint'])})</span>" if r.get("hint") else "")
-            + f"</div>{_bar(r['bytes'], local_max)}"
-            f"<div class='row-value'>{format_bytes(r['bytes'])}</div></div>"
+            + f"</div>{_bar(r['bytes'], local_max)}{_value_html(r)}</div>"
             for r in local
         )
         local_section = (
@@ -411,6 +425,7 @@ def render_html(report: dict) -> str:
     body {{ background: #16171a; color: #e8e8ea; }}
     .stat, table, .row {{ background: #202226 !important; border-color: #333 !important; }}
     .bar-track {{ background: #333 !important; }}
+    .row-value {{ color: #c8c8cc !important; }}
     code {{ background: #2a2c30 !important; }}
   }}
   h1 {{ font-size: 1.5rem; margin-bottom: 4px; }}
@@ -423,10 +438,11 @@ def render_html(report: dict) -> str:
   .stat-value {{ font-size: 1.4rem; font-weight: 600; }}
   .stat-label {{ color: #888; font-size: 0.8rem; text-transform: uppercase; letter-spacing: .03em; }}
   .rows {{ display: flex; flex-direction: column; gap: 8px; }}
-  .row {{ display: grid; grid-template-columns: 200px 1fr 90px; align-items: center; gap: 10px;
+  .row {{ display: grid; grid-template-columns: 200px 1fr 130px; align-items: center; gap: 10px;
           background: #f9f9fa; border: 1px solid #eee; border-radius: 8px; padding: 8px 12px; }}
   .row-label {{ font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
   .row-value {{ text-align: right; font-variant-numeric: tabular-nums; font-size: 0.9rem; color: #555; }}
+  .row-value .split {{ display: block; font-size: 0.75rem; color: #888; }}
   .bar-track {{ background: #eaeaec; border-radius: 4px; height: 8px; overflow: hidden; }}
   .bar-fill {{ background: #6f8bff; height: 100%; }}
   .dns-list {{ columns: 2; }}

@@ -357,6 +357,10 @@ def external_destinations(conn: sqlite3.Connection, limit: int = 20,
     before that filter. `container` counts only that container's capture
     (bytes, packets and hostnames).
 
+    `bytes` and `packets` count both directions, like container_peers():
+    `sent_bytes` went to the address, `received_bytes` came back from it
+    (e.g. a download). Only addresses something was sent to are listed.
+
     Flows that went to the host on a port another container publishes are
     left out: container_matrix() and container_peers() already count them
     as traffic to that container (see _published_port_flows)."""
@@ -376,9 +380,24 @@ def external_destinations(conn: sqlite3.Connection, limit: int = 20,
         params,
     )
     groups = {(r["dst_ip"], r["container_name"]): dict(r) for r in cur.fetchall()}
-    for owner, _, length, _, f in _published_port_flows(conn, container):
-        g = groups.get((f["dst_ip"], owner))
-        if g:  # only the request direction is here; replies go to owner's own IP
+    cur = conn.execute(
+        f"""
+        SELECT f.src_ip, f.container_name, SUM(f.length) AS bytes, COUNT(*) AS packets
+        FROM flows f
+        WHERE f.src_ip IS NOT NULL{where}
+          AND NOT EXISTS (
+              SELECT 1 FROM containers c, json_each(c.ip_addresses) je WHERE je.value = f.src_ip
+          )
+        GROUP BY f.src_ip, f.container_name
+        """,
+        params,
+    )
+    replies = {(r["src_ip"], r["container_name"]): dict(r) for r in cur.fetchall()}
+    # traffic through a published port is counted as traffic with that
+    # container (container_peers), so not with the host address it went to
+    for owner, _, length, sent, f in _published_port_flows(conn, container):
+        g = groups.get((f["dst_ip"], owner)) if sent else replies.get((f["src_ip"], owner))
+        if g:
             g["bytes"] = (g["bytes"] or 0) - (length or 0)
             g["packets"] -= 1
 
@@ -386,9 +405,15 @@ def external_destinations(conn: sqlite3.Connection, limit: int = 20,
     for (ip, name), g in groups.items():
         if g["packets"] <= 0:
             continue
-        row = by_ip.setdefault(ip, {"dst_ip": ip, "bytes": 0, "packets": 0, "containers": []})
-        row["bytes"] += g["bytes"] or 0
+        row = by_ip.setdefault(ip, {"dst_ip": ip, "bytes": 0, "packets": 0, "sent_bytes": 0,
+                                    "received_bytes": 0, "containers": []})
+        row["sent_bytes"] += g["bytes"] or 0
         row["packets"] += g["packets"]
+        r = replies.get((ip, name))
+        if r and r["packets"] > 0:
+            row["received_bytes"] += r["bytes"] or 0
+            row["packets"] += r["packets"]
+        row["bytes"] = row["sent_bytes"] + row["received_bytes"]
         if name:
             row["containers"].append(name)
     ranked = sorted(by_ip.values(), key=lambda r: (-r["bytes"], r["dst_ip"]))[:limit]

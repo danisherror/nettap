@@ -275,3 +275,22 @@ def test_two_names_of_one_container_count_once_under_the_captured_name(tmp_path)
         [("srv", 100)]
     assert [(r["dst_container"], r["bytes"]) for r in analyze.container_matrix(conn)] == \
         [("srv", 100)]
+
+
+def test_external_destinations_count_replies_too(tmp_path):
+    # live 2026-11-09: `pip install requests` sent 27 KB and got 1.1 MB back,
+    # but the report listed pypi.org with only the 27 KB sent
+    conn = storage.connect(str(tmp_path / "n.db"))
+    for name, ip in (("a", "172.17.0.2"), ("b", "172.17.0.3")):
+        storage.upsert_container(conn, ContainerNetInfo(
+            name, name, "", None, {"bridge": ip}, [], {}, None, False))
+    storage.insert_flows(conn, [
+        _flow("a", "172.17.0.2", 4000, "151.101.0.223", 443, 100),
+        _flow("a", "151.101.0.223", 443, "172.17.0.2", 4000, 5000),
+        _flow("a", "151.101.0.223", 443, "172.17.0.2", 4000, 4000),
+        _flow("b", "151.101.0.223", 443, "172.17.0.3", 4000, 7),  # b never sent to it
+        _flow("a", "1.2.3.4", 443, "172.17.0.2", 4001, 60),  # only received: not listed
+    ])
+    (row,) = analyze.external_destinations(conn, container="a")
+    assert (row["dst_ip"], row["sent_bytes"], row["received_bytes"], row["bytes"],
+            row["packets"]) == ("151.101.0.223", 100, 9000, 9100, 3)
