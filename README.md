@@ -5,6 +5,32 @@
 Attach traffic capture to one or many Docker containers, and analyze
 docker-host, docker-docker, and docker-internet flows after the fact.
 
+**What does this image talk to?** One command runs it inside a capture and
+tells you, in plain language. Here, `pip install requests` in
+`python:3.12-alpine` (a live run, recorded with `scripts/record_demo.sh`):
+
+![nettap inspect running pip install requests and printing its traffic report](https://raw.githubusercontent.com/danisherror/nettap/master/docs/demo-inspect.svg)
+
+The same run as the self-contained HTML report it writes:
+
+<img src="https://raw.githubusercontent.com/danisherror/nettap/master/docs/demo-report.png" alt="HTML traffic report: 1.1 MB received, from files.pythonhosted.org and pypi.org" width="600">
+
+## Install
+
+nettap runs as a Docker image, so the host needs nothing but Docker:
+
+```
+docker pull ghcr.io/danisherror/nettap
+docker tag ghcr.io/danisherror/nettap nettap   # the short name used below
+```
+
+Or install the command line with `pip install nettap` (Python 3.9+). It
+runs captures in that same image (the version matching the installed
+package, pulled on first use), so tcpdump and tshark aren't needed on the
+host. From a checkout: `docker build -t nettap .` and `pip install -e .`,
+then set `NETTAP_IMAGE=nettap` so the CLI uses your build. Releases and
+what changed in each are in `CHANGELOG.md`.
+
 ## How it sees the traffic
 
 Every container gets its own network namespace wired to the host by a veth
@@ -84,10 +110,11 @@ Details and caveats are in `nettap/discovery.py`'s docstring.
 from its first packet and writes the report:
 
 ```
-docker build -t nettap .
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
   -v "$(pwd)/data:/data" nettap inspect nginx:alpine --duration 2m
 ```
+
+(with `pip install nettap`: `nettap inspect nginx:alpine --duration 2m`)
 
 See [`nettap inspect`](#what-does-this-image-do-nettap-inspect) below. The
 rest of this section captures a container you already run.
@@ -98,7 +125,6 @@ This uses **sidecar mode**, which works the same on Linux, Mac and Windows
 networking and no docker.sock.
 
 ```
-docker build -t nettap .
 mkdir -p data
 
 # a container to watch - this one fetches a web page every 5 seconds
@@ -180,8 +206,10 @@ container:<sidecar>`, like containers in a Kubernetes pod). The image still
 sees a normal network, with DNS. `-e KEY=VALUE`, `-p 8080:80`,
 `--entrypoint` and `--network` work as for `docker run`. Parsing and the
 report run in throwaway nettap containers, so the host needs nothing but
-Docker. It also works from a checkout (`pip install -e .`, then
-`nettap inspect ...` with the `nettap` image built). Every container it
+Docker. Run from the host (`pip install nettap`), it uses
+`ghcr.io/danisherror/nettap:<installed version>`, pulled if needed;
+`NETTAP_IMAGE` or `--nettap-image` picks another (e.g. `nettap`, built from
+a checkout). Every container it
 creates is removed afterwards, also on Ctrl+C (which ends the run early and
 still writes the report).
 
@@ -541,8 +569,41 @@ CI (`.github/workflows/ci.yml`) runs on every push and pull request on
 GitHub's Ubuntu runners, which are real Linux hosts: `pytest` on Python 3.9
 and the newest release (with `tshark` installed, so the real-tshark test
 runs), the `tests/live/` suite as root, and `integration_test.sh
---no-internet` in `sidecar`, `watch` and `sidecars` mode, and
-`hostports_accuracy.sh`.
+--no-internet` in `sidecar`, `watch` and `sidecars` mode,
+`hostports_accuracy.sh`, and a package build (`python -m build`, `twine
+check`, then `nettap --version` from the installed wheel).
+
+`scripts/record_demo.sh` re-records the demo at the top of this README
+from a live `nettap inspect` run (needs asciinema 2.x and Chrome for the
+screenshot); `scripts/cast2svg.py` turns the recording into the animated
+SVG.
+
+### Releasing
+
+Versions follow [semver](https://semver.org/) and live in one place,
+`nettap/__init__.py` (`pyproject.toml` reads it from there). To release
+X.Y.Z:
+
+1. Set `__version__ = "X.Y.Z"`, and in `CHANGELOG.md` replace
+   `Unreleased` in its section heading with today's date (YYYY-MM-DD).
+   Commit and merge to `master`.
+2. Tag and push: `git tag -a vX.Y.Z -m "nettap X.Y.Z" && git push origin vX.Y.Z`.
+
+`.github/workflows/release.yml` then checks that the tag, version and
+changelog agree (`scripts/release_notes.py`), runs the tests, publishes the
+package to PyPI and a `linux/amd64` + `linux/arm64` image to
+`ghcr.io/danisherror/nettap` (tags `X.Y.Z`, `X.Y` and `latest`), and
+creates a GitHub release with the changelog section as its notes.
+
+One-time setup before the first release:
+
+- PyPI: add a [trusted publisher](https://docs.pypi.org/trusted-publishers/adding-a-publisher/)
+  for the project `nettap` (a "pending publisher" while the project doesn't
+  exist yet): owner `danisherror`, repository `nettap`, workflow
+  `release.yml`, environment `pypi`. No API token is stored in GitHub.
+- GitHub: create the `pypi` environment (Settings -> Environments). After
+  the first image push, make the `nettap` package public (Packages ->
+  nettap -> Package settings), since new GHCR packages start private.
 
 ## Project layout
 
@@ -564,13 +625,18 @@ nettap/
     compare.py     `report --compare`: what changed between two captures
     export.py      `nettap export`: flows as JSON/CSV, packets as one pcap
     preflight.py   startup checks with one-line fixes (caps, docker.sock, data dir)
+    hostports.py   `--network host` targets: which ports they hold
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
     live/          discovery tests against real containers (Linux, root)
   scripts/         integration_test.sh - end-to-end check on a live Docker host
                    hostports_accuracy.sh - host-network attribution, measured
+                   release_notes.py - release tag/version/changelog check
+                   record_demo.sh, cast2svg.py - the README demo
+  docs/            architecture diagram, demo recording and screenshot
   examples/        sample CLI session
   Dockerfile, docker-compose.yml
+  CHANGELOG.md     what changed in each release
   TODO.md          roadmap - read this before your next session
 ```
 

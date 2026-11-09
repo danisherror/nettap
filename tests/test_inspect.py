@@ -205,3 +205,50 @@ def test_cli_rejects_typos_and_passes_args_after_double_dash(monkeypatch):
     assert "HTML report: x1_report.html in the Docker volume vol" in r.output
     r = CliRunner().invoke(cli_mod.cli, base + ["alpine", "--name", "bad name"])
     assert r.exit_code == 2
+
+
+def test_cli_pulls_a_missing_nettap_image_and_explains_a_failed_pull(monkeypatch):
+    from click.testing import CliRunner
+
+    from nettap import cli as cli_mod
+
+    monkeypatch.setattr(inspector, "inspect", lambda client, spec, stop, echo: {
+        "name": spec.name, "exit_code": 0, "ran_seconds": 1, "report_text": "ok",
+        "report_html": f"/data/{spec.name}_report.html"})
+    args = ["--data-dir", "/tmp/nettap-test-data", "inspect", "--nettap-image",
+            "ghcr.io/danisherror/nettap:9.9.9", "--data-volume", "vol", "alpine"]
+
+    client = FakeClient(have_image=False)
+    monkeypatch.setattr(cli_mod, "_docker_client", lambda need="": client)
+    r = CliRunner().invoke(cli_mod.cli, args)
+    assert r.exit_code == 0, r.output
+    assert ("ghcr.io/danisherror/nettap", "9.9.9") in client.pulled
+
+    def no_pull(repo, tag=None):
+        raise docker.errors.APIError("manifest unknown")
+
+    client = FakeClient(have_image=False)
+    client.images.pull = no_pull
+    monkeypatch.setattr(cli_mod, "_docker_client", lambda need="": client)
+    r = CliRunner().invoke(cli_mod.cli, args)
+    assert r.exit_code != 0
+    assert "docker build -t nettap ." in r.output and "--nettap-image nettap" in r.output
+
+
+def test_cli_shows_the_html_report_relative_to_the_current_directory(monkeypatch, tmp_path):
+    from click.testing import CliRunner
+
+    from nettap import cli as cli_mod
+
+    monkeypatch.setattr(cli_mod, "_docker_client", lambda need="": FakeClient())
+    monkeypatch.setattr(inspector, "inspect", lambda client, spec, stop, echo: {
+        "name": spec.name, "exit_code": 0, "ran_seconds": 1, "report_text": "ok",
+        "report_html": f"/data/{spec.name}_report.html"})
+    monkeypatch.chdir(tmp_path)
+    args = ["inspect", "--nettap-image", "n", "alpine", "--name", "r1"]
+    r = CliRunner().invoke(cli_mod.cli, ["--data-dir", "data", *args])
+    assert r.exit_code == 0, r.output
+    assert "HTML report: data/r1_report.html" in r.output
+    elsewhere = tmp_path.parent / "elsewhere"
+    r = CliRunner().invoke(cli_mod.cli, ["--data-dir", str(elsewhere), *args])
+    assert f"HTML report: {elsewhere}/r1_report.html" in r.output

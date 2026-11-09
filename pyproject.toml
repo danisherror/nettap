@@ -1,9 +1,24 @@
 [project]
 name = "nettap"
-version = "0.1.0"
+# single source: nettap/__init__.py (see [tool.setuptools.dynamic])
+dynamic = ["version"]
 description = "Attach traffic capture to one or many Docker containers and analyze docker-host, docker-docker, and docker-internet flows."
-license = { text = "MIT" }
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "danisherror" }]
 requires-python = ">=3.9"
+keywords = ["docker", "tcpdump", "tshark", "pcap", "network", "traffic"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Networking :: Monitoring",
+]
 dependencies = [
     "docker>=6.0",
     "click>=8.0",
@@ -12,12 +27,20 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 
+[project.urls]
+Homepage = "https://github.com/danisherror/nettap"
+Changelog = "https://github.com/danisherror/nettap/blob/master/CHANGELOG.md"
+Issues = "https://github.com/danisherror/nettap/issues"
+
 [project.scripts]
 nettap = "nettap.cli:main"
 
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = { attr = "nettap.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["nettap*"]

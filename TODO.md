@@ -3,7 +3,8 @@
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
 attach/detach/status/analyze/report, plus `inspect`, `check`, `export` and
-`report --compare` (stage 3). 291 unit tests pass (1 skipped).
+`report --compare` (stage 3), plus versioning, a release workflow and a
+README demo (stage 4, not yet released). 302 unit tests pass (1 skipped).
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -381,18 +382,72 @@ Fix and prove what exists first.
 
 - [x] **Add a LICENSE file** (MIT or Apache-2.0). Without one, nobody can
       legally reuse the code.
-- [ ] **Versioning and a CHANGELOG.** Start at 0.1.0, follow semver, tag
+- [x] **Versioning and a CHANGELOG.** Start at 0.1.0, follow semver, tag
       releases in git.
+      **Done 2026-11-09:** the version lives only in `nettap/__init__.py`
+      (`pyproject.toml` reads it: `dynamic = ["version"]`); `nettap
+      --version`; `CHANGELOG.md` (Keep a Changelog) with a 0.1.0 section
+      still marked "Unreleased". The release steps are under "Releasing" in
+      the README. `scripts/release_notes.py` refuses a tag that doesn't
+      match the version or whose changelog section has no date, so a tag
+      can't go out with a stale version. Not tagged yet: see the next item.
 - [ ] **Publish releases:** `pip install nettap` from PyPI and a prebuilt
       image on GitHub Container Registry (`ghcr.io/<user>/nettap`), both
       built by CI from a tag. Then the README's first step no longer needs
       `docker build`.
-- [ ] **Short demo in the README:** a screenshot of the HTML report and a
+      **Workflow written 2026-11-09, not yet run:**
+      `.github/workflows/release.yml` runs on a `vX.Y.Z` tag: release
+      check + tests, sdist/wheel (`twine check --strict`, the wheel run
+      outside the checkout) to PyPI by trusted publishing, a
+      `linux/amd64,linux/arm64` image to `ghcr.io/<owner>/nettap`
+      (`X.Y.Z`, `X.Y`, `latest`) with a smoke test of the pushed image,
+      then a GitHub release with the changelog section as notes. CI's new
+      `package` job builds and checks the package on every push. Outside a
+      container, `inspect` and `sidecars` now default to
+      `ghcr.io/danisherror/nettap:<installed version>` (pulled if missing)
+      instead of a local `nettap` image, so a pip install works on its
+      own; `NETTAP_IMAGE` or `--nettap-image`/`--image` overrides it. The
+      README's first step is now `docker pull` (or `pip install`).
+      Checked locally: the package builds without warnings and passes
+      `twine check --strict` (license switched to the SPDX form, the TOML
+      table is deprecated and stops building in Feb 2027); the wheel
+      installs into a fresh venv and runs; the Docker image builds (it
+      needed README.md and LICENSE copied, now that pyproject.toml names
+      them) and reports `nettap 0.1.0`; pip-installed `nettap inspect`
+      tried to pull `ghcr.io/danisherror/nettap:0.1.0` and failed with
+      "denied" plus the build-it-yourself hint, as expected before a
+      release. **Done when:** the one-time setup in the README is done
+      (PyPI trusted publisher, `pypi` environment, GHCR package made
+      public), the 0.1.0 section is dated, `v0.1.0` is pushed, the
+      workflow passes, and `pip install nettap && nettap inspect alpine`
+      works on a machine with no checkout.
+- [x] **Short demo in the README:** a screenshot of the HTML report and a
       30-second terminal recording of `nettap inspect`. Show the
       differentiator first.
+      **Done 2026-11-09:** the README opens with an animated SVG of `nettap
+      inspect python:3.12-alpine -- pip install -q requests` (13s, a live
+      run) and a screenshot of its HTML report, both re-made by
+      `scripts/record_demo.sh` (asciinema 2.x records; `scripts/cast2svg.py`
+      renders the SVG with CSS animations, no dependencies; headless Chrome
+      takes the screenshot). They're linked by raw.githubusercontent.com
+      URL so they also show on PyPI, so they appear once merged to
+      master. Checked frames by seeking the animations to 3s and 15s in
+      Chrome (headless Chrome doesn't advance CSS animations by itself, so
+      a plain screenshot of the SVG is blank). svg-term-cli would have
+      done the rendering but downloading it with npx was blocked here.
 - [ ] **Real-world mileage.** Use it on at least three real projects (your
       own Compose apps, a third-party image) and file every rough edge as a
       TODO item. Done when: a week of use passes with no new bug.
+      **Started 2026-11-09** on Docker Desktop for Mac with `nettap
+      inspect`: `python:3.12-alpine` running `pip install requests` (pypi.org,
+      files.pythonhosted.org), `node:22-alpine` running `npm install
+      express` (registry.npmjs.org only, 1.7 MB in), and
+      `grafana/grafana:latest` for 45s (grafana.com, plus **88 MB from
+      storage.googleapis.com** - its plugin downloads at startup). Found
+      and fixed one bug (per-destination bytes counted only what was sent,
+      see "bugs found in live testing"), and filed one rough edge
+      (multicast noise, see "report.py - known gaps"). Still to do: your
+      own Compose app with `nettap sidecars`, and the week of use.
 
 ## P0 - verify the MVP actually works
 
@@ -877,7 +932,34 @@ Fix and prove what exists first.
       capture: report lists `172.20.0.3` plus its two IPv6 addresses and
       shows 2.1 KB sent / 820 B received.
 
+- [x] **Fixed 2026-11-09: per-destination bytes counted only what was
+      sent.** Live `nettap inspect` of `pip install requests` received 1.1
+      MB, but the report listed pypi.org with 15.5 KB and
+      files.pythonhosted.org with 10.9 KB: `external_destinations()` summed
+      packets whose `dst_ip` was the address and dropped the replies.
+      Grafana showed the same bug at scale: storage.googleapis.com at 307
+      KB when it had sent 88 MB. Rows now have `sent_bytes` and
+      `received_bytes`, with `bytes`/`packets` covering both directions
+      (as in `container_peers()`). Replies through a published port are
+      left out like the requests. Only addresses something was sent to
+      are listed, as before. The text report shows "(sent X, received
+      Y)", the HTML report shows ↑/↓ under each total. `report --compare`
+      now compares both directions. Test:
+      `test_external_destinations_count_replies_too`. Live-verified the
+      same day: the destinations now add up to the received total
+      (749.8 + 429.9 KB of 1.1 MB).
+
 ## report.py (plain-language summary) - known gaps
+
+- [ ] **IPv6 multicast noise in every report** (seen in all three
+      real-world runs, 2026-11-09): `ff02::16` (MLDv2 reports) and
+      `ff02::1:ffXX:XXXX` (solicited-node, from the container's own
+      address) appear under "Local / private network addresses" for every
+      container on an IPv6-capable network. The kernel sends them, not the
+      program, so they tell the reader nothing. `report --compare` already
+      skips multicast and link-local. Idea: fold them into one "IPv6
+      housekeeping (sent by the kernel)" line instead of listing each
+      group.
 
 - [x] **Fixed 2026-11-08:** the report now uses `containers.ip_addresses`
       for "which IP is the container itself" (see the IPv6 entry above).

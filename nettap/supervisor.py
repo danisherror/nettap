@@ -32,6 +32,7 @@ import socket
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
+from . import __version__
 from .discovery import docker_time
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,15 @@ SELECTOR_LABEL = "nettap.sidecar.selector"
 # a sidecar exits with this when its target stops (see cli.sidecar)
 TARGET_GONE_EXIT = 3
 DOCKER_SOCK = "/var/run/docker.sock"
-DEFAULT_IMAGE = "nettap"
+# built and pushed by .github/workflows/release.yml for every release tag
+PUBLISHED_IMAGE = "ghcr.io/danisherror/nettap"
+
+
+def default_image() -> str:
+    """The nettap image to use outside a container: $NETTAP_IMAGE (e.g.
+    "nettap" for an image built from a checkout), else the published image
+    of the installed version, so a pip install needs no `docker build`."""
+    return os.environ.get("NETTAP_IMAGE") or f"{PUBLISHED_IMAGE}:{__version__}"
 
 
 def sidecar_name(target: str) -> str:
@@ -102,12 +111,12 @@ def own_container(client):
 def default_spec(client, data_dir: str) -> tuple[str, str]:
     """(image, data source) for sidecars: when running in a container, its
     own image and whatever is mounted at data_dir, so sidecars write to the
-    same place; otherwise the "nettap" image and data_dir's absolute path."""
+    same place; otherwise default_image() and data_dir's absolute path."""
     me = own_container(client)
     data_dir = os.path.abspath(data_dir)
     if me is None:
-        return DEFAULT_IMAGE, data_dir
-    image = (me.attrs.get("Config") or {}).get("Image") or DEFAULT_IMAGE
+        return default_image(), data_dir
+    image = (me.attrs.get("Config") or {}).get("Image") or default_image()
     for m in me.attrs.get("Mounts") or []:
         if m.get("Destination") == data_dir:
             return image, (m.get("Name") if m.get("Type") == "volume" else m.get("Source"))

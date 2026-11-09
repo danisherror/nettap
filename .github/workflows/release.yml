@@ -1,0 +1,124 @@
+name: Release
+
+# Push a tag vX.Y.Z (matching nettap/__init__.py, with a dated CHANGELOG.md
+# section) to publish:
+#   - the sdist and wheel to PyPI (trusted publishing, no API token),
+#   - a linux/amd64 + linux/arm64 image to ghcr.io/<owner>/nettap, tagged
+#     X.Y.Z, X.Y and latest,
+#   - a GitHub release with the CHANGELOG section as its notes.
+# One-time setup is described under "Releasing" in README.md.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check tag, version and changelog
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: python scripts/release_notes.py "$GITHUB_REF_NAME" > notes.md
+      - run: pip install -e ".[dev]"
+      - run: pytest -q
+      - uses: actions/upload-artifact@v7
+        with:
+          name: notes
+          path: notes.md
+
+  dist:
+    name: build sdist and wheel
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
+      # the wheel installs and runs on its own, outside the checkout
+      - run: |
+          python -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install dist/*.whl
+          cd /tmp && /tmp/wheel-venv/bin/nettap --version | grep -Fx "nettap ${GITHUB_REF_NAME#v}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  pypi:
+    name: publish to PyPI
+    needs: dist
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/nettap/
+    permissions:
+      id-token: write   # trusted publishing
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  image:
+    name: publish image to ghcr.io
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/nettap
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: smoke test the pushed image
+        run: |
+          image="ghcr.io/${{ github.repository_owner }}/nettap:${GITHUB_REF_NAME#v}"
+          docker run --rm "$image" --version | grep -Fx "nettap ${GITHUB_REF_NAME#v}"
+          docker run --rm --entrypoint tshark "$image" --version | head -1
+          docker run --rm --entrypoint tcpdump "$image" --version 2>&1 | head -1
+
+  github-release:
+    name: GitHub release
+    needs: [pypi, image]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts/
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --title "nettap ${GITHUB_REF_NAME#v}" --notes-file artifacts/notes/notes.md \
+            artifacts/dist/*
