@@ -26,6 +26,24 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: pytest -v
 
+  # the same build release.yml publishes, so packaging breaks show up
+  # before a release tag
+  package:
+    name: build and check the package
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.x"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check --strict dist/*
+      - run: |
+          python -m venv /tmp/wheel-venv
+          /tmp/wheel-venv/bin/pip install dist/*.whl
+          cd /tmp && /tmp/wheel-venv/bin/nettap --version
+
   # tests/live: discovery.resolve_capture() against real bridge, macvlan,
   # ipvlan and multi-network containers. nsenter needs root.
   live:

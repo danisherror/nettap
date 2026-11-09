@@ -104,7 +104,8 @@ def parse_publish(values) -> dict:
     return ports
 
 
-def _ensure_image(client, image: str, echo) -> None:
+def ensure_image(client, image: str, echo) -> None:
+    """Pull image unless Docker already has it."""
     import docker
     from docker.utils import parse_repository_tag
 
@@ -165,7 +166,7 @@ def inspect(client, spec: InspectSpec, stop: threading.Event | None = None,
     (None if the image was still running when time was up), "ran_seconds",
     "report_text", "report_html" (path inside /data)}. Raises InspectError."""
     stop = stop or threading.Event()
-    _ensure_image(client, spec.image, echo)
+    ensure_image(client, spec.image, echo)
     created = []
     try:
         echo(f"starting capture for run {spec.name}...")

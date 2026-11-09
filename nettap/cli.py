@@ -78,6 +78,7 @@ def _capture_preflight(ctx, caps: list[str], tools: list[str]) -> None:
 
 
 @click.group()
+@click.version_option(package_name="nettap", message="nettap %(version)s")
 @click.option("--data-dir", default="data", show_default=True, help="Where pcaps and the SQLite DB live.")
 @click.option("--log-level", default="INFO", show_default=True)
 @click.pass_context
@@ -86,6 +87,18 @@ def cli(ctx, data_dir, log_level):
     ctx.ensure_object(dict)
     ctx.obj["data_dir"] = data_dir
     ctx.obj["db_path"] = f"{data_dir}/nettap.db"
+
+
+def _require_nettap_image(client, image: str, option: str) -> None:
+    """Pull the nettap image the capture containers run, if needed."""
+    from .inspector import InspectError, ensure_image
+
+    try:
+        ensure_image(client, image, echo=lambda msg: click.echo(msg, err=True))
+    except InspectError as e:
+        raise preflight.SetupError(
+            f"{e} - build it from a checkout with `docker build -t nettap .` and pass "
+            f"{option} nettap (or set NETTAP_IMAGE=nettap)") from None
 
 
 def _check_containers_exist(refs) -> None:
@@ -600,7 +613,8 @@ def sidecar(ctx, target_label, iface, rotate_seconds, auto_enrich, docker_api,
               help="How often to check the containers and their sidecars, seconds.")
 @click.option("--image", default=None,
               help="Image for the sidecars. Default: this container's own image "
-                   "(or 'nettap' when not run in a container).")
+                   "(outside a container: $NETTAP_IMAGE, else the published "
+                   "ghcr.io/danisherror/nettap image of this version).")
 @click.option("--data-volume", default=None,
               help="Host path or volume name to mount at /data in each sidecar. "
                    "Default: whatever is mounted at --data-dir in this container "
@@ -630,6 +644,7 @@ def sidecars_cmd(ctx, label, poll_interval, image, data_volume, rotate_seconds, 
         except RuntimeError as e:
             raise click.ClickException(str(e))
         image, data_volume = image or default_image, data_volume or default_data
+    _require_nettap_image(client, image, "--image")
 
     args = ["--rotate-seconds", str(rotate_seconds)]
     args += ["--pcap-max-age-hours", f"{pcap_max_age_hours:g}",
@@ -928,8 +943,9 @@ def export(ctx, container, fmt, since, until, out, pcap_dir):
 @click.option("--compare", "baseline", metavar="RUN", default=None,
               help="Add a 'What changed' section against an earlier run (its --name).")
 @click.option("--nettap-image", default=None,
-              help="nettap image for the capture. Default: this container's image, or "
-                   "'nettap' when not run in a container.")
+              help="nettap image for the capture. Default: this container's image "
+                   "(outside a container: $NETTAP_IMAGE, else the published "
+                   "ghcr.io/danisherror/nettap image of this version).")
 @click.option("--data-volume", default=None,
               help="Host path or volume to mount at /data for the capture. Default: whatever "
                    "is mounted at --data-dir in this container, or its absolute path.")
@@ -969,12 +985,7 @@ def inspect(ctx, image, command, duration, name, network, env, publish, entrypoi
         except RuntimeError as e:
             raise click.ClickException(str(e))
         nettap_image, data_volume = nettap_image or default_image, data_volume or default_data
-    try:
-        client.images.get(nettap_image)
-    except docker.errors.ImageNotFound:
-        raise preflight.SetupError(
-            f"no image '{nettap_image}' for the capture - build it with `docker build -t "
-            f"{nettap_image} .` in the nettap checkout, or pass --nettap-image") from None
+    _require_nettap_image(client, nettap_image, "--nettap-image")
     if data_volume.startswith("/"):
         os.makedirs(data_volume, exist_ok=True)
 
@@ -997,7 +1008,11 @@ def inspect(ctx, image, command, duration, name, network, env, publish, entrypoi
     click.echo("")
     html_name = os.path.basename(result["report_html"])
     if data_volume.startswith("/"):
-        click.echo(f"HTML report: {os.path.join(data_volume, html_name)}")
+        path = os.path.join(data_volume, html_name)
+        # e.g. data/x_report.html when run from the directory holding data/
+        if path.startswith(os.path.join(os.getcwd(), "")):
+            path = os.path.relpath(path)
+        click.echo(f"HTML report: {path}")
     else:
         click.echo(f"HTML report: {html_name} in the Docker volume {data_volume}")
     click.echo(f"Run name: {spec.name} - use it with `nettap report --container {spec.name}`, "

@@ -2,6 +2,8 @@ import itertools
 
 import pytest
 
+import nettap
+
 from nettap import supervisor
 from nettap.supervisor import (SELECTOR_LABEL, TARGET_ID_LABEL, TARGET_LABEL, SidecarSpec,
                                Supervisor)
@@ -240,7 +242,12 @@ def test_a_selector_is_required(client):
 
 def test_default_spec_outside_a_container(client, monkeypatch, tmp_path):
     monkeypatch.setattr(supervisor.socket, "gethostname", lambda: "my-laptop")
+    monkeypatch.delenv("NETTAP_IMAGE", raising=False)
 
+    # the published image of the installed version, so a pip install works
+    assert supervisor.default_spec(client, str(tmp_path)) == (
+        f"ghcr.io/danisherror/nettap:{nettap.__version__}", str(tmp_path))
+    monkeypatch.setenv("NETTAP_IMAGE", "nettap")
     assert supervisor.default_spec(client, str(tmp_path)) == ("nettap", str(tmp_path))
 
 
