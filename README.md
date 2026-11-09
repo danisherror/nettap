@@ -80,6 +80,18 @@ Details and caveats are in `nettap/discovery.py`'s docstring.
 
 ## Quick start
 
+**What does this image contact?** One command runs an image, captures it
+from its first packet and writes the report:
+
+```
+docker build -t nettap .
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$(pwd)/data:/data" nettap inspect nginx:alpine --duration 2m
+```
+
+See [`nettap inspect`](#what-does-this-image-do-nettap-inspect) below. The
+rest of this section captures a container you already run.
+
 This uses **sidecar mode**, which works the same on Linux, Mac and Windows
 (Docker Desktop). The nettap container joins one target container's network
 (`--network container:<target>`) and captures its `eth0`. It needs no host
@@ -150,6 +162,94 @@ docker exec nettap-web nettap --data-dir /data analyze dns --container web
 `examples/sample_queries.md` walks through the same commands in `watch` mode,
 with several containers.
 
+### What does this image do? `nettap inspect`
+
+```
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+  -v "$(pwd)/data:/data" nettap inspect <image> [--duration 5m] [-- <command> <args>]
+```
+
+runs the image for `--duration` (default 60s, sooner if it exits), then
+prints the text report and writes `data/<run>_report.html`. The run is
+named `<image>-<date>-<time>` unless you pass `--name`; use that name with
+`report`, `check`, `export` and `--compare`. Images often phone home, pull
+config or resolve names the moment they start, so the capture starts
+first: nettap starts a sidecar in a network of its own, waits until tcpdump
+is listening, then runs the image inside that network (`--network
+container:<sidecar>`, like containers in a Kubernetes pod). The image still
+sees a normal network, with DNS. `-e KEY=VALUE`, `-p 8080:80`,
+`--entrypoint` and `--network` work as for `docker run`. Parsing and the
+report run in throwaway nettap containers, so the host needs nothing but
+Docker. It also works from a checkout (`pip install -e .`, then
+`nettap inspect ...` with the `nettap` image built). Every container it
+creates is removed afterwards, also on Ctrl+C (which ends the run early and
+still writes the report).
+
+### Allowlist checks in CI: `nettap check`
+
+```
+nettap check --container web --allow allowlist.txt
+```
+
+exits 0 if every destination `web` connected to is on the allowlist, 1
+(listing the others) if not, and 2 if it can't tell (no traffic captured,
+bad allowlist). The allowlist has one entry per line:
+
+```
+db                  # a container name
+api.stripe.com      # a hostname, from the TLS SNI, HTTP Host or a DNS answer
+*.amazonaws.com     # any subdomain (not amazonaws.com itself)
+10.0.0.0/8          # an address or CIDR range
+```
+
+`--allow-entry` adds entries on the command line. Loopback (so Docker's DNS
+server at 127.0.0.11), multicast and link-local addresses are always
+allowed. A DNS server elsewhere isn't, e.g. Docker Desktop's at
+192.168.65.7 on the default bridge network: allow it, or use a
+user-defined network. Peers that connected *to* the container aren't
+checked unless you pass `--direction all`. Hostnames come from the
+container's own traffic, and a hostile program can send any SNI, so this
+catches unplanned dependencies. It isn't a security boundary. With
+`inspect`:
+
+```
+nettap inspect myapp:1.4 --name myapp-ci && \
+  nettap check --container myapp-ci --allow allowlist.txt
+```
+
+### What changed? `report --compare`
+
+```
+nettap inspect myapp:1.4 --compare myapp-1.3-run     # an earlier inspect run
+nettap report --container web --compare web-staging  # two captures
+nettap report --container web --baseline-until 2026-11-09T14:00 --since 2026-11-09T14:00
+```
+
+adds a "What changed" section at the top of the report (text and HTML):
+destinations, containers and DNS names that are new, ones no longer
+contacted, and destinations whose traffic grew or shrank at least 2x and
+by at least 10 KB. The last form compares one container before and after
+an upgrade at 14:00. Internet destinations are matched by hostname, so a
+CDN address change isn't a change. Bytes aren't adjusted for how long each
+capture ran. `--since`/`--until` (`15m`, `2h`, `2026-11-09T14:00` in local
+time, or Unix seconds) also work without `--compare`, to report on a time
+range.
+
+### Sharing results: `nettap export`
+
+```
+nettap export --container web --format json --since 1h > web.json
+nettap export --container web --format csv --out web.csv
+nettap export --container web --format pcap --since 2026-11-09T14:00
+```
+
+`json`/`csv` write the parsed flow rows. `pcap` merges the container's
+capture files (its interface and DNS captures) in time order into one file
+for Wireshark, at `data/web_export.pcap` by default. It's pcapng instead if
+the captures mix link types. Packets whose pcaps retention already deleted
+aren't in a pcap export (it says how many flow rows that affects); their
+flow rows still are in JSON/CSV.
+
 ### Naming other containers in a sidecar's report
 
 A sidecar only knows its own target's IPs, so a peer container without a
@@ -171,6 +271,15 @@ that's acceptable.
 Raw pcaps land in `./data/pcap/` on the host either way (bind-mounted), so
 `wireshark ./data/pcap/web_*.pcap` works for a deep dive regardless of which
 capture mode produced them.
+
+Raw pcaps are deleted after **24 hours**, or sooner, oldest first, once
+`data/pcap/` holds more than **1 GB**. Flows already parsed into
+`nettap.db` are kept, so reports still cover the whole capture. Change the
+limits with `--pcap-max-age-hours` / `--pcap-max-size-mb` on `watch`,
+`sidecar` or `sidecars` (`0` turns a limit off). The limits are logged at
+startup and every deletion is logged; deleting a pcap that hasn't been
+parsed yet (only likely with a very small size cap or `--no-auto-enrich`)
+is logged as a warning.
 
 ### Sidecars that look after themselves: `nettap sidecars`
 
@@ -251,6 +360,16 @@ sudo nettap --data-dir ./data watch --label monitor=true
 
 ## Troubleshooting
 
+**nettap exits right away with a one-line `Error: ...`.** It checks for
+common setup mistakes at startup and says how to fix each one: a missing
+capability (`NET_RAW` for tcpdump, plus `SYS_ADMIN` for `watch`), no
+`/var/run/docker.sock` when Docker access is needed (`watch`, `sidecars`,
+`sidecar --docker-api`), a data directory it can't write to (e.g. mounted
+`:ro`), missing `tcpdump`/`tshark`, or a target that isn't there (`sidecar`
+finds no `eth0`; `attach` is given a name no container has - pass
+`--allow-missing` to queue a container you're about to create). All of
+these exit with status 1.
+
 **`report`/`analyze` says "no traffic" for a container you know is running.**
 `--container` is matched against whatever string was passed to `sidecar
 --target` (or the container's `name` as seen by `watch`'s Docker API calls)
@@ -299,8 +418,12 @@ docker run -d --name nettap-<target> --network container:<target> \
 The sidecar then samples which TCP/UDP ports the target's processes hold
 (4 times a second) and keeps only the host's traffic on those ports.
 `SYS_PTRACE` is needed to read the sockets of processes running as another
-user (e.g. nginx's workers). Connections shorter than a sample - often DNS
-lookups and quick requests - can be missed, ICMP isn't attributed, and only
+user (e.g. nginx's workers). Measured with `scripts/hostports_accuracy.sh`
+(2026-11-09, Docker Desktop for Mac): connections to a listening port in
+the target 100% (200/200), outgoing connections held open 0.5s 100%
+(40/40), and short outgoing requests (one `wget` each, a few milliseconds
+long) **0%** (0/200). So a host-network target's servers are covered, but
+its quick outgoing requests and DNS lookups are not. ICMP isn't attributed, and only
 `eth0` is captured, so traffic with other containers on the same host isn't
 seen. `--allow-host-network` instead captures everything, labelled as the
 target - e.g. for a Docker-in-Docker target, which has bridges of its own.
@@ -387,6 +510,18 @@ Every mode also checks that the HTTP traffic reaches the flow store within
 internet part, `--keep` to keep the data dir. Everything it creates is named
 `nettap-it-*` and removed on exit.
 
+Every mode then runs `nettap check` on the client against an allowlist that
+names the server but not a third container the client also called
+(`nettap-it-*-other`), and expects exit 1 listing only that one, then exit
+0 once it is allowed.
+
+`scripts/hostports_accuracy.sh` measures `sidecar --attribute-by-port` for
+a `--network host` target: the share of short outgoing requests, outgoing
+connections held 0.5s, and connections to a listening port that end up in
+the target's flows. It fails if fewer than 95% of the incoming ones are
+caught (`-n` sets the number of connections, default 100). Containers are
+named `nettap-acc-*`.
+
 `--mode watch` needs a Linux Docker daemon. On Docker Desktop you can get one
 with Docker-in-Docker:
 
@@ -406,7 +541,8 @@ CI (`.github/workflows/ci.yml`) runs on every push and pull request on
 GitHub's Ubuntu runners, which are real Linux hosts: `pytest` on Python 3.9
 and the newest release (with `tshark` installed, so the real-tshark test
 runs), the `tests/live/` suite as root, and `integration_test.sh
---no-internet` in `sidecar`, `watch` and `sidecars` mode.
+--no-internet` in `sidecar`, `watch` and `sidecars` mode, and
+`hostports_accuracy.sh`.
 
 ## Project layout
 
@@ -423,10 +559,16 @@ nettap/
     analyze.py     read-side queries (JSON, or a table via --format table)
     report.py      read-side queries, rendered as plain language (text/HTML)
     supervisor.py  `nettap sidecars`: one self-healing sidecar per container
+    inspector.py   `nettap inspect`: run an image inside a capture, then report
+    check.py       `nettap check`: destinations vs. an allowlist
+    compare.py     `report --compare`: what changed between two captures
+    export.py      `nettap export`: flows as JSON/CSV, packets as one pcap
+    preflight.py   startup checks with one-line fixes (caps, docker.sock, data dir)
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
     live/          discovery tests against real containers (Linux, root)
   scripts/         integration_test.sh - end-to-end check on a live Docker host
+                   hostports_accuracy.sh - host-network attribution, measured
   examples/        sample CLI session
   Dockerfile, docker-compose.yml
   TODO.md          roadmap - read this before your next session
@@ -436,16 +578,20 @@ nettap/
 
 - `--network host` containers have no interface of their own: they're
   captured on the host's internet-facing interface and kept to the ports
-  they held (see Troubleshooting), so short connections, ICMP and traffic
-  with other containers on the same host can be missing.
+  they held (see Troubleshooting): incoming connections to its servers are
+  all caught, but short outgoing requests are missed almost entirely (0%
+  measured), as are ICMP and traffic with other containers on the same host.
 - In `watch`, a container whose `eth0` is neither a veth nor macvlan/ipvlan
   is skipped with a warning.
 - TLS/SSH traffic gives metadata (IPs, ports, byte counts, SNI) not
   plaintext payloads.
 - Single Docker host only: overlay containers are captured, but flows aren't
   matched across two hosts' nettap instances.
-- Pcaps are kept forever unless `watch`/`sidecar` is given
-  `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
+- Raw pcaps are kept for 24h / up to 1 GB by default. The newest file of
+  each capture is never deleted, so the cap can be exceeded by about one
+  file per capture.
+- The capability check only runs when nettap is root on Linux (the Docker
+  setup); elsewhere a missing permission shows up as tcpdump's own error.
 - External IPs are named from TLS SNI, HTTP Host headers and DNS answers.
   DNS answers on user-defined networks come from the extra capture on the
   container's `lo` (tested in `sidecar` mode, and in `watch` mode on

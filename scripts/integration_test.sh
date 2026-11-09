@@ -49,11 +49,12 @@ IMAGE="$P-image"
 NET="$P-net"
 SRV="$P-srv"
 CLI="$P-client"
+OTHER="$P-other"   # never captured; the client calls it, the allowlist leaves it out
 NETTAP="$P-nettap"   # the watch daemon or sidecar supervisor
 
 cleanup() {
     docker rm -f "$NETTAP" "$SRV-sidecar" "$CLI-sidecar" "nettap-sidecar-$SRV" \
-        "nettap-sidecar-$CLI" "$SRV" "$CLI" >/dev/null 2>&1 || true
+        "nettap-sidecar-$CLI" "$SRV" "$CLI" "$OTHER" >/dev/null 2>&1 || true
     docker network rm "$NET" >/dev/null 2>&1 || true
     if [ "$KEEP" = 1 ]; then
         echo "data kept in $DATA"
@@ -135,6 +136,7 @@ docker run -d --name "$SRV" --network "$NET" --label "$P=1" nginx:alpine >/dev/n
 CLI_LABEL=()
 [ "$MODE" = sidecars ] && CLI_LABEL=(--label "$P=1")
 docker run -d --name "$CLI" --network "$NET" ${CLI_LABEL[@]+"${CLI_LABEL[@]}"} alpine sleep 600 >/dev/null
+docker run -d --name "$OTHER" --network "$NET" nginx:alpine >/dev/null
 
 if [ "$MODE" = watch ]; then
     step "attaching $CLI with 'nettap attach' ($SRV is picked up by its label)"
@@ -188,6 +190,7 @@ T0=$(date +%s)
 for _ in 1 2 3; do
     docker exec "$CLI" wget -q -O /dev/null "http://$SRV/"
 done
+docker exec "$CLI" wget -q -O /dev/null "http://$OTHER/"
 if [ "$INTERNET" = 1 ]; then
     docker exec "$CLI" wget -q -O /dev/null https://example.com/
 fi
@@ -321,3 +324,25 @@ if failures:
 print("all checks passed")
 EOF
 grep -q "^all checks passed$" "$DATA/checks.txt" || { echo "checks did not all pass"; exit 1; }
+
+# nettap check as a CI gate: the client may talk to the server (and
+# example.com), not to $OTHER. On this user-defined network its DNS goes to
+# 127.0.0.11, which is always allowed.
+step "checking the client against an allowlist"
+printf '%s\nexample.com\n' "$SRV" > "$DATA/allow.txt"
+nettap_check() {
+    docker run --rm -v "$DATA:/data" "$IMAGE" check --container "$CLI" --allow /data/allow.txt "$@"
+}
+set +e
+OUT=$(nettap_check 2>&1); CODE=$?
+set -e
+echo "$OUT" | sed 's/^/    /'
+[ "$CODE" = 1 ] || { echo "  FAIL  check exited $CODE, expected 1 (a disallowed destination)"; exit 1; }
+echo "$OUT" | grep -q "^  - $OTHER " || { echo "  FAIL  $OTHER not listed as disallowed"; exit 1; }
+echo "$OUT" | grep -q "^  - $SRV " && { echo "  FAIL  $SRV listed as disallowed"; exit 1; }
+echo "  ok    check exits 1 and lists only $OTHER"
+set +e
+OUT=$(nettap_check --allow-entry "$OTHER" 2>&1); CODE=$?
+set -e
+[ "$CODE" = 0 ] || { echo "  FAIL  check exited $CODE with $OTHER allowed, expected 0:"; echo "$OUT"; exit 1; }
+echo "  ok    check exits 0 once $OTHER is allowed"

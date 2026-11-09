@@ -17,7 +17,7 @@ class FakeMgr:
     def restart_dead(self):
         return []
 
-    def enforce_retention(self):
+    def enforce_retention(self, **_kw):
         return []
 
     def detach_all(self):

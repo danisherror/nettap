@@ -24,8 +24,10 @@ https://docs.docker.com/reference/compose-file/services/#cgroup); otherwise
 it prints `cgroup:unreachable:1` and "Failed to open cgroup2 by ID" (seen
 live 2026-11-08 on Docker Desktop for Mac).
 
-Limit: a connection opened and closed between two samples is missed, so
-listening ports are reliable but short outgoing requests may not be.
+Limit: a connection opened and closed between two samples is missed.
+Measured by scripts/hostports_accuracy.sh (2026-11-09, Docker Desktop for
+Mac): connections to a listening port 200/200, outgoing connections held
+0.5s 40/40, short outgoing requests (one wget each) 0/200.
 TIME-WAIT sockets carry no cgroup, so they don't help `watch` either.
 """
 from __future__ import annotations

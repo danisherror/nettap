@@ -92,3 +92,87 @@ def test_newest_dns_capture_file_is_kept_separately(tmp_path):
     new = _pcap(tmp_path, "web_20261108000300.pcap", age=0)
     assert purge_pcaps(tmp_path, max_age_seconds=100, now=NOW) == [dns_old, old]
     assert dns_new.exists() and new.exists()
+
+
+# --- defaults, logging and the unread warning ---------------------------------
+
+import logging
+
+from click.testing import CliRunner
+
+from nettap import cli, discovery, storage
+from nettap.capture import DEFAULT_MAX_AGE_HOURS, DEFAULT_MAX_SIZE_MB
+
+
+def test_deletion_is_logged_with_reason(tmp_path, caplog):
+    _pcap(tmp_path, "web_20261101000000.pcap", size=2048, age=7200)
+    _pcap(tmp_path, "web_20261108000000.pcap", age=0)
+    with caplog.at_level(logging.INFO, logger="nettap.capture"):
+        purge_pcaps(tmp_path, max_age_seconds=3600, now=NOW)
+    assert "deleted 1 pcap(s) (2.0 KB, older than 1h)" in caplog.text
+
+
+def test_deleting_an_unparsed_file_warns(tmp_path, caplog):
+    unread = _pcap(tmp_path, "web_20261101000000.pcap", age=7200)
+    read = _pcap(tmp_path, "web_20261101000100.pcap", age=7100)
+    _pcap(tmp_path, "web_20261108000000.pcap", age=0)
+    with caplog.at_level(logging.INFO, logger="nettap.capture"):
+        deleted = purge_pcaps(tmp_path, max_age_seconds=3600, now=NOW,
+                              unread=lambda p: p == unread)
+    assert deleted == [unread, read]
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert unread.name in warnings[0].getMessage()
+    assert read.name not in warnings[0].getMessage()
+
+
+def test_a_failing_unread_check_doesnt_stop_deletion(tmp_path):
+    old = _pcap(tmp_path, "web_20261101000000.pcap", age=7200)
+    _pcap(tmp_path, "web_20261108000000.pcap", age=0)
+
+    def boom(_p):
+        raise RuntimeError("db locked")
+    assert purge_pcaps(tmp_path, max_age_seconds=3600, now=NOW, unread=boom) == [old]
+
+
+def test_pcap_unread(tmp_path):
+    conn = storage.connect(str(tmp_path / "nettap.db"))
+    path = tmp_path / "web_20261101000000.pcap"
+    assert storage.pcap_unread(conn, path)  # never seen
+    storage.store_pcap_chunk(conn, str(path), 0, 100, False, [])
+    assert storage.pcap_unread(conn, path)  # partly read
+    storage.store_pcap_chunk(conn, str(path), 100, 200, True, [])
+    assert not storage.pcap_unread(conn, path)  # done
+
+
+def _run_sidecar(tmp_path, monkeypatch, *extra):
+    monkeypatch.setattr(discovery, "interface_exists", lambda iface: True)
+    monkeypatch.setattr(discovery, "interface_ips", lambda iface: {})
+    monkeypatch.setattr(discovery, "bridge_interfaces", lambda: [])
+    seen = {}
+
+    class FakeMgr:
+        def __init__(self, *a, **kw): seen.update(kw)
+        def attach(self, info): return None
+        def restart_dead(self): return []
+        def enforce_retention(self, **kw): seen["unread"] = kw.get("unread"); return []
+        def detach_all(self): pass
+
+    monkeypatch.setattr(cli, "CaptureManager", FakeMgr)
+    monkeypatch.setattr(cli.time, "sleep", lambda s: (_ for _ in ()).throw(KeyboardInterrupt))
+    CliRunner().invoke(cli.cli, ["--data-dir", str(tmp_path), "sidecar", "--target", "web",
+                                 "--no-auto-enrich", *extra])
+    return seen
+
+
+def test_sidecar_has_retention_on_by_default(tmp_path, monkeypatch):
+    seen = _run_sidecar(tmp_path, monkeypatch)
+    assert seen["max_age_seconds"] == DEFAULT_MAX_AGE_HOURS * 3600
+    assert seen["max_bytes"] == int(DEFAULT_MAX_SIZE_MB * 1024 * 1024)
+    assert callable(seen["unread"])  # deletions of unparsed files get a warning
+
+
+def test_zero_turns_a_limit_off(tmp_path, monkeypatch):
+    seen = _run_sidecar(tmp_path, monkeypatch, "--pcap-max-age-hours", "0",
+                        "--pcap-max-size-mb", "0")
+    assert seen["max_age_seconds"] is None and seen["max_bytes"] is None

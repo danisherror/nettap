@@ -79,7 +79,7 @@ def test_sidecar_records_own_ips(tmp_path, monkeypatch):
             saved["info"] = info
             return None
         def restart_dead(self): return []
-        def enforce_retention(self): return []
+        def enforce_retention(self, **_kw): return []
         def detach_all(self): pass
 
     monkeypatch.setattr(cli, "CaptureManager", FakeMgr)
