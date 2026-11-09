@@ -53,11 +53,19 @@ Fix and prove what exists first.
       multi-network containers and checks the interface returned. Run it in
       CI (Linux). Done when: re-introducing the old iflink approach makes
       CI fail.
-- [ ] **Make the README Quick Start lead with what's proven.** Today it
+- [x] **Make the README Quick Start lead with what's proven.** Today it
       opens with `docker compose up` (`watch`), the untested path. Until
       stage 1 is done, open with `sidecar` (works on Mac and Linux) and
       label `watch` as Linux-only. Done when: a new user following the
       first code block on any OS gets a working capture.
+      Done 2026-11-09: Quick start now opens with a self-contained sidecar
+      block (builds the image, starts an alpine target that fetches
+      example.com every 5s, starts the sidecar, runs `report`). `watch`
+      moved to its own section marked "Linux only, not yet verified".
+      Ran that exact block on Docker Desktop for Mac (Docker 29.7.2): first
+      pcap enriched 2 minutes after the sidecar started (245 flow rows) and
+      `report` listed example.com from DNS and SNI. Not yet run on Linux or
+      Windows.
 
 ### Stage 2 - make it pleasant to use (7 -> 8)
 
@@ -113,7 +121,7 @@ Fix and prove what exists first.
 
 ### Stage 4 - finish like a real project (needed to hold 9)
 
-- [ ] **Add a LICENSE file** (MIT or Apache-2.0). Without one, nobody can
+- [x] **Add a LICENSE file** (MIT or Apache-2.0). Without one, nobody can
       legally reuse the code.
 - [ ] **Versioning and a CHANGELOG.** Start at 0.1.0, follow semver, tag
       releases in git.
@@ -137,7 +145,7 @@ Fix and prove what exists first.
       Mac/Windows, including Apple Silicon. Added `nettap sidecar` as the
       Mac/Windows-native alternative (joins the target's netns via
       `--network container:<target>` instead of needing host networking at
-      all - see README's "Docker Desktop for Mac / Windows" section).
+      all - see README's Quick start and `watch` mode sections).
       Live-tested 2026-11-08 - see next item.
 - [ ] Run `docker compose up --build` (`watch` mode) on a real *Linux* Docker
       host (not Docker Desktop) and confirm veth resolution, capture start,

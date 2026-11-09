@@ -71,20 +71,41 @@ Details and caveats are in `nettap/discovery.py`'s docstring.
 
 ## Quick start
 
-```
-docker compose up -d --build
-```
-
-By default the daemon watches for containers labeled `monitor=true`. Start
-one:
+This uses **sidecar mode**, which works the same on Linux, Mac and Windows
+(Docker Desktop). The nettap container joins one target container's network
+(`--network container:<target>`) and captures its `eth0`. It needs no host
+networking and no docker.sock.
 
 ```
-docker run -d --name web --label monitor=true nginx
+docker build -t nettap .
+mkdir -p data
+
+# a container to watch - this one fetches a web page every 5 seconds
+docker run -d --name web alpine \
+  sh -c 'while true; do wget -qO /dev/null https://example.com; sleep 5; done'
+
+# the sidecar: shares web's network and records everything it sends and receives
+docker run -d --name nettap-web \
+  --network container:web \
+  --cap-add NET_ADMIN --cap-add NET_RAW \
+  -v "$(pwd)/data:/data" \
+  nettap sidecar --target web
+
+# wait about 2 minutes (pcaps rotate every 60s, then get parsed), then:
+docker exec nettap-web nettap --data-dir /data report --container web
 ```
 
-Within one poll cycle (5s) `nettap` attaches automatically. See
-`examples/sample_queries.md` for a full walkthrough including ad-hoc
-attach/detach and the `analyze` subcommands.
+The report lists what `web` talked to: `example.com` (from DNS and the TLS
+SNI), how many bytes went each way, and the protocols used. To watch your
+own container instead, start it first, then start the sidecar with
+`--network container:<name>` and `--target <name>`. One sidecar watches one
+container; run one per container you care about.
+
+Tear down when done:
+
+```
+docker rm -f nettap-web web
+```
 
 ### Plain-language reports (for non-technical readers)
 
@@ -108,47 +129,19 @@ the internet, with hostnames from TLS SNI, HTTP Host or DNS answers where seen),
 lookups, and the protocol mix - as a self-contained file with no server or
 internet connection needed to view it.
 
-### Attaching to specific containers instead of a label
+The `analyze` subcommands give the same data as JSON or tables:
 
 ```
-docker compose exec nettap nettap --data-dir /data attach web db
-docker compose exec nettap nettap --data-dir /data detach web
-docker compose exec nettap nettap --data-dir /data status
-```
-
-### Docker Desktop for Mac / Windows (host networking is unreliable there)
-
-`watch` (above) needs the nettap container to run with `network_mode: host`
-so it can see *other* containers' host-side veth interfaces. On Docker
-Desktop for Mac/Windows that's an experimental, known-buggy feature (see
-[docker/for-mac#7261](https://github.com/docker/for-mac/issues/7261)) - it
-can silently fail to actually see the host network, even enabled. Don't rely
-on it there.
-
-Use **sidecar mode** instead: it makes the nettap container join one target
-container's network namespace directly (`--network container:<target>`), a
-completely ordinary and reliable Docker feature, and captures that shared
-`eth0` - no host networking, no `nsenter`, no docker.sock mount needed at
-all. One sidecar watches one container; run one per container you care
-about.
-
-```
-docker build -t nettap .
-mkdir -p data
-
-docker run -d --name nettap-web \
-  --network container:web \
-  --cap-add NET_ADMIN --cap-add NET_RAW \
-  -v "$(pwd)/data:/data" \
-  nettap sidecar --target web
-
 docker exec nettap-web nettap --data-dir /data status
 docker exec nettap-web nettap --data-dir /data analyze top-talkers --container web
 docker exec nettap-web nettap --data-dir /data analyze external   # --scope internet hides private/Docker-internal addresses; --container X counts one container
 docker exec nettap-web nettap --data-dir /data analyze dns --container web
-
-docker stop nettap-web && docker rm nettap-web   # tear down when done
 ```
+
+`examples/sample_queries.md` walks through the same commands in `watch` mode,
+with several containers.
+
+### Naming other containers in a sidecar's report
 
 A sidecar only knows its own target's IPs, so a peer container without a
 sidecar of its own shows up as a bare private IP. Add `--docker-api` and
@@ -169,6 +162,35 @@ that's acceptable.
 Raw pcaps land in `./data/pcap/` on the host either way (bind-mounted), so
 `wireshark ./data/pcap/web_*.pcap` works for a deep dive regardless of which
 capture mode produced them.
+
+### `watch` mode: every labelled container (Linux only, not yet verified)
+
+`watch` is a single daemon that captures every container with a given label
+(or all of them), attaching to new ones as they start. It needs a **Linux
+host**, and it has not yet been run end-to-end on one (see `TODO.md`,
+Stage 1). Prefer sidecar mode until that's done.
+
+```
+docker compose up -d --build
+docker run -d --name web --label monitor=true nginx
+```
+
+By default the daemon watches for containers labeled `monitor=true` and
+attaches within one poll cycle (5s). To add or remove specific containers
+instead of using a label:
+
+```
+docker compose exec nettap nettap --data-dir /data attach web db
+docker compose exec nettap nettap --data-dir /data detach web
+docker compose exec nettap nettap --data-dir /data status
+```
+
+`watch` runs the nettap container with `network_mode: host` so it can see
+*other* containers' host-side veth interfaces. On Docker Desktop for
+Mac/Windows that's an experimental, known-buggy feature (see
+[docker/for-mac#7261](https://github.com/docker/for-mac/issues/7261)): it
+can silently fail to see the host network, even when enabled. Use sidecar
+mode there.
 
 ### Running without Docker Compose
 
