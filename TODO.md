@@ -176,7 +176,7 @@ Fix and prove what exists first.
       sidecars kept with `--keep-sidecars` (remove them to pick up new
       ones), and a container started without `--name` gets a new random
       name when recreated, so it's tracked as a new target.
-- [ ] **Cut the time until traffic shows up.** Today: 5s polling plus about
+- [x] **Cut the time until traffic shows up.** Today: 5s polling plus about
       2 minutes (a 60s pcap rotation, then an enrich poll). Use the
       Docker events stream as the main trigger with polling as the safety
       net (already in P3, move it here), and enrich each pcap as soon as
@@ -202,7 +202,11 @@ Fix and prove what exists first.
       sidecars mode on Docker Desktop for Mac (Docker 29.7.2) 6s (including
       the HTTPS fetch); watch mode inside `docker:dind` 2-4s, server attached
       0.1s after it started. The final `enrich` only added the last few
-      rows, and all checks passed. Leave unticked until it passes in CI.
+      rows, and all checks passed.
+      Done 2026-11-09: all six CI jobs passed on `ubuntu-24.04` (run
+      42576575292, commit d3e8c5a): HTTP traffic in the flow store after 5s
+      (watch) and 6s (sidecar, sidecars); watch attached the labelled server
+      0.1s after it started.
       Known cost: one tshark run per capture file with new packets every
       5s. A ClientHello or HTTP request split across a 5s chunk boundary can
       lose its SNI/Host (tshark can't reassemble across chunks).
