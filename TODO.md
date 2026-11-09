@@ -65,7 +65,7 @@ Fix and prove what exists first.
       host (CI will do).
       Done 2026-11-09: both modes passed in GitHub Actions on
       `ubuntu-24.04` (see the item above).
-- [ ] **CI on GitHub Actions.** GitHub's `ubuntu-latest` runners are real
+- [x] **CI on GitHub Actions.** GitHub's `ubuntu-latest` runners are real
       Linux with a Docker daemon, so they can run `watch` mode too. Jobs:
       `pytest` on the oldest and newest supported Python (3.9 and current);
       `integration_test.sh --mode sidecar --no-internet`;
@@ -88,8 +88,11 @@ Fix and prove what exists first.
       route get`: on macOS (no Linux `ip`) that failed, so the old
       assertion still held; on Linux it returned `eth0`. Fixed by stubbing
       the route lookup and testing the no-default-route case instead.
-      Still to do: turn on branch protection for `master` requiring the
-      four jobs (a GitHub setting).
+      Second run passed all four jobs. Done 2026-11-09: branch protection
+      on `master` requires all four checks, up to date with `master`, before
+      a pull request can merge; force pushes and branch deletion are off.
+      Admins are not included, so the owner can still push to `master`
+      directly (and bypass a failing check).
 - [ ] **Tests that touch real kernel behaviour.** Mocks keep agreeing with
       our own wrong assumptions (the `/sys/class/net/eth0/iflink` bug passed
       every unit test). Add a small `tests/live/` suite, marked
