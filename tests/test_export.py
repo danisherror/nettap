@@ -139,7 +139,8 @@ def test_cli_json_and_csv(tmp_path):
 def test_cli_json_empty_is_valid(tmp_path):
     _seed(storage.connect(str(tmp_path / "nettap.db")))
     r = _invoke("--data-dir", str(tmp_path), "export", "--container", "web", "--since", "1000")
-    assert json.loads(r.stdout) == []
+    # click < 8.2 mixes stderr (the "exported ..." line, written last) into stdout
+    assert json.loads(r.stdout.split("exported")[0]) == []
 
 
 def test_cli_pcap_notes_deleted_pcaps(tmp_path):
