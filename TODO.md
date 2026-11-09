@@ -319,7 +319,8 @@ Fix and prove what exists first.
       (and example.com): exit 1 listing only `-other`, then exit 0 with
       `--allow-entry` for it. Passed on Docker Desktop for Mac in `sidecar`
       (with internet) and `sidecars --no-internet` mode, and in `watch
-      --no-internet` mode inside `docker:dind`. Not yet run in CI.
+      --no-internet` mode inside `docker:dind`. Passed in GitHub Actions on
+      `ubuntu-24.04` in all three modes (run 42583950482, commit 9df5ecb).
       Known gaps: hostnames are what the traffic claims (a hostile program
       can send any SNI), so this isn't a security boundary; DNS lookups of
       a disallowed name are not flagged, only connections; Docker Desktop's
@@ -368,6 +369,8 @@ Fix and prove what exists first.
       100% (200/200); outgoing `nc` connections held 0.5s 100% (40/40);
       short outgoing requests, one `wget` each, **0%** (0/100, 0/200). The
       script fails if fewer than 95% of the incoming ones are caught.
+      Same result in GitHub Actions on `ubuntu-24.04` (run 42583950482):
+      0/100 short, 20/20 held, 100/100 incoming.
       First attempt measured 0% everywhere because the sidecar captured
       eth0 only (documented, but easy to forget). README, the report's
       note and hostports.py now quote these numbers.
