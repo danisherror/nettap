@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Pinned to 24.04: setup-python only ships Python 3.9 builds for 22.04/24.04.
+jobs:
+  unit:
+    name: pytest (Python ${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.x"]   # oldest supported and newest release
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+      # one enrich test runs the real tshark and is skipped without it
+      - name: Install tshark
+        run: |
+          sudo apt-get update
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tshark
+      - run: pip install -e ".[dev]"
+      - run: pytest -v
+
+  integration:
+    name: integration (${{ matrix.mode }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [sidecar, watch]
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker version
+      - run: bash scripts/integration_test.sh --mode ${{ matrix.mode }} --no-internet

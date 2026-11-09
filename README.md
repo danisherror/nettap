@@ -1,5 +1,7 @@
 # nettap
 
+[![CI](https://github.com/danisherror/nettap/actions/workflows/ci.yml/badge.svg)](https://github.com/danisherror/nettap/actions/workflows/ci.yml)
+
 Attach traffic capture to one or many Docker containers, and analyze
 docker-host, docker-docker, and docker-internet flows after the fact.
 
@@ -335,6 +337,12 @@ docker rm -f -v nettap-it-dind
 
 That runs a normal Linux `dockerd`, but on Docker Desktop's VM kernel, so it
 doesn't replace a test on a real Linux host (see TODO.md).
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request on
+GitHub's Ubuntu runners, which are real Linux hosts: `pytest` on Python 3.9
+and the newest release (with `tshark` installed, so the real-tshark test
+runs), and `integration_test.sh --no-internet` in both `sidecar` and `watch`
+mode.
 
 ## Project layout
 

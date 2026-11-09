@@ -49,12 +49,16 @@ NETTAP="$P-nettap"   # the watch daemon (watch mode only)
 cleanup() {
     docker rm -f "$NETTAP" "$SRV-sidecar" "$CLI-sidecar" "$SRV" "$CLI" >/dev/null 2>&1 || true
     docker network rm "$NET" >/dev/null 2>&1 || true
-    docker rmi "$IMAGE" >/dev/null 2>&1 || true
     if [ "$KEEP" = 1 ]; then
         echo "data kept in $DATA"
     else
-        rm -rf "$DATA"
+        # nettap runs as root, so on a Linux host the files it wrote are
+        # root-owned and a plain rm fails. Delete them from a container first.
+        docker run --rm -v "$DATA:/data" --entrypoint sh "$IMAGE" \
+            -c 'rm -rf /data/* /data/.[!.]*' >/dev/null 2>&1 || true
+        rm -rf "$DATA" || echo "could not remove $DATA" >&2
     fi
+    docker rmi "$IMAGE" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 

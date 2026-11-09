@@ -62,6 +62,17 @@ Fix and prove what exists first.
       `integration_test.sh --mode watch --no-internet`. Done when: every push
       and PR runs all three and a failing check blocks the merge. Add the
       status badge to the README.
+      **Written 2026-11-09:** `.github/workflows/ci.yml` runs pytest on
+      Python 3.9 and `3.x` (installs tshark so the real-tshark enrich test
+      runs instead of skipping) and the integration test in both modes with
+      `--no-internet`, all on `ubuntu-24.04` (setup-python has no 3.9 build
+      for newer Ubuntu). Badge added to the README. Fixed the integration
+      test's cleanup for Linux: nettap writes the data dir as root, so the
+      final `rm -rf` would have failed; it now deletes the files from a
+      container first. pytest passed locally on 3.9 (183 tests) and the
+      sidecar integration test still passes on Docker Desktop for Mac.
+      Still to do: push and see all four jobs pass, then turn on branch
+      protection for `master` requiring them (a GitHub setting).
 - [ ] **Tests that touch real kernel behaviour.** Mocks keep agreeing with
       our own wrong assumptions (the `/sys/class/net/eth0/iflink` bug passed
       every unit test). Add a small `tests/live/` suite, marked
