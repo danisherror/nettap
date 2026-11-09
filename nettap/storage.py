@@ -366,3 +366,39 @@ def known_container_names(conn: sqlite3.Connection) -> list[str]:
 
 def list_live_sessions(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in conn.execute("SELECT * FROM live_sessions ORDER BY started_at")]
+
+
+def window(conn: sqlite3.Connection, since: float | None = None,
+           until: float | None = None) -> sqlite3.Connection:
+    """An in-memory copy of the store holding only the flows with
+    since <= ts < until (None: no bound), plus all container metadata and
+    port history. Every query in analyze.py and report.py then works on a
+    time range unchanged. Costs one copy of the matching flow rows."""
+    if since is None and until is None:
+        return conn
+    mem = sqlite3.connect(":memory:")
+    mem.row_factory = sqlite3.Row
+    mem.executescript(SCHEMA)
+    _add_missing_columns(mem)
+    for table in ("containers", "owned_ports"):
+        cols = [r["name"] for r in mem.execute(f"PRAGMA table_info({table})")]
+        rows = conn.execute(f"SELECT {', '.join(cols)} FROM {table}").fetchall()
+        mem.executemany(f"INSERT INTO {table} ({', '.join(cols)}) VALUES "
+                        f"({', '.join('?' * len(cols))})", [tuple(r) for r in rows])
+    cols = [r["name"] for r in mem.execute("PRAGMA table_info(flows)")]
+    where, params = [], []
+    if since is not None:
+        where.append("ts >= ?")
+        params.append(since)
+    if until is not None:
+        where.append("ts < ?")
+        params.append(until)
+    cur = conn.execute(f"SELECT {', '.join(cols)} FROM flows WHERE {' AND '.join(where)}", params)
+    insert = f"INSERT INTO flows ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})"
+    while True:
+        batch = cur.fetchmany(10000)
+        if not batch:
+            break
+        mem.executemany(insert, [tuple(r) for r in batch])
+    mem.commit()
+    return mem

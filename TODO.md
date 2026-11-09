@@ -2,7 +2,8 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. 248 unit tests pass (1 skipped).
+attach/detach/status/analyze/report, plus `inspect`, `check`, `export` and
+`report --compare` (stage 3). 291 unit tests pass (1 skipped).
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -265,28 +266,113 @@ Fix and prove what exists first.
 
 ### Stage 3 - be worth choosing over plain tcpdump (8 -> 9)
 
-- [ ] **One-command "what does this image do?"** The strongest use case,
+- [x] **One-command "what does this image do?"** The strongest use case,
       currently five manual steps. Add `nettap inspect <image> [--duration
       5m] [-- <container args>]`: run the image, attach a sidecar, wait,
       enrich, write the HTML report, clean up. Done when: one command on a
       fresh machine produces a report of everything the image contacted.
-- [ ] **Allowlist / unexpected-destination check.** `nettap check
+      **Done 2026-11-09:** `nettap inspect <image>` (`nettap/inspector.py`).
+      The sidecar starts first, in its own network namespace; once tcpdump
+      logs "listening on eth0" the image runs with `--network
+      container:<sidecar>`, so its first packet is captured (a sidecar
+      started after the image would miss start-up traffic). `-p` goes on
+      the sidecar, which owns the namespace. Runs for `--duration`
+      (default 60s) or until the image exits (exit code and last output
+      shown), stops the image, then the sidecar, and runs `enrich` and
+      `report` (text + HTML) in throwaway nettap containers, so the host
+      needs only Docker. Every container is removed afterwards, also on
+      error or Ctrl+C. `--compare <run>` adds the "What changed" section.
+      Image and data mount default as in `nettap sidecars`. 11 unit tests
+      with a fake Docker client. Live on Docker Desktop for Mac (Docker
+      29.7.2): from a checkout and from `docker run ... -v
+      /var/run/docker.sock:... nettap inspect nginx:alpine -p 18089:80`;
+      an alpine image fetching example.com, neverssl.com and google.com
+      gave all three hostnames (SNI/Host/DNS) and Docker Desktop's DNS at
+      192.168.65.7; an image exiting with code 4 ended the run after 0s
+      and showed its output; no containers left behind. Once a run went
+      the full 30s instead of exiting after ~7s: a `wget` inside the image
+      apparently hung (not reproduced in 3 tries, including in a plain
+      `--network container:` setup without nettap). Not tried on a
+      fresh Linux machine yet (needs the image built, until stage 4
+      publishes one).
+- [x] **Allowlist / unexpected-destination check.** `nettap check
       --container web --allow allowlist.txt` (hostnames, CIDRs, other
       container names): exits non-zero and lists flows to anything not
       allowed. Makes nettap usable as a CI gate ("this service only talks to
       db and api.stripe.com"). Done when: it works in the integration test
       with one allowed and one disallowed destination.
-- [ ] **Compare two runs.** `nettap report --compare <run-a> <run-b>` (or
+      **Done 2026-11-09:** `nettap check --container X --allow FILE
+      [--allow-entry E] [--since/--until] [--direction out|all]`
+      (`nettap/check.py`). Entries: container names, hostnames (`*.` for
+      subdomains), addresses/CIDRs. A destination is allowed if its address
+      is in a range or any name seen for it matches: the container holding
+      the address (also through a published port), or a TLS SNI / HTTP Host
+      / DNS answer from the capture. Exit 0 / 1 (disallowed ones listed) /
+      2 (can't check: no allowlist, no traffic, unknown container, bad
+      entry), so "no data" can't pass a CI gate. Without TCP flags in the
+      store, who opened a connection is judged by ports (Linux ephemeral
+      range 32768+); an unclear case is checked, not skipped. Loopback
+      (127.0.0.11), multicast, link-local and broadcast are always allowed.
+      `integration_test.sh` (every mode) now also starts
+      `nettap-it-*-other`, which the client calls but which isn't captured,
+      and checks the client against an allowlist naming only the server
+      (and example.com): exit 1 listing only `-other`, then exit 0 with
+      `--allow-entry` for it. Passed on Docker Desktop for Mac in `sidecar`
+      (with internet) and `sidecars --no-internet` mode, and in `watch
+      --no-internet` mode inside `docker:dind`. Not yet run in CI.
+      Known gaps: hostnames are what the traffic claims (a hostile program
+      can send any SNI), so this isn't a security boundary; DNS lookups of
+      a disallowed name are not flagged, only connections; Docker Desktop's
+      resolver (192.168.65.7, default bridge) has to be allowed explicitly.
+- [x] **Compare two runs.** `nettap report --compare <run-a> <run-b>` (or
       `--since`): new destinations, destinations no longer contacted, big
       changes in bytes. Answers "what changed after this upgrade?". Done
       when: the HTML report has a "what changed" section.
-- [ ] **Implement `nettap export`** (already in P3, move it here):
+      **Done 2026-11-09:** `report --compare <container>` and/or
+      `--baseline-since/--baseline-until` (same container before/after),
+      plus `--since/--until` for the report itself (`15m`, `2h`, ISO time,
+      Unix seconds). A time range is an in-memory copy of the matching
+      flows (`storage.window`), so every existing query works unchanged.
+      `nettap/compare.py` lists new / no longer contacted / changed (2x and
+      10 KB) containers, internet destinations (matched by hostname, so a
+      CDN address change isn't a change), local addresses and DNS names,
+      shown at the top of the text and HTML report. Live: two `inspect`
+      runs of alpine gave "new: www.google.com" in both; the HTML section
+      was checked from its extracted text (Claude in Chrome couldn't open
+      a file:// or localhost URL from this machine). First live run showed
+      IPv6 solicited-node multicast groups (ff02::1:ffXX:XXXX, derived from
+      each run's own address) as new/gone every time; multicast and
+      link-local are now left out of the comparison.
+- [x] **Implement `nettap export`** (already in P3, move it here):
       `--format pcap|json|csv` for one container and a time range, so
       results can be shared without copying raw files.
-- [ ] **Measure accuracy, don't just describe it.** For host-network port
+      **Done 2026-11-09:** `nettap export --container X --format
+      json|csv|pcap [--since/--until] [--out FILE|-]` (`nettap/export.py`).
+      pcap merges the container's interface and DNS pcaps in time order in
+      pure Python (no mergecap needed), skipping a record tcpdump is still
+      writing; mixed link types give pcapng. Flow rows whose pcaps were
+      deleted by retention are counted in a note. Live: 125 packets
+      exported from an `inspect` run, `tshark -r` read all 125; pcapng
+      output read by tshark in a unit test.
+- [x] **Measure accuracy, don't just describe it.** For host-network port
       attribution (sampled 4x a second), run a known workload in the
       integration test and report the percentage of connections caught.
       Put the measured number in the README instead of "can be missed".
+      **Done 2026-11-09:** `scripts/hostports_accuracy.sh` (also a CI job):
+      a `--network host` busybox target with a `sidecar
+      --attribute-by-port`, which captures the test network's bridge
+      instead of eth0 (traffic between the host network and a container
+      never crosses eth0; the sampling being measured is the same on any
+      interface). Results on Docker Desktop for Mac, two runs (n=100 and
+      200): connections from another container to an httpd in the target
+      100% (200/200); outgoing `nc` connections held 0.5s 100% (40/40);
+      short outgoing requests, one `wget` each, **0%** (0/100, 0/200). The
+      script fails if fewer than 95% of the incoming ones are caught.
+      First attempt measured 0% everywhere because the sidecar captured
+      eth0 only (documented, but easy to forget). README, the report's
+      note and hostports.py now quote these numbers.
+      Follow-up idea: catching short outgoing connections needs an event
+      source rather than sampling (e.g. conntrack events or eBPF).
 
 ### Stage 4 - finish like a real project (needed to hold 9)
 
@@ -704,7 +790,8 @@ Fix and prove what exists first.
 - [ ] Web dashboard (Grafana on top of the flow store, or a small bespoke
       UI) for the matrix/top-talkers/external views instead of CLI-only
       JSON.
-- [ ] Alerting: flag flows to destinations not on an allowlist, or
+- [ ] Alerting: flag flows to destinations not on an allowlist (`nettap
+      check` does the allowlist part on demand since 2026-11-09), or
       byte-volume spikes per container, and ship them somewhere
       (webhook/Slack/email).
 - [x] (Moved to "Road to 9/10", stage 2, done there 2026-11-09.) Replace the polling controller (default 5s) with a Docker-events
@@ -712,9 +799,7 @@ Fix and prove what exists first.
       reconciliation pass, to cut attach latency close to zero.
 - [ ] Package as a proper CLI release (PyPI) and/or provide a systemd unit
       as a non-Docker-Compose deployment option.
-- [ ] (Moved to "Road to 9/10", stage 3.) `nettap export --container X --format pcap|json` isn't implemented
-      yet - today you export by copying files out of `data/pcap/` directly
-      or querying the SQLite DB by hand.
+- [x] (Moved to "Road to 9/10", stage 3, done there 2026-11-09.) `nettap export --container X --format pcap|json`.
 
 ## Known limitations (document, don't silently hide)
 

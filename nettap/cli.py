@@ -17,6 +17,11 @@ Typical usage:
     nettap analyze external
     nettap analyze protocols
     nettap enrich                      # re-parse any pcaps missing from the DB
+
+    nettap inspect nginx:alpine --duration 2m   # what does this image contact?
+    nettap check --container web --allow allowlist.txt   # CI gate
+    nettap report --container web --compare web-old      # what changed?
+    nettap export --container web --format pcap --since 1h
 """
 from __future__ import annotations
 
@@ -38,7 +43,8 @@ from .ingest import enrich_pcap
 from . import events as docker_events
 from . import hostports
 from .report import build_report, render_html, render_text
-from .utils import format_table, parse_label_selector, setup_logging
+from .utils import (format_bytes, format_table, parse_duration, parse_label_selector,
+                    parse_time, printable, setup_logging)
 
 logger = logging.getLogger("nettap.cli")
 
@@ -655,6 +661,52 @@ def sidecars_cmd(ctx, label, poll_interval, image, data_volume, rotate_seconds, 
             sup.remove_all()
 
 
+class _TimeParam(click.ParamType):
+    """--since/--until values, see utils.parse_time."""
+    name = "time"
+
+    def convert(self, value, param, ctx):
+        if isinstance(value, float):
+            return value
+        try:
+            return parse_time(value)
+        except ValueError as e:
+            self.fail(str(e), param, ctx)
+
+
+TIME = _TimeParam()
+_TIME_HELP = "15m / 2h (that long ago), 2026-11-09T14:00 (local time), or Unix seconds"
+
+
+def _window_options(f):
+    f = click.option("--until", type=TIME, default=None,
+                     help=f"Only traffic before this time: {_TIME_HELP}.")(f)
+    f = click.option("--since", type=TIME, default=None,
+                     help=f"Only traffic from this time on: {_TIME_HELP}.")(f)
+    return f
+
+
+def _require_known(conn, container: str) -> None:
+    known = storage.known_container_names(conn)
+    if known and container not in known:  # an empty store: the report says so itself
+        raise preflight.SetupError(
+            f"no data for a container named '{container}' - containers with captured data "
+            f"so far: {', '.join(known) or 'none'} (--container must match the --target "
+            f"name the capture was started with, not necessarily the container's current "
+            f"name in 'docker ps')")
+
+
+def _window_label(name: str, since: float | None, until: float | None) -> str:
+    from .report import _fmt_time
+    if since is not None and until is not None:
+        return f"{name} from {_fmt_time(since)} to {_fmt_time(until)}"
+    if since is not None:
+        return f"{name} since {_fmt_time(since)}"
+    if until is not None:
+        return f"{name} before {_fmt_time(until)}"
+    return name
+
+
 @cli.command()
 @click.option("--container", required=True, help="Container name to summarize.")
 @click.option("--format", "fmt", type=click.Choice(["text", "html"]), default="text", show_default=True)
@@ -663,24 +715,39 @@ def sidecars_cmd(ctx, label, poll_interval, image, data_volume, rotate_seconds, 
                    "--format html (so it lands in the bind-mounted data dir, on the host "
                    "filesystem, ready to double-click open); prints to the terminal for "
                    "--format text unless --out is given.")
+@_window_options
+@click.option("--compare", "compare_to", metavar="CONTAINER", default=None,
+              help="Add a 'What changed' section: new destinations, ones no longer "
+                   "contacted and big changes in bytes, compared to this other capture "
+                   "(e.g. an earlier 'nettap inspect' run).")
+@click.option("--baseline-since", type=TIME, default=None,
+              help="Compare against traffic from this time on (of --compare, or of "
+                   "--container itself).")
+@click.option("--baseline-until", type=TIME, default=None,
+              help="Compare against traffic before this time. E.g. after an upgrade at "
+                   "14:00: --baseline-until 2026-11-09T14:00 --since 2026-11-09T14:00.")
 @click.pass_context
-def report(ctx, container, fmt, out):
+def report(ctx, container, fmt, out, since, until, compare_to, baseline_since, baseline_until):
     """Plain-language traffic summary for one container - readable without
     knowing what a pcap or a 5-tuple is. Meant for `docker exec ... nettap
     report --container X` (text, straight to your terminal) or `--format
     html` (a single file you can open in a browser)."""
+    from .compare import compare
+
     conn = _connect(ctx)
-    known = storage.known_container_names(conn)
-    if known and container not in known:
-        click.echo(
-            f"No data for a container named '{container}'.\n"
-            f"Containers with captured data so far: {', '.join(known)}\n"
-            f"(--container must match the --target name the capture was started with, "
-            f"not necessarily the container's current name in 'docker ps')",
-            err=True,
-        )
-        raise SystemExit(1)
-    data = build_report(conn, container)
+    _require_known(conn, container)
+    data = build_report(storage.window(conn, since, until), container)
+    if compare_to or baseline_since is not None or baseline_until is not None:
+        base = compare_to or container
+        _require_known(conn, base)
+        if base == container and (baseline_since, baseline_until) == (since, until):
+            raise click.UsageError(
+                "nothing to compare: pass --compare <other container>, or a different time "
+                "range with --baseline-since/--baseline-until")
+        baseline = build_report(storage.window(conn, baseline_since, baseline_until), base)
+        data["changes"] = compare(baseline, data,
+                                  _window_label(base, baseline_since, baseline_until),
+                                  _window_label(container, since, until))
     if fmt == "html":
         content = render_html(data)
         out = out or f"{ctx.obj['data_dir']}/{container}_report.html"
@@ -696,6 +763,246 @@ def report(ctx, container, fmt, out):
             click.echo(f"wrote {out}")
         else:
             click.echo(content)
+
+
+@cli.command()
+@click.option("--container", required=True, help="Container whose traffic to check.")
+@click.option("--allow", "allow_files", multiple=True,
+              type=click.Path(exists=True, dir_okay=False),
+              help="Allowlist file: one container name, hostname (*.example.com for "
+                   "subdomains), address or CIDR per line; # starts a comment. Repeatable.")
+@click.option("--allow-entry", "allow_entries", multiple=True, metavar="ENTRY",
+              help="One allowlist entry on the command line. Repeatable.")
+@_window_options
+@click.option("--direction", type=click.Choice(["out", "all"]), default="out", show_default=True,
+              help="'out': only destinations the container connected to; 'all': also "
+                   "peers that connected to it.")
+@click.option("--format", "fmt", type=click.Choice(["text", "json", "table"]), default="text",
+              show_default=True)
+@click.pass_context
+def check(ctx, container, allow_files, allow_entries, since, until, direction, fmt):
+    """Fail if the container contacted anything not on the allowlist - for
+    use as a CI gate ("web only talks to db and api.stripe.com").
+
+    Exit status: 0 when every destination is allowed, 1 when some aren't
+    (they're listed), 2 when the check can't be made (no allowlist, no
+    traffic captured for the container, unreadable database)."""
+    from .check import Allowlist, check as run_check, parse_allowlist
+
+    def cannot(msg):
+        click.echo(f"Error: {msg}", err=True)
+        ctx.exit(2)
+
+    if not allow_files and not allow_entries:
+        cannot("give an allowlist with --allow FILE and/or --allow-entry ENTRY")
+    allow = Allowlist()
+    try:
+        for path in allow_files:
+            with open(path) as f:
+                part = parse_allowlist(f.read(), source=path)
+            allow.networks += part.networks
+            allow.names |= part.names
+            allow.patterns += part.patterns
+        for entry in allow_entries:
+            allow.add(entry, where="--allow-entry: ")
+    except ValueError as e:
+        cannot(str(e))
+    try:
+        conn = _connect(ctx)
+        _require_known(conn, container)
+    except click.ClickException as e:
+        cannot(e.message)
+    view = storage.window(conn, since, until)
+    packets = view.execute("SELECT COUNT(*) FROM flows WHERE container_name = ?",
+                           (container,)).fetchone()[0]
+    if not packets:
+        cannot(f"no traffic captured for '{container}'"
+               + (" in that time range" if since is not None or until is not None else "")
+               + " - nothing to check")
+    results = run_check(view, container, allow, direction)
+    bad = [r for r in results if not r["allowed"]]
+    if fmt == "json":
+        click.echo(json.dumps({"container": container, "ok": not bad, "packets": packets,
+                               "disallowed": bad,
+                               "allowed": [r for r in results if r["allowed"]]}, indent=2))
+    elif fmt == "table":
+        click.echo(format_table([{k: r[k] for k in ("destination", "ip", "allowed", "matched",
+                                                    "ports", "bytes", "packets")}
+                                 for r in results]))
+    else:
+        ok = [r for r in results if r["allowed"]]
+        if bad:
+            click.echo(f"FAIL: {container} contacted {len(bad)} destination"
+                       f"{'s' if len(bad) != 1 else ''} not on the allowlist:")
+            for r in bad:
+                also = [n for n in r["containers"] + r["hostnames"] if n != r["destination"]]
+                where = r["ip"] if r["destination"] != r["ip"] else ""
+                extra = ", ".join(x for x in [where, *also] if x)
+                click.echo(f"  - {printable(r['destination'])}"
+                           + (f" ({printable(extra)})" if extra else "")
+                           + f": {', '.join(r['ports']) or 'no ports'}, "
+                             f"{format_bytes(r['bytes'])} in {r['packets']} packets")
+        else:
+            click.echo(f"OK: every destination {container} contacted is on the allowlist")
+        if ok:
+            click.echo("allowed: " + ", ".join(
+                f"{printable(r['destination'])} (by {printable(r['matched'])})" for r in ok))
+    ctx.exit(1 if bad else 0)
+
+
+@cli.command()
+@click.option("--container", required=True, help="Container whose traffic to export.")
+@click.option("--format", "fmt", type=click.Choice(["json", "csv", "pcap"]), default="json",
+              show_default=True,
+              help="json/csv: the parsed flow rows. pcap: the raw packets, merged from the "
+                   "container's capture files (pcapng if they mix link types).")
+@_window_options
+@click.option("--out", default=None,
+              help="Output file, '-' for stdout. Default: stdout for json/csv, "
+                   "<data-dir>/<container>_export.pcap(ng) for pcap.")
+@click.option("--pcap-dir", default=None, help="Where the pcaps are. Defaults to <data-dir>/pcap")
+@click.pass_context
+def export(ctx, container, fmt, since, until, out, pcap_dir):
+    """Write one container's traffic for a time range to a single file, to
+    share it without copying raw files around."""
+    import os
+    import sys
+
+    from . import export as exp
+
+    conn = _connect(ctx)
+    _require_known(conn, container)
+    if fmt in ("json", "csv"):
+        rows = exp.flow_rows(conn, container, since, until)
+        write = exp.write_json if fmt == "json" else exp.write_csv
+        if out in (None, "-"):
+            n = write(rows, sys.stdout)
+            click.echo(f"exported {n} flow rows", err=True)
+        else:
+            with open(out, "w", newline="") as f:
+                n = write(rows, f)
+            click.echo(f"wrote {n} flow rows to {out}")
+        return
+
+    pcap_dir = pcap_dir or f"{ctx.obj['data_dir']}/pcap"
+    paths = exp.container_pcaps(pcap_dir, container)
+    if not paths:
+        raise click.ClickException(
+            f"no pcaps for '{container}' in {pcap_dir} (deleted by retention, or captured "
+            f"elsewhere?) - --format json/csv exports the parsed flows instead")
+    kind = exp.output_kind(paths)
+    if out is None:
+        out = f"{ctx.obj['data_dir']}/{container}_export.{kind}"
+    if out == "-":
+        n, kind = exp.write_pcap(paths, sys.stdout.buffer, since, until)
+        sys.stdout.buffer.flush()
+        click.echo(f"exported {n} packets ({kind})", err=True)
+    else:
+        with open(out, "wb") as f:
+            n, kind = exp.write_pcap(paths, f, since, until)
+        click.echo(f"wrote {n} packets from {len(paths)} pcap(s) to {out} ({kind})")
+    have = {os.path.basename(p) for p in paths}
+    where, params = exp._where(container, since, until)
+    lost = sum(r[1] for r in conn.execute(
+        f"SELECT pcap_file, COUNT(*) FROM flows WHERE {where} GROUP BY pcap_file", params)
+        if r[0] and os.path.basename(r[0]) not in have)
+    if lost:
+        click.echo(f"note: {lost} flow rows in this range came from pcaps that no longer "
+                   f"exist (deleted by retention) - their packets aren't in the export; "
+                   f"--format json/csv still has them", err=True)
+
+
+@cli.command()
+@click.argument("image")
+@click.argument("command", nargs=-1, type=click.UNPROCESSED)
+@click.option("--duration", default="60s", show_default=True,
+              help="How long to run the image: 90s, 5m, 1h. It stops sooner if the image exits.")
+@click.option("--name", default=None,
+              help="Name for this run, used to label its traffic (report --container, "
+                   "check, export, --compare). Default: <image>-<date>-<time>.")
+@click.option("--network", default=None, help="Docker network to run on. Default: Docker's bridge.")
+@click.option("-e", "--env", multiple=True, help="Environment variable for the image, KEY=VALUE. Repeatable.")
+@click.option("-p", "--publish", multiple=True,
+              help="Publish a port, as for docker run: 8080:80, 80, 127.0.0.1:8080:80/udp. Repeatable.")
+@click.option("--entrypoint", default=None, help="Override the image's entrypoint.")
+@click.option("--compare", "baseline", metavar="RUN", default=None,
+              help="Add a 'What changed' section against an earlier run (its --name).")
+@click.option("--nettap-image", default=None,
+              help="nettap image for the capture. Default: this container's image, or "
+                   "'nettap' when not run in a container.")
+@click.option("--data-volume", default=None,
+              help="Host path or volume to mount at /data for the capture. Default: whatever "
+                   "is mounted at --data-dir in this container, or its absolute path.")
+@click.option("--keep-containers", is_flag=True, help="Don't remove the containers afterwards.")
+@click.pass_context
+def inspect(ctx, image, command, duration, name, network, env, publish, entrypoint, baseline,
+            nettap_image, data_volume, keep_containers):
+    """Run IMAGE for a while and report everything it contacted.
+
+    Starts a capture, runs the image inside it from its very first packet,
+    then writes the text and HTML report. Arguments after IMAGE (put them
+    after `--`) are the image's command, as for docker run. Needs Docker
+    access (docker.sock) and the nettap image."""
+    import os
+    import re
+
+    import docker
+
+    from .inspector import InspectError, InspectSpec, inspect as run_inspect, parse_publish, run_name
+    from .supervisor import default_spec
+
+    try:
+        seconds = parse_duration(duration)
+    except ValueError:
+        raise click.BadParameter(f"{duration!r} (use e.g. 90s, 5m, 1h)", param_hint="--duration")
+    if name and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]*", name):
+        raise click.BadParameter("letters, digits, '_', '.' and '-' only, starting with a "
+                                 "letter or digit", param_hint="--name")
+    try:
+        ports = parse_publish(publish)
+    except ValueError as e:
+        raise click.BadParameter(str(e), param_hint="--publish")
+    client = _docker_client(need="nettap inspect")
+    if nettap_image is None or data_volume is None:
+        try:
+            default_image, default_data = default_spec(client, ctx.obj["data_dir"])
+        except RuntimeError as e:
+            raise click.ClickException(str(e))
+        nettap_image, data_volume = nettap_image or default_image, data_volume or default_data
+    try:
+        client.images.get(nettap_image)
+    except docker.errors.ImageNotFound:
+        raise preflight.SetupError(
+            f"no image '{nettap_image}' for the capture - build it with `docker build -t "
+            f"{nettap_image} .` in the nettap checkout, or pass --nettap-image") from None
+    if data_volume.startswith("/"):
+        os.makedirs(data_volume, exist_ok=True)
+
+    spec = InspectSpec(image=image, command=list(command), name=name or run_name(image),
+                       duration=seconds, nettap_image=nettap_image, data_source=data_volume,
+                       network=network, env=list(env), publish=ports, entrypoint=entrypoint,
+                       baseline=baseline, keep_containers=keep_containers)
+    stop = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_a: stop.set())
+    signal.signal(signal.SIGINT, lambda *_a: stop.set())
+    try:
+        result = run_inspect(client, spec, stop, echo=click.echo)
+    except InspectError as e:
+        raise click.ClickException(str(e))
+    except docker.errors.APIError as e:
+        raise click.ClickException(f"Docker refused a step: {e.explanation or e}")
+
+    click.echo("")
+    click.echo(result["report_text"].rstrip())
+    click.echo("")
+    html_name = os.path.basename(result["report_html"])
+    if data_volume.startswith("/"):
+        click.echo(f"HTML report: {os.path.join(data_volume, html_name)}")
+    else:
+        click.echo(f"HTML report: {html_name} in the Docker volume {data_volume}")
+    click.echo(f"Run name: {spec.name} - use it with `nettap report --container {spec.name}`, "
+               f"`nettap check --container {spec.name} --allow <file>`, `nettap export "
+               f"--container {spec.name}`, or `nettap inspect ... --compare {spec.name}` next time")
 
 
 @cli.command()

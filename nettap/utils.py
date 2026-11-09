@@ -99,3 +99,45 @@ def format_table(rows: list[dict], max_width: int = 60) -> str:
                          for c, w, num in zip(cells, widths, numeric)).rstrip()
 
     return "\n".join([line(columns), line(["-" * w for w in widths]), *map(line, table)])
+
+
+_DURATION_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+
+
+def parse_duration(text: str) -> float:
+    """'90' or '90s' -> 90.0, '5m' -> 300.0, '2h', '1d'. Raises ValueError."""
+    text = (text or "").strip().lower()
+    unit = text[-1:] if text[-1:] in _DURATION_UNITS else "s"
+    number = text[:-1] if text[-1:] in _DURATION_UNITS else text
+    value = float(number)
+    if value < 0:
+        raise ValueError(f"negative duration: {text!r}")
+    return value * _DURATION_UNITS[unit]
+
+
+def parse_time(text: str, now: float | None = None) -> float:
+    """A point in time as a Unix timestamp, from:
+    - a duration meaning "that long ago": '15m', '2h', '1d';
+    - Unix seconds: '1762700000';
+    - an ISO 8601 date/time: '2026-11-09', '2026-11-09T12:30', '2026-11-09 12:30:00+00:00'
+      (local time when no offset is given, like the timestamps tcpdump puts in pcap names).
+    Raises ValueError."""
+    import time as _time
+    from datetime import datetime
+
+    text = (text or "").strip()
+    if text[-1:].lower() in _DURATION_UNITS:
+        try:
+            return (now if now is not None else _time.time()) - parse_duration(text)
+        except ValueError:
+            pass
+    try:
+        return float(text)
+    except ValueError:
+        pass
+    try:
+        dt = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        raise ValueError(f"not a time: {text!r} (use e.g. 15m, 2h, 2026-11-09T12:30 "
+                         f"or Unix seconds)") from None
+    return dt.timestamp()  # naive -> local time

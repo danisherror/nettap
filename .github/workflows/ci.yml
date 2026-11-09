@@ -50,3 +50,12 @@ jobs:
       - uses: actions/checkout@v7
       - run: docker version
       - run: bash scripts/integration_test.sh --mode ${{ matrix.mode }} --no-internet
+
+  # how many connections sidecar --attribute-by-port catches for a
+  # --network host target (the numbers quoted in the README)
+  accuracy:
+    name: host-network port attribution accuracy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - run: bash scripts/hostports_accuracy.sh

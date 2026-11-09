@@ -198,7 +198,7 @@ def test_report_for_unknown_container_exits_non_zero(tmp_path):
     conn.commit()
     result = _invoke("--data-dir", str(tmp_path), "report", "--container", "wbe")
     assert result.exit_code == 1
-    assert "No data for a container named 'wbe'" in result.output
+    assert "no data for a container named 'wbe'" in result.output
 
 
 # --- a data dir that isn't writable -------------------------------------------

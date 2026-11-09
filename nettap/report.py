@@ -24,9 +24,10 @@ from .utils import format_bytes, printable as _printable
 # the host's network, so its traffic is picked out by port.
 PORT_SCOPED_NOTE = (
     "This container uses the host's network (--network host), so its traffic was "
-    "picked out of the host's by the ports its processes held, sampled a few times a "
-    "second: connections shorter than that - often DNS lookups and quick requests - "
-    "can be missing, and traffic with other containers on this host isn't included.")
+    "picked out of the host's by the ports its processes held, sampled 4 times a "
+    "second. Connections to its servers are all included, but its short outgoing "
+    "requests and DNS lookups are mostly missing (none of 200 quick HTTP requests were "
+    "caught in a test), and traffic with other containers on this host isn't included.")
 
 def _ip_counts(conn: sqlite3.Connection, container: str) -> list[tuple[str, int]]:
     """Every IP seen in this container's flows (as src or dst), most rows first."""
@@ -144,6 +145,71 @@ def _fmt_time(ts: float | None) -> str | None:
     return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
+def _change_size(item: dict) -> str:
+    if "lookups" in item:
+        n = item["lookups"]
+        return f"{n} lookup{'s' if n != 1 else ''}"
+    return format_bytes(item["bytes"])
+
+
+def _window(side: dict) -> str:
+    start, end = _fmt_time(side["start"]), _fmt_time(side["end"])
+    span = f"{start} to {end}" if start and end else "no traffic"
+    return f"{side['label']} ({span}, {format_bytes(side['total_bytes'])})"
+
+
+def changes_text(changes: dict) -> list[str]:
+    """Lines of the "What changed" section for render_text."""
+    lines = [f"What changed compared to {changes['baseline']['label']}:",
+             f"  before: {_window(changes['baseline'])}",
+             f"  now:    {_window(changes['current'])}"]
+    if not changes["changed"]:
+        lines.append("  (nothing - the same destinations, with no big change in traffic)")
+    for s in changes["sections"]:
+        if not (s["new"] or s["gone"] or s["changed"]):
+            continue
+        lines.append(f"  {s['title']}:")
+        for kind, items in (("new", s["new"]), ("no longer contacted", s["gone"])):
+            for r in items:
+                detail = f" ({r['detail']})" if r.get("detail") else ""
+                lines.append(f"    {kind}: {r['name']}{detail} - {_change_size(r)}")
+        for r in s["changed"]:
+            detail = f" ({r['detail']})" if r.get("detail") else ""
+            lines.append(f"    changed: {r['name']}{detail} - {format_bytes(r['before_bytes'])} "
+                         f"-> {format_bytes(r['after_bytes'])}")
+    return lines
+
+
+def changes_html(changes: dict) -> str:
+    """The "What changed" section for render_html."""
+    def esc(s) -> str:
+        return html_escape.escape(_printable(str(s)))
+
+    def item(cls, label, r, size):
+        detail = f" <span class='muted'>({esc(r['detail'])})</span>" if r.get("detail") else ""
+        return (f"<li class='{cls}'><span class='tag'>{label}</span> {esc(r['name'])}{detail} "
+                f"<span class='muted'>- {esc(size)}</span></li>")
+
+    parts = [
+        f"<h2 id='what-changed'>What changed compared to {esc(changes['baseline']['label'])}</h2>",
+        f"<p class='window'>Before: {esc(_window(changes['baseline']))}<br>"
+        f"Now: {esc(_window(changes['current']))}</p>",
+    ]
+    if not changes["changed"]:
+        parts.append("<p class='empty'>Nothing: the same destinations, with no big change "
+                     "in traffic.</p>")
+    for s in changes["sections"]:
+        if not (s["new"] or s["gone"] or s["changed"]):
+            continue
+        rows = [item("new", "new", r, _change_size(r)) for r in s["new"]]
+        rows += [item("gone", "gone", r, _change_size(r)) for r in s["gone"]]
+        rows += [item("changed", "changed", r, f"{format_bytes(r['before_bytes'])} -> "
+                      f"{format_bytes(r['after_bytes'])}") for r in s["changed"]]
+        parts.append(f"<h3>{esc(s['title'])}</h3><ul class='changes'>{''.join(rows)}</ul>")
+    parts.append("<p class='muted'>Bytes aren't adjusted for how long each capture ran.</p>")
+    return "<section class='what-changed'>" + "".join(parts) + "</section>"
+
+
 def render_text(report: dict) -> str:
     c = report["container"]
     lines = [f"Traffic report for container: {c}"]
@@ -151,6 +217,8 @@ def render_text(report: dict) -> str:
     if self_ips:
         lines.append(f"(identified on the network as {', '.join(self_ips)})")
     lines.append("")
+    if report.get("changes"):
+        lines += changes_text(report["changes"]) + [""]
 
     if report["packet_count"] == 0:
         lines += [
@@ -329,6 +397,9 @@ def render_html(report: dict) -> str:
         review it yourself.</p>
         """
 
+    if report.get("changes"):
+        body = changes_html(report["changes"]) + body
+
     return f"""<!doctype html>
 <html><head><meta charset="utf-8"><title>Traffic report: {c}</title>
 <style>
@@ -365,6 +436,17 @@ def render_html(report: dict) -> str:
   code {{ background: #f1f1f1; padding: 1px 5px; border-radius: 4px; }}
   .note {{ margin-top: 28px; color: #888; font-size: 0.85rem; }}
   .empty {{ color: #888; }}
+  h3 {{ font-size: 0.95rem; margin: 16px 0 6px; }}
+  .what-changed {{ border: 1px solid #c9d3ff; border-radius: 10px; padding: 4px 18px 12px;
+                   margin: 20px 0; }}
+  .what-changed h2 {{ margin-top: 14px; }}
+  .changes {{ list-style: none; padding-left: 0; margin: 0; }}
+  .changes li {{ padding: 3px 0; font-size: 0.9rem; }}
+  .tag {{ display: inline-block; min-width: 62px; text-align: center; font-size: 0.75rem;
+          border-radius: 4px; padding: 0 6px; margin-right: 6px; color: #fff; }}
+  .new .tag {{ background: #c2410c; }}
+  .gone .tag {{ background: #6b7280; }}
+  .changed .tag {{ background: #2563eb; }}
 </style></head>
 <body>
   <h1>Traffic report: {c}</h1>
