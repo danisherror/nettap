@@ -135,7 +135,7 @@ Fix and prove what exists first.
 
 ### Stage 2 - make it pleasant to use (7 -> 8)
 
-- [ ] **Sidecars recover by themselves.** Today a sidecar exits when its
+- [x] **Sidecars recover by themselves.** Today a sidecar exits when its
       target stops and must be restarted by hand, or recreated if the target
       was recreated (see README Troubleshooting). Add a supervisor command
       (e.g. `nettap sidecars --label monitor=true`, needs docker.sock) that
@@ -166,8 +166,12 @@ Fix and prove what exists first.
       no sidecars are left. Passed on Docker Desktop for Mac (Docker
       29.7.2): restart followed in about 1s, recreate in under 1s. Also
       checked by hand there: `docker stop` of the target -> sidecar exited
-      3; `docker start` -> sidecar started again within a poll. Leave
-      unticked until it passes in CI.
+      3; `docker start` -> sidecar started again within a poll.
+      Done 2026-11-09: `--mode sidecars --no-internet` passed in GitHub
+      Actions on `ubuntu-24.04` (run 42574703933, commit e8a1157): the
+      sidecar followed the restart in about 1s and the recreate in under
+      1s, and all checks passed. `integration (sidecars)` is now a required
+      check on `master` (six in all).
       Not handled: changing the supervisor's options doesn't update
       sidecars kept with `--keep-sidecars` (remove them to pick up new
       ones), and a container started without `--name` gets a new random
