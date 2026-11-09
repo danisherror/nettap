@@ -3,9 +3,10 @@ API so a sidecar's report can name peers without a sidecar of their own
 (TODO.md, report.py known gaps)."""
 from unittest.mock import MagicMock
 
+import docker
 from click.testing import CliRunner
 
-from nettap import analyze, cli, discovery, storage
+from nettap import analyze, cli, discovery, preflight, storage
 from tests.test_discovery import _fake_container
 from tests.test_sidecar_iface_gone import FakeMgr
 
@@ -41,7 +42,7 @@ def _sidecar(tmp_path, monkeypatch, client, passes=2):
     monkeypatch.setattr(discovery, "interface_exists", lambda iface: next(checks))
     monkeypatch.setattr(discovery, "interface_ips", lambda iface: {"eth0": TARGET_IP})
     monkeypatch.setattr(cli, "CaptureManager", FakeMgr)
-    monkeypatch.setattr(cli, "_docker_client", lambda: client)
+    monkeypatch.setattr(cli, "_docker_client", lambda **kw: client)
     monkeypatch.setattr(cli.time, "sleep", lambda s: None)
     return CliRunner().invoke(cli.cli, ["--data-dir", str(tmp_path), "sidecar", "--target", "web",
                                         "--no-auto-enrich", "--docker-api"])
@@ -71,8 +72,19 @@ def test_sidecar_refuses_to_start_without_the_docker_api(tmp_path, monkeypatch):
     client = MagicMock()
     client.ping.side_effect = ConnectionError("no such file")
     FakeMgr.last = None
-    result = _sidecar(tmp_path, monkeypatch, client)
-    assert result.exit_code == 1 and "/var/run/docker.sock" in result.output
+    monkeypatch.setattr(preflight.os.path, "exists", lambda p: True)
+    monkeypatch.setattr(preflight.os, "access", lambda p, mode: True)
+    monkeypatch.setattr(docker, "from_env", lambda: client)
+    monkeypatch.setattr(cli, "_docker_client", cli._docker_client)  # the real one
+    monkeypatch.setattr(cli, "CaptureManager", FakeMgr)
+    monkeypatch.setattr(discovery, "interface_exists", lambda iface: True)
+    monkeypatch.setattr(discovery, "interface_ips", lambda iface: {"eth0": TARGET_IP})
+    monkeypatch.delenv("DOCKER_HOST", raising=False)
+    result = CliRunner().invoke(cli.cli, ["--data-dir", str(tmp_path), "sidecar", "--target",
+                                          "web", "--no-auto-enrich", "--docker-api"])
+    assert result.exit_code == 1
+    assert "--docker-api needs the Docker API" in result.output
+    assert "-v /var/run/docker.sock:/var/run/docker.sock" in result.output
     assert FakeMgr.last is None
 
 

@@ -17,10 +17,18 @@ import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from .discovery import ANY_IFACE, NOT_LO, ContainerNetInfo
 
 logger = logging.getLogger("nettap.capture")
+
+# Default pcap retention for `watch`/`sidecar`/`sidecars`: enough for a day of
+# looking back with Wireshark, small enough that a capture left running for
+# weeks can't fill a disk. Flows already parsed into SQLite are kept; only
+# the raw pcaps are deleted. 0 on the command line turns a limit off.
+DEFAULT_MAX_AGE_HOURS = 24.0
+DEFAULT_MAX_SIZE_MB = 1024.0
 
 _PR_SET_PDEATHSIG = 1  # from <linux/prctl.h>
 
@@ -177,8 +185,17 @@ def finished_pcaps(pattern: str, rotate_seconds: float, now: float | None = None
     return files
 
 
+def _fmt_bytes(n: float) -> str:
+    for unit in ("B", "KB", "MB"):
+        if n < 1024:
+            return f"{n:.0f} {unit}" if unit == "B" else f"{n:.1f} {unit}"
+        n /= 1024
+    return f"{n:.2f} GB"
+
+
 def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
-                max_bytes: int | None = None, now: float | None = None) -> list[Path]:
+                max_bytes: int | None = None, now: float | None = None,
+                unread: Callable[[Path], bool] | None = None) -> list[Path]:
     """Delete pcaps oldest-first (by mtime) until none is older than
     max_age_seconds and the directory's pcaps total at most max_bytes.
 
@@ -206,7 +223,7 @@ def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
     keep = set(newest.values())
     files.sort()
     total = sum(size for _, size, _ in files)
-    deleted = []
+    deleted, freed, reasons, lost = [], 0, set(), []
     for mtime, size, path in files:
         too_old = max_age_seconds is not None and now - mtime > max_age_seconds
         too_big = max_bytes is not None and total > max_bytes
@@ -214,6 +231,12 @@ def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
             break  # sorted oldest-first, so every later file is within limits
         if path.name in keep:
             continue
+        was_unread = False
+        if unread is not None:
+            try:
+                was_unread = unread(path)
+            except Exception:
+                logger.debug("couldn't check whether %s was parsed", path, exc_info=True)
         try:
             path.unlink()
         except FileNotFoundError:
@@ -222,10 +245,23 @@ def purge_pcaps(pcap_dir, max_age_seconds: float | None = None,
             logger.warning("could not delete old pcap %s: %s", path, exc)
             continue
         total -= size
+        freed += size
         deleted.append(path)
+        if was_unread:
+            lost.append(path.name)
+        if too_old:
+            reasons.add(f"older than {max_age_seconds / 3600:g}h")
+        if too_big:
+            reasons.add(f"over the {_fmt_bytes(max_bytes)} cap")
     if deleted:
-        logger.info("retention: deleted %d old pcap(s), %d bytes of pcaps left",
-                    len(deleted), total)
+        logger.info("retention: deleted %d pcap(s) (%s, %s), %s of pcaps left in %s",
+                    len(deleted), _fmt_bytes(freed), " and ".join(sorted(reasons)),
+                    _fmt_bytes(total), pcap_dir)
+    if lost:
+        logger.warning(
+            "retention: %d deleted pcap(s) weren't fully parsed into the flow store, so "
+            "their traffic is missing from reports: %s - raise --pcap-max-size-mb / "
+            "--pcap-max-age-hours, or keep auto-enrich on", len(lost), ", ".join(lost))
     return deleted
 
 
@@ -435,17 +471,20 @@ class CaptureManager:
                 restarted.append(session)
         return restarted
 
-    def enforce_retention(self, min_interval: float = 30.0) -> list[Path]:
+    def enforce_retention(self, min_interval: float = 30.0,
+                          unread: Callable[[Path], bool] | None = None) -> list[Path]:
         """Apply the age/size limits to the whole pcap dir, at most once per
         min_interval seconds. Covers pcaps from earlier runs and other
-        containers too, so the cap holds for the directory as a whole."""
+        containers too, so the cap holds for the directory as a whole.
+        `unread`: see purge_pcaps."""
         if self.max_age_seconds is None and self.max_bytes is None:
             return []
         now = time.time()
         if now - self._last_purge < min_interval:
             return []
         self._last_purge = now
-        return purge_pcaps(self.pcap_dir, self.max_age_seconds, self.max_bytes, now=now)
+        return purge_pcaps(self.pcap_dir, self.max_age_seconds, self.max_bytes, now=now,
+                           unread=unread)
 
     def status(self) -> list[dict]:
         out = []

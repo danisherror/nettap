@@ -187,6 +187,15 @@ def pcap_progress(conn: sqlite3.Connection, path: str) -> tuple[int, bool] | Non
     return (r["offset"], bool(r["done"])) if r else None
 
 
+def pcap_unread(conn: sqlite3.Connection, path) -> bool:
+    """Whether some of this pcap's packets aren't in the flow store yet
+    (retention warns before deleting such a file)."""
+    progress = pcap_progress(conn, str(path))
+    if progress is not None:
+        return not progress[1]
+    return not pcap_enriched(conn, str(path))
+
+
 def store_pcap_chunk(conn: sqlite3.Connection, path: str, start: int, end: int,
                      done: bool, rows: list[dict]) -> bool:
     """Insert the flow rows parsed from path[start:end] and move its offset

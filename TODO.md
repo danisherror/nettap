@@ -2,7 +2,7 @@
 
 **Status:** MVP is functionally complete - polling controller, per-container
 veth capture via tcpdump, tshark-based enrichment into SQLite, CLI for
-attach/detach/status/analyze/report. All 183 unit tests pass.
+attach/detach/status/analyze/report. 248 unit tests pass (1 skipped).
 
 **Verified 2026-11-08 on Docker Desktop for Mac (Docker 29.7.2):** `sidecar`
 mode works end-to-end against a real container - image builds, tcpdump
@@ -210,15 +210,58 @@ Fix and prove what exists first.
       Known cost: one tshark run per capture file with new packets every
       5s. A ClientHello or HTTP request split across a 5s chunk boundary can
       lose its SNI/Host (tshark can't reassemble across chunks).
-- [ ] **Safe defaults for disk use.** Pcaps are kept forever unless
+- [x] **Safe defaults for disk use.** Pcaps are kept forever unless
       `--pcap-max-age-hours`/`--pcap-max-size-mb` are given. Set a default
       (e.g. 24h / 1 GB) and log when files are deleted. Done when: a
       capture left running for a week doesn't fill the disk.
-- [ ] **Clear errors for common mistakes.** Missing capabilities, missing
+      **Done 2026-11-09:** `watch`, `sidecar` and `sidecars` default to
+      24h / 1024 MB (`capture.DEFAULT_MAX_AGE_HOURS`/`DEFAULT_MAX_SIZE_MB`);
+      `0` turns a limit off. The limits are logged at startup; each sweep
+      logs how many files were deleted, how much was freed, why (age or
+      cap) and what's left; deleting a pcap that isn't fully in the flow
+      store (`storage.pcap_unread`) is a warning naming the files.
+      `sidecars` now always passes both limits on to its sidecars, so `0`
+      reaches them too. Live test on Docker Desktop for Mac (sidecar,
+      `--rotate-seconds 5 --pcap-max-size-mb 0.05`, target fetching
+      example.com twice a second): startup logged the limits, the first
+      sweep logged "deleted 4 pcap(s) (77.2 KB, over the 51.2 KB cap),
+      43.3 KB of pcaps left", the directory stayed around 50-60 KB and
+      enrichment kept going (~130 rows per 5s file). A week-long run
+      wasn't done: disk use is bounded by the cap plus about one file per
+      capture plus what's written between 30s sweeps.
+- [x] **Clear errors for common mistakes.** Missing capabilities, missing
       docker.sock with `--docker-api`, a target that doesn't exist, a data
       dir that isn't writable: each should print one line saying what's
       wrong and the exact fix, and exit non-zero. Done when: each case has
       a test.
+      **Done 2026-11-09:** `nettap/preflight.py`, tests in
+      `tests/test_preflight.py`. Each prints `Error: <what> - <fix>` and
+      exits 1:
+      - missing capabilities, read from `CapEff` in `/proc/self/status`
+        (root on Linux only; a non-root user may use a tcpdump with file
+        caps): `NET_RAW` for `sidecar`, `NET_RAW` + `SYS_ADMIN` for `watch`;
+      - no/unusable `/var/run/docker.sock` (or a `DOCKER_HOST` that doesn't
+        answer) for `watch`, `sidecars` and `sidecar --docker-api`;
+      - a data dir that can't be created or written (`watch`/`sidecar`), or
+        a DB that can't be opened (every command);
+      - a target that doesn't exist: `sidecar` already failed on a missing
+        `eth0`; `attach <name>` now fails when no container (running or
+        stopped) has that name/ID/short ID, writing nothing
+        (`--allow-missing` queues it anyway; without Docker access it
+        warns and queues);
+      - missing `tcpdump`/`tshark`/`nsenter`.
+      Live test on Docker Desktop for Mac (Docker 29.7.2), with
+      `docker run --network container:<target>`: `--cap-drop NET_RAW` gave
+      the capability error, and a `:ro` data mount gave the data-dir error,
+      both exit 1. A missing target is rejected by `docker run` itself
+      before nettap starts.
+      **Observed while testing (2026-11-09):** tcpdump on the shared `eth0`
+      captured fine with Docker's default capabilities, i.e. *without*
+      `NET_ADMIN`; with `--cap-drop NET_RAW` it failed with "You don't have
+      permission to perform this capture on that device (socket: Operation
+      not permitted)". So `NET_ADMIN` isn't treated as required. The README
+      and compose file still add it, since `watch` hasn't been tried
+      without it.
 
 ### Stage 3 - be worth choosing over plain tcpdump (8 -> 9)
 

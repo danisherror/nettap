@@ -172,6 +172,15 @@ Raw pcaps land in `./data/pcap/` on the host either way (bind-mounted), so
 `wireshark ./data/pcap/web_*.pcap` works for a deep dive regardless of which
 capture mode produced them.
 
+Raw pcaps are deleted after **24 hours**, or sooner, oldest first, once
+`data/pcap/` holds more than **1 GB**. Flows already parsed into
+`nettap.db` are kept, so reports still cover the whole capture. Change the
+limits with `--pcap-max-age-hours` / `--pcap-max-size-mb` on `watch`,
+`sidecar` or `sidecars` (`0` turns a limit off). The limits are logged at
+startup and every deletion is logged; deleting a pcap that hasn't been
+parsed yet (only likely with a very small size cap or `--no-auto-enrich`)
+is logged as a warning.
+
 ### Sidecars that look after themselves: `nettap sidecars`
 
 A plain sidecar exits when its target stops, and has to be started again
@@ -250,6 +259,16 @@ sudo nettap --data-dir ./data watch --label monitor=true
 `NET_ADMIN`/`NET_RAW`/`SYS_ADMIN` capabilities)
 
 ## Troubleshooting
+
+**nettap exits right away with a one-line `Error: ...`.** It checks for
+common setup mistakes at startup and says how to fix each one: a missing
+capability (`NET_RAW` for tcpdump, plus `SYS_ADMIN` for `watch`), no
+`/var/run/docker.sock` when Docker access is needed (`watch`, `sidecars`,
+`sidecar --docker-api`), a data directory it can't write to (e.g. mounted
+`:ro`), missing `tcpdump`/`tshark`, or a target that isn't there (`sidecar`
+finds no `eth0`; `attach` is given a name no container has - pass
+`--allow-missing` to queue a container you're about to create). All of
+these exit with status 1.
 
 **`report`/`analyze` says "no traffic" for a container you know is running.**
 `--container` is matched against whatever string was passed to `sidecar
@@ -423,6 +442,7 @@ nettap/
     analyze.py     read-side queries (JSON, or a table via --format table)
     report.py      read-side queries, rendered as plain language (text/HTML)
     supervisor.py  `nettap sidecars`: one self-healing sidecar per container
+    preflight.py   startup checks with one-line fixes (caps, docker.sock, data dir)
     cli.py         `nettap` command line
   tests/           unit tests (mocked, no live Docker needed)
     live/          discovery tests against real containers (Linux, root)
@@ -444,8 +464,11 @@ nettap/
   plaintext payloads.
 - Single Docker host only: overlay containers are captured, but flows aren't
   matched across two hosts' nettap instances.
-- Pcaps are kept forever unless `watch`/`sidecar` is given
-  `--pcap-max-age-hours` and/or `--pcap-max-size-mb`.
+- Raw pcaps are kept for 24h / up to 1 GB by default. The newest file of
+  each capture is never deleted, so the cap can be exceeded by about one
+  file per capture.
+- The capability check only runs when nettap is root on Linux (the Docker
+  setup); elsewhere a missing permission shows up as tcpdump's own error.
 - External IPs are named from TLS SNI, HTTP Host headers and DNS answers.
   DNS answers on user-defined networks come from the extra capture on the
   container's `lo` (tested in `sidecar` mode, and in `watch` mode on
